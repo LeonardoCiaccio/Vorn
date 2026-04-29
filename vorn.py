@@ -163,8 +163,12 @@ def build_parser():
 
 
 def main():
+    import sys
     parser = build_parser()
-    args   = parser.parse_args()
+    if len(sys.argv) == 1:
+        parser.parse_args(["session", "--help"])
+        return
+    args = parser.parse_args()
     args.func(args)
 
 
