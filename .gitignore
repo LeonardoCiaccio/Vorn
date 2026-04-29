@@ -30,6 +30,10 @@ env/
 Thumbs.db
 desktop.ini
 
+# PyInstaller
+build/
+*.spec
+
 # Temp e log
 *.tmp
 *.log
