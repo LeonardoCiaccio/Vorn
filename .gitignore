@@ -5,8 +5,6 @@ __pycache__/
 *.pyd
 .Python
 *.egg-info/
-dist/
-build/
 .eggs/
 
 # Vorn store — dati di backup, mai nel repo
@@ -32,7 +30,9 @@ desktop.ini
 
 # PyInstaller
 build/
+dist/
 *.spec
+!dist/vorn.exe
 
 # Temp e log
 *.tmp
