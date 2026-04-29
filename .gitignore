@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Vorn store — dati di backup, mai nel repo
+vorn_data/
+*.vorn
+
+# Ambienti virtuali
+.venv/
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temp e log
+*.tmp
+*.log
+*.bak
