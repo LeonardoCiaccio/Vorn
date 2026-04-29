@@ -17,46 +17,50 @@ Lo stesso file usato da 100 progetti viene salvato una volta sola. La deduplicaz
 
 ## Struttura store
 
+Lo store è una cartella piatta scelta dall'utente. Nessuna sottocartella imposta dall'app.
+
 ```
-VornStore/
-  store/
-    ab3f9c2d...sha256....vorn
-    ff1a234b...sha256....vorn
-    cc90112e...sha256....vorn
+<cartella_scelta_dall_utente>/
+  ab3f9c2d....vorn
+  ff1a234b....vorn
+  cc90112e....vorn
 ```
 
-## Script disponibili
+Il nome del file è l'hash del contenuto — accesso diretto, nessuna ricerca.
 
-| Script | Uso |
+## Architettura — librerie
+
+| Modulo | Responsabilità |
 |---|---|
-| `vorn.py` | Backup, restore, status di una cartella |
-| `vorn_view.py` | Legge solo i metadati di un `.vorn` senza caricare il contenuto |
-| `vorn_extract.py` | Estrae il contenuto di un `.vorn` e lo salva con il nome originale |
-| `vorn_read.py` | Scansiona uno store e mostra tutti i metadati ordinati |
+| `vorn_hash.py` | `vorn_fingerprint(path)` — impronta veloce a campioni. `vorn_hash(path)` — hash contenuto (SHA-256 incapsulato). Nessun altro modulo conosce SHA-256. |
+| `vorn_format.py` | Formato binario `.vorn`: legge/scrive header JSON, separatore, contenuto raw. Aggiorna records in un `.vorn` esistente. |
+| `vorn_store.py` | Accesso diretto allo store per hash: `exists`, `put`, `get`, `update_records`. Nessuna scansione — conosci l'hash, conosci il path. |
+| `vorn_manifest.py` | Sessione e run: crea sessioni con nome, gestisce le sorgenti, crea run con timestamp, mappa `filename → hash` per run, recupera il run più recente prima di una data. |
+| `vorn_engine.py` | Orchestrazione: `backup(session)` e `restore(session, at)`. Usa manifest + store, non fa mai print. |
+| `vorn_output.py` | Tutto il formatting: progress, tabelle, errori, riepilogo. |
+| `vorn.py` | Entry point CLI: parsing argomenti, chiama engine. Zero logica. |
 
-## Comandi
+## Flusso backup
 
-```bash
-# Backup
-python vorn.py backup  <cartella_sorgente> <destinazione_store>
+```
+Crea/carica sessione per nome
+Apri nuovo run con timestamp
 
-# Restore (ultima versione)
-python vorn.py restore <cartella_sorgente> <destinazione_store>
+Per ogni file nella sessione:
+  → calcola vorn_hash(file)
+  → hash già nello store?
+    → NO → scrivi nuovo .vorn
+    → SI → aggiorna records nel .vorn esistente
+  → aggiungi {filename, hash, ts} al run corrente nel manifest
+```
 
-# Restore a un punto nel tempo
-python vorn.py restore <cartella_sorgente> <destinazione_store> --at "2026-04-29T12:00:00+00:00"
+## Flusso restore
 
-# Stato dello storico
-python vorn.py status  <cartella_sorgente> <destinazione_store>
-
-# Ispeziona un singolo .vorn (metadati)
-python vorn_view.py <file.vorn>
-
-# Estrai contenuto da un .vorn
-python vorn_extract.py <file.vorn> <cartella_destinazione>
-
-# Leggi tutti i metadati dello store
-python vorn_read.py <destinazione_store>
+```
+Carica sessione
+Trova il run più recente con ts ≤ data richiesta
+Per ogni file nel run:
+  → leggi hash → get(hash) dallo store → scrivi file a destinazione
 ```
 
 ## Principi
@@ -70,7 +74,4 @@ python vorn_read.py <destinazione_store>
 
 ## Stato del progetto
 
-POC funzionante. In valutazione:
-- Hash pigro (skip se data modifica + bytes invariati)
-- Stack definitivo per il runtime (attualmente Python puro)
-- Interfaccia utente
+POC validato (51/51 test). In costruzione: CLI robusta su architettura a librerie.

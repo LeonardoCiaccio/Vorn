@@ -1,263 +1,171 @@
-import os
 import sys
-import json
-import hashlib
-from datetime import datetime, timezone
+import argparse
 from pathlib import Path
 
-from hash_vorn import vorn_fingerprint
+import vorn_manifest as manifest
+import vorn_engine   as engine
+import vorn_output   as output
 
-# separatore ufficiale del protocollo Vorn
-# VORN in ASCII + sequenza nulla/non-nulla — impossibile in JSON UTF-8 valido
-SEPARATOR = b'\x56\x4F\x52\x4E\xFF\x00\xFF\x00'
-
-
-def store_dir(destination: str) -> Path:
-    return Path(destination).resolve() / "store"
+MANIFESTS_DIR = Path.home() / ".vorn" / "sessions"
 
 
-def init(destination: str):
-    store_dir(destination).mkdir(parents=True, exist_ok=True)
+# -- session create -----------------------------------------------------------
+
+def cmd_create(args):
+    name  = args.name
+    store = Path(args.store).resolve()
+
+    if manifest.exists(MANIFESTS_DIR, name):
+        output.error(f"Sessione '{name}' esiste gia.")
+        sys.exit(1)
+
+    store.mkdir(parents=True, exist_ok=True)
+    manifest.create(MANIFESTS_DIR, name, str(store))
+    print(f"\nSessione '{name}' creata.")
+    print(f"  Store : {store}")
 
 
-def hash_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
-            h.update(chunk)
-    return h.hexdigest()
+# -- session add --------------------------------------------------------------
 
+def cmd_add(args):
+    name   = args.name
+    source = Path(args.source).resolve()
 
-def write_vorn(store_path: Path, metadata: dict, content: bytes):
-    header_bytes = json.dumps(metadata, ensure_ascii=False).encode("utf-8")
-    with open(store_path, "wb") as f:
-        f.write(header_bytes)
-        f.write(SEPARATOR)
-        f.write(content)
+    if not manifest.exists(MANIFESTS_DIR, name):
+        output.error(f"Sessione '{name}' non trovata.")
+        sys.exit(1)
 
-
-def read_vorn_header(store_path: Path) -> dict:
-    with open(store_path, "rb") as f:
-        buffer = b""
-        while len(buffer) < 65536:
-            chunk = f.read(4096)
-            if not chunk:
-                break
-            buffer += chunk
-            if SEPARATOR in buffer:
-                return json.loads(buffer[:buffer.index(SEPARATOR)].decode("utf-8"))
-    raise ValueError(f"Separatore non trovato in {store_path}")
-
-
-def read_vorn(store_path: Path):
-    with open(store_path, "rb") as f:
-        buffer = b""
-        while True:
-            chunk = f.read(4096)
-            if not chunk:
-                raise ValueError(f"Separatore non trovato in {store_path}")
-            buffer += chunk
-            if SEPARATOR in buffer:
-                sep_pos = buffer.index(SEPARATOR)
-                meta    = json.loads(buffer[:sep_pos].decode("utf-8"))
-                content = buffer[sep_pos + len(SEPARATOR):] + f.read()
-                return meta, content
-
-
-def update_vorn_records(store_path: Path, new_record: dict):
-    meta, content = read_vorn(store_path)
-    meta["records"].append(new_record)
-    write_vorn(store_path, meta, content)
-
-
-def find_latest_in_store(store: Path, source: Path, rel: str):
-    latest_meta  = None
-    latest_ts    = None
-    latest_path  = None
-
-    for vorn_path in store.glob("*.vorn"):
-        try:
-            meta = read_vorn_header(vorn_path)
-        except Exception:
-            continue
-        for record in meta.get("records", []):
-            if record.get("path") == str(source) and record.get("name") == rel:
-                if latest_ts is None or record["ts"] > latest_ts:
-                    latest_ts   = record["ts"]
-                    latest_meta = meta
-                    latest_path = vorn_path
-    return latest_meta, latest_path
-
-
-def backup(source_str: str, destination: str, session: str = None):
-    source = Path(source_str).resolve()
     if not source.exists():
-        print(f"Errore: cartella non trovata -> {source}")
+        output.error(f"Percorso non trovato: {source}")
+        sys.exit(1)
+
+    manifest.add_source(MANIFESTS_DIR, name, str(source))
+    print(f"\nAggiunto a '{name}': {source}")
+
+
+# -- session list -------------------------------------------------------------
+
+def cmd_list(args):
+    sessions = sorted(MANIFESTS_DIR.glob("*.json")) if MANIFESTS_DIR.exists() else []
+
+    if not sessions:
+        print("\nNessuna sessione trovata.")
         return
 
-    init(destination)
-    store   = store_dir(destination)
-    machine = os.environ.get("COMPUTERNAME") or os.environ.get("HOSTNAME") or "unknown"
-    new_files = 0
-    deduped   = 0
-    unchanged = 0
-
-    for file_path in sorted(source.rglob("*")):
-        if not file_path.is_file():
-            continue
-
-        rel = str(file_path.relative_to(source))
-        fp  = vorn_fingerprint(file_path)
-
-        latest_meta, _ = find_latest_in_store(store, source, rel)
-        if latest_meta:
-            last_record = max(
-                (r for r in latest_meta["records"] if r.get("path") == str(source) and r.get("name") == rel),
-                key=lambda r: r["ts"]
-            )
-            if last_record.get("fingerprint") == fp:
-                unchanged += 1
-                continue
-
-        file_hash  = hash_file(file_path)
-        store_path = store / (file_hash + ".vorn")
-        record     = {
-            "name":        rel,
-            "ts":          datetime.now(timezone.utc).isoformat(),
-            "session":     session,
-            "machine":     machine,
-            "path":        str(source),
-            "fingerprint": fp,
-        }
-
-        if store_path.exists():
-            update_vorn_records(store_path, record)
-            deduped += 1
-        else:
-            content  = file_path.read_bytes()
-            metadata = {
-                "hash":    file_hash,
-                "bytes":   len(content),
-                "records": [record],
-            }
-            write_vorn(store_path, metadata, content)
-            new_files += 1
-
-    print(f"\nBackup completato: {source}")
-    print(f"  Destinazione      : {store}")
-    print(f"  Nuovi nello store : {new_files}")
-    print(f"  Deduplicati       : {deduped}")
-    print(f"  Non modificati    : {unchanged}")
+    print(f"\nSessioni ({len(sessions)}):")
+    for s in sessions:
+        name    = s.stem
+        session = manifest.load(MANIFESTS_DIR, name)
+        runs    = len(session.get("runs", []))
+        sources = len(session.get("sources", []))
+        print(f"  {name:<20}  {sources} sorgenti  |  {runs} run")
 
 
-def status(source_str: str, destination: str):
-    source = Path(source_str).resolve()
-    init(destination)
-    store  = store_dir(destination)
+# -- session info -------------------------------------------------------------
 
-    files = {}
-    for vorn_path in store.glob("*.vorn"):
-        try:
-            meta = read_vorn_header(vorn_path)
-        except Exception:
-            continue
-        for record in meta.get("records", []):
-            if record.get("path") != str(source):
-                continue
-            name = record["name"]
-            if name not in files:
-                files[name] = []
-            files[name].append(record)
+def cmd_info(args):
+    name = args.name
 
-    if not files:
-        print("Nessun backup trovato per questa cartella.")
+    if not manifest.exists(MANIFESTS_DIR, name):
+        output.error(f"Sessione '{name}' non trovata.")
+        sys.exit(1)
+
+    session = manifest.load(MANIFESTS_DIR, name)
+    output.session_info(session)
+    print(f"  Store    : {session.get('store', '?')}")
+
+
+# -- session run --------------------------------------------------------------
+
+def cmd_run(args):
+    name = args.name
+
+    if not manifest.exists(MANIFESTS_DIR, name):
+        output.error(f"Sessione '{name}' non trovata.")
+        sys.exit(1)
+
+    session = manifest.load(MANIFESTS_DIR, name)
+    if not session.get("sources"):
+        output.error(f"Nessuna sorgente nella sessione '{name}'. Usa: vorn session add {name} <percorso>")
+        sys.exit(1)
+
+    print(f"\nAvvio backup sessione '{name}'...")
+    result = engine.backup(MANIFESTS_DIR, name)
+    output.backup_summary(result)
+
+
+# -- session restore ----------------------------------------------------------
+
+def cmd_restore(args):
+    name = args.name
+
+    if not manifest.exists(MANIFESTS_DIR, name):
+        output.error(f"Sessione '{name}' non trovata.")
+        sys.exit(1)
+
+    if args.list:
+        runs = manifest.list_runs(MANIFESTS_DIR, name)
+        output.runs_list(runs, name)
         return
 
-    print(f"\nSorgente : {source}")
-    print(f"Tracciati: {len(files)} file\n")
-
-    for name, records in sorted(files.items()):
-        records.sort(key=lambda x: x["ts"])
-        last = records[-1]
-        print(f"  {name}")
-        print(f"    versioni: {len(records)}  |  ultimo: {last['ts']}  |  sessione: {last.get('session') or '-'}")
+    result = engine.restore(MANIFESTS_DIR, name, at=args.date)
+    output.restore_summary(result)
 
 
-def restore(source_str: str, destination: str, at: str = None):
-    source    = Path(source_str).resolve()
-    init(destination)
-    store     = store_dir(destination)
-    target_ts = datetime.fromisoformat(at) if at else None
+# -- parser -------------------------------------------------------------------
 
-    files = {}
-    for vorn_path in store.glob("*.vorn"):
-        try:
-            meta = read_vorn_header(vorn_path)
-        except Exception:
-            continue
-        for record in meta.get("records", []):
-            if record.get("path") != str(source):
-                continue
-            if target_ts and datetime.fromisoformat(record["ts"]) > target_ts:
-                continue
-            name = record["name"]
-            if name not in files or record["ts"] > files[name][0]["ts"]:
-                files[name] = (record, meta["hash"])
+def build_parser():
+    parser = argparse.ArgumentParser(
+        prog="vorn",
+        description="Vorn — backup content-addressable",
+    )
+    sub = parser.add_subparsers(dest="command", metavar="comando")
+    sub.required = True
 
-    if not files:
-        print("Nessun backup trovato per questa cartella.")
-        return
+    session_p = sub.add_parser("session", help="Gestione sessioni")
+    session_sub = session_p.add_subparsers(dest="subcommand", metavar="azione")
+    session_sub.required = True
 
-    restored = 0
-    for name, (record, file_hash) in files.items():
-        _, content = read_vorn(store / (file_hash + ".vorn"))
-        dest = source / name
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(content)
-        restored += 1
+    # create
+    p_create = session_sub.add_parser("create", help="Crea una nuova sessione")
+    p_create.add_argument("name",  help="Nome della sessione")
+    p_create.add_argument("--store", required=True, metavar="CARTELLA", help="Cartella store dei .vorn")
+    p_create.set_defaults(func=cmd_create)
 
-    print(f"\nRestore completato: {source}")
-    print(f"  File ripristinati : {restored}")
+    # add
+    p_add = session_sub.add_parser("add", help="Aggiunge una sorgente alla sessione")
+    p_add.add_argument("name",   help="Nome della sessione")
+    p_add.add_argument("source", help="File o cartella da backuppare")
+    p_add.set_defaults(func=cmd_add)
 
+    # list
+    p_list = session_sub.add_parser("list", help="Elenca tutte le sessioni")
+    p_list.set_defaults(func=cmd_list)
 
-def inspect(hash_str: str, destination: str):
-    store_path = store_dir(destination) / (hash_str + ".vorn")
-    if not store_path.exists():
-        print(f"File non trovato: {hash_str}.vorn")
-        return
-    meta = read_vorn_header(store_path)
-    print(json.dumps(meta, indent=2, ensure_ascii=False))
+    # info
+    p_info = session_sub.add_parser("info", help="Dettagli di una sessione")
+    p_info.add_argument("name", help="Nome della sessione")
+    p_info.set_defaults(func=cmd_info)
+
+    # run
+    p_run = session_sub.add_parser("run", help="Esegue il backup della sessione")
+    p_run.add_argument("name", help="Nome della sessione")
+    p_run.set_defaults(func=cmd_run)
+
+    # restore
+    p_restore = session_sub.add_parser("restore", help="Ripristina file da una sessione")
+    p_restore.add_argument("name", help="Nome della sessione")
+    p_restore.add_argument("--list", action="store_true", help="Mostra i run disponibili")
+    p_restore.add_argument("--date", metavar="TIMESTAMP", help="Ripristina allo stato di questa data (ISO 8601)")
+    p_restore.set_defaults(func=cmd_restore)
+
+    return parser
 
 
 def main():
-    if len(sys.argv) < 4:
-        print("Uso:")
-        print("  python vorn.py backup  <cartella> <destinazione> [--session nome]")
-        print("  python vorn.py restore <cartella> <destinazione> [--at 'YYYY-MM-DDTHH:MM:SS+00:00']")
-        print("  python vorn.py status  <cartella> <destinazione>")
-        print("  python vorn.py inspect <hash>    <destinazione>")
-        return
-
-    cmd  = sys.argv[1]
-    arg  = sys.argv[2]
-    dest = sys.argv[3]
-
-    if cmd == "backup":
-        session = None
-        if "--session" in sys.argv:
-            session = sys.argv[sys.argv.index("--session") + 1]
-        backup(arg, dest, session)
-    elif cmd == "restore":
-        at = None
-        if "--at" in sys.argv:
-            at = sys.argv[sys.argv.index("--at") + 1]
-        restore(arg, dest, at)
-    elif cmd == "status":
-        status(arg, dest)
-    elif cmd == "inspect":
-        inspect(arg, dest)
-    else:
-        print(f"Comando sconosciuto: {cmd}")
+    parser = build_parser()
+    args   = parser.parse_args()
+    args.func(args)
 
 
 if __name__ == "__main__":

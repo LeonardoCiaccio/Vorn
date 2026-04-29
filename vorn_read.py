@@ -19,9 +19,9 @@ def read_header(store_path: Path) -> dict:
 
 
 def scan(destination: str):
-    store = Path(destination).resolve() / "store"
-    if not store.exists():
-        print(f"Store non trovato: {store}")
+    store = Path(destination).resolve()
+    if not store.exists() or not store.is_dir():
+        print(f"Cartella non trovata: {store}")
         return
 
     records_all = []
