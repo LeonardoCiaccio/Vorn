@@ -11,8 +11,10 @@ Formato binario del file `.vorn`:
 [header JSON UTF-8] [SEPARATORE 8 byte: 56 4F 52 4E FF 00 FF 00] [contenuto originale in byte]
 ```
 Il separatore è `VORN` in ASCII + `FF 00 FF 00` — impossibile in JSON UTF-8 valido.
-L'header contiene `hash`, `bytes`, e un array `records` con tutta la storia del file.
-Ogni record ha: `name`, `ts`, `session`, `machine`, `path`, `fingerprint`.
+L'header contiene `hash_vorn`, `bytes`, e un array `records` con tutta la storia del file.
+Ogni record ha: `name`, `ts`, `session`, `machine`, `path`.
+
+**`hash_vorn`** è il nostro identificatore privato: SHA-256 applicato al contenuto del file, usato per normalizzare il nostro fingerprint in una stringa 64-char hex filesystem-safe. Prodotto da `vorn_hash()` in `vorn_hash.py` — il modulo del nostro algoritmo privato.
 
 ## Decisioni architetturali già prese
 
@@ -26,42 +28,41 @@ Ogni record ha: `name`, `ts`, `session`, `machine`, `path`, `fingerprint`.
 
 | File | Ruolo |
 |---|---|
-| `vorn.py` | Core: backup, restore, status, inspect |
-| `vorn_view.py` | Legge header di un `.vorn` senza caricare il contenuto |
-| `vorn_extract.py` | Estrae contenuto da un `.vorn` e salva con nome originale |
-| `vorn_read.py` | Scansiona store e mostra tutti i metadati ordinati |
-| `hash_vorn.py` | Fingerprint veloce (13 campioni o full per file <=104 byte) |
-| `test_vorn.py` | Test suite base |
-| `test_vorn_full.py` | Test suite completa con report dettagliato |
+| `vorn.py` | CLI entry point (session create/add/list/info/run/restore) |
+| `vorn_engine.py` | Logica backup e restore |
+| `vorn_manifest.py` | Gestione sessioni JSON (sources, runs, file→hash_vorn) |
+| `vorn_store.py` | CRUD dei file `.vorn` nello store |
+| `vorn_format.py` | Formato binario `.vorn`: read/write/append_record |
+| `vorn_hash.py` | Algoritmo privato: `vorn_fingerprint()` + `vorn_hash()` → hash_vorn |
+| `test_vorn_manifest.py` | Test suite vorn_manifest (43 test) |
+| `test_vorn_engine.py` | Test suite vorn_engine (30 test) |
 | `ROADMAP.md` | Mappa concettuale completa del progetto |
-| `flusso-backup.html` | Flusso visuale del processo di backup passo per passo |
 
 ## Storico test
 
-### 2026-04-29 — Test suite completa: 51/51 PASS
+### 2026-04-29 — Architettura refactoring: hash_vorn — 73/73 PASS
 
-Tutti i test superati sul formato definitivo del protocollo Vorn.
+Introdotto `hash_vorn` come identificatore privato. Rimosso `fingerprint` dai record.
+Header `.vorn`: `{"hash_vorn": ..., "bytes": ..., "records": [...]}`.
+Record: `{"name", "ts", "session", "machine", "path"}`.
 
-| Sezione | Test | Risultato |
+| Suite | Test | Risultato |
 |---|---|---|
-| 1. Formato file .vorn | 14 | OK |
-| 2. Fingerprint | 7 | OK |
-| 3. Backup scenari base | 3 | OK |
-| 4. Deduplicazione | 5 | OK |
-| 5. Restore | 5 | OK |
-| 6. Records / storia richieste | 7 | OK |
-| 7. Integrità | 1 | OK |
-| 8. File binari e tipi diversi | 5 | OK |
-| 9. Query per path e macchina | 4 | OK |
+| `test_vorn_manifest.py` | 43 | OK |
+| `test_vorn_engine.py` | 30 | OK |
+
+### 2026-04-29 — Test suite POC completa: 51/51 PASS
+
+Formato binario, fingerprint, backup/restore/deduplicazione validati end-to-end.
 
 ## Stato attuale
 
-POC funzionante in Python puro. Protocollo validato end-to-end con test suite completa.
+Architettura a librerie separate, CLI funzionante, `dist/vorn.exe` disponibile.
+Protocollo `hash_vorn` definitivo implementato e testato.
 
 ## Prossimi passi da valutare
 
-- **Manifesto/sessione** — struttura client-side per tracciare quale file punta a quale hash
-- **Stack definitivo** — attualmente Python per il POC, si valuta Go per il runtime finale (leggerezza RAM)
+- **Stack definitivo** — si valuta Go per il runtime finale (leggerezza RAM)
 - **Interfaccia** — CLI prima, poi UI (Electron o Tauri)
 
 ## Come parlare con l'utente

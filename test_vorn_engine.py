@@ -58,6 +58,7 @@ run = manifest.get_run_at(mdir, "S1")
 check("manifest ha 3 file nel run", len(run["files"]) == 3)
 check("file in sottocartella tracciato", "sub/c.txt" in run["files"] or "sub\\c.txt" in run["files"])
 check("source salvata nel file entry", any("source" in v for v in run["files"].values()))
+check("permissions salvato nel file entry", all("permissions" in v for v in run["files"].values()))
 
 
 # --- backup senza modifiche (deduplicazione) ---------------------------------
@@ -113,6 +114,11 @@ check("contenuto a.txt e' ultima versione", (src / "a.txt").read_bytes() == b"Co
 check("b.txt ripristinato", (src / "b.txt").exists())
 check("sub/c.txt ripristinato", (src / "sub" / "c.txt").exists())
 check("numero file ripristinati", res["restored"] == 3, str(res))
+
+import stat as _stat
+run_last = manifest.get_run_at(mdir, "S1")
+saved_mode = run_last["files"]["a.txt"]["permissions"]
+check("permissions applicati al restore", (_stat.S_IMODE((src / "a.txt").stat().st_mode) & 0o777) == (_stat.S_IMODE(saved_mode) & 0o777))
 
 
 # --- restore a punto nel tempo -----------------------------------------------

@@ -95,26 +95,27 @@ check("ts in ordine cronologico", ts1 < ts2)
 
 print("\nadd_file")
 
-manifest.add_file(mdir, "Pippo", ts1, "doc.txt", "hash_doc_v1", "/home/user/docs", True)
+manifest.add_file(mdir, "Pippo", ts1, "doc.txt", "hash_doc_v1", "/home/user/docs", True, 0o100644)
 s = manifest.load(mdir, "Pippo")
 run1 = s["runs"][0]
 check("file aggiunto al run corretto", "doc.txt" in run1["files"])
-check("hash corretto nel run", run1["files"]["doc.txt"]["hash"] == "hash_doc_v1")
+check("hash_vorn corretto nel run", run1["files"]["doc.txt"]["hash_vorn"] == "hash_doc_v1")
 check("source salvata nel file entry", run1["files"]["doc.txt"]["source"] == "/home/user/docs")
 check("source_is_dir salvato nel file entry", run1["files"]["doc.txt"]["source_is_dir"] is True)
+check("permissions salvato nel file entry", run1["files"]["doc.txt"]["permissions"] == 0o100644)
 
-manifest.add_file(mdir, "Pippo", ts1, "img.png", "hash_img", "/home/user/photos", False)
+manifest.add_file(mdir, "Pippo", ts1, "img.png", "hash_img", "/home/user/photos", False, 0o100600)
 run1 = manifest.load(mdir, "Pippo")["runs"][0]
 check("secondo file aggiunto allo stesso run", len(run1["files"]) == 2)
 check("source_is_dir False per file singolo", run1["files"]["img.png"]["source_is_dir"] is False)
 
-manifest.add_file(mdir, "Pippo", ts2, "doc.txt", "hash_doc_v2", "/home/user/docs", True)
+manifest.add_file(mdir, "Pippo", ts2, "doc.txt", "hash_doc_v2", "/home/user/docs", True, 0o100644)
 run2 = manifest.load(mdir, "Pippo")["runs"][1]
-check("stesso file su run diverso ha hash diverso", run2["files"]["doc.txt"]["hash"] == "hash_doc_v2")
+check("stesso file su run diverso ha hash_vorn diverso", run2["files"]["doc.txt"]["hash_vorn"] == "hash_doc_v2")
 
-manifest.add_file(mdir, "Pippo", ts1, "doc.txt", "hash_doc_aggiornato", "/home/user/docs", True)
+manifest.add_file(mdir, "Pippo", ts1, "doc.txt", "hash_doc_aggiornato", "/home/user/docs", True, 0o100644)
 run1 = manifest.load(mdir, "Pippo")["runs"][0]
-check("add_file sovrascrive hash se file gia presente nel run", run1["files"]["doc.txt"]["hash"] == "hash_doc_aggiornato")
+check("add_file sovrascrive hash_vorn se file gia presente nel run", run1["files"]["doc.txt"]["hash_vorn"] == "hash_doc_aggiornato")
 
 
 # --- get_run_at --------------------------------------------------------------

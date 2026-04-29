@@ -3,7 +3,7 @@ from pathlib import Path
 
 import vorn_manifest as manifest
 import vorn_store    as store
-from vorn_hash   import vorn_hash, vorn_fingerprint
+from vorn_hash   import vorn_hash
 
 
 def backup(manifests_dir: Path, session_name: str) -> dict:
@@ -33,12 +33,11 @@ def backup(manifests_dir: Path, session_name: str) -> dict:
                 continue
 
             record = {
-                "name":        rel,
-                "ts":          run_ts,
-                "session":     session_name,
-                "machine":     machine,
-                "path":        str(source),
-                "fingerprint": vorn_fingerprint(file_path),
+                "name":    rel,
+                "ts":      run_ts,
+                "session": session_name,
+                "machine": machine,
+                "path":    str(source),
             }
 
             if store.exists(store_path, h):
@@ -46,14 +45,14 @@ def backup(manifests_dir: Path, session_name: str) -> dict:
                 deduped += 1
             else:
                 meta = {
-                    "hash":    h,
-                    "bytes":   file_path.stat().st_size,
-                    "records": [record],
+                    "hash_vorn": h,
+                    "bytes":     file_path.stat().st_size,
+                    "records":   [record],
                 }
                 store.put(store_path, h, meta, file_path.read_bytes())
                 new_files += 1
 
-            manifest.add_file(manifests_dir, session_name, run_ts, rel, h, str(source), source.is_dir())
+            manifest.add_file(manifests_dir, session_name, run_ts, rel, h, str(source), source.is_dir(), file_path.stat().st_mode)
 
     return {
         "session": session_name,
@@ -75,7 +74,7 @@ def restore(manifests_dir: Path, session_name: str, at: str = None) -> dict:
     errors   = []
 
     for filename, info in run["files"].items():
-        h      = info["hash"]
+        h      = info["hash_vorn"]
         source       = Path(info["source"])
         source_is_dir = info.get("source_is_dir", True)
 
@@ -87,6 +86,8 @@ def restore(manifests_dir: Path, session_name: str, at: str = None) -> dict:
             out_path = (source if source_is_dir else source.parent) / filename
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_bytes(content)
+            if "permissions" in info:
+                os.chmod(out_path, info["permissions"])
             restored += 1
         except Exception as e:
             errors.append({"file": filename, "error": str(e)})

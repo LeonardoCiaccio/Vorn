@@ -44,10 +44,10 @@ def open_run(manifests_dir: Path, session_name: str) -> str:
     return ts
 
 
-def add_file(manifests_dir: Path, session_name: str, run_ts: str, filename: str, hash: str, source: str, source_is_dir: bool):
+def add_file(manifests_dir: Path, session_name: str, run_ts: str, filename: str, hash_vorn: str, source: str, source_is_dir: bool, permissions: int):
     session = load(manifests_dir, session_name)
     run = _find_run(session, run_ts)
-    run["files"][filename] = {"hash": hash, "ts": run_ts, "source": source, "source_is_dir": source_is_dir}
+    run["files"][filename] = {"hash_vorn": hash_vorn, "ts": run_ts, "source": source, "source_is_dir": source_is_dir, "permissions": permissions}
     _save(manifests_dir, session)
 
 
