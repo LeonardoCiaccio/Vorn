@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync } from 'fs'
-import { join } from 'path'
+import { existsSync, mkdirSync, readdirSync, statSync } from 'fs'
+import { join, basename } from 'path'
 import { readVornMeta, readVorn, writeVornFromSource, upsertPath, contentStream } from './format.js'
 
 function vornPath(storeDir, hashVorn) {
@@ -12,6 +12,37 @@ export function ensureStore(storeDir) {
 
 export function hasEntry(storeDir, hashVorn) {
   return existsSync(vornPath(storeDir, hashVorn))
+}
+
+// ── Listing con cache in-memory ──────────────────────────────────────────────
+// Il listing directory viene fatto una sola volta e cachato.
+// offset=0 forza il rebuild (usato dal pulsante refresh).
+
+let _listCache = null // { dir: string, files: string[] }
+
+export function listStoreFiles(storeDir, offset = 0, limit = 20) {
+  if (!existsSync(storeDir)) return { files: [], total: 0 }
+
+  if (!_listCache || _listCache.dir !== storeDir || offset === 0) {
+    const allFiles = readdirSync(storeDir)
+      .filter(f => f.endsWith('.vorn'))
+      .sort()
+    _listCache = { dir: storeDir, files: allFiles }
+  }
+
+  const slice = _listCache.files.slice(offset, offset + limit)
+  const files = slice.map(f => {
+    const p = join(storeDir, f)
+    const st = statSync(p)
+    return {
+      hash_vorn:  basename(f, '.vorn'),
+      bytes_file: st.size,
+      ctime:      st.birthtimeMs,
+      mtime:      st.mtimeMs,
+    }
+  })
+
+  return { files, total: _listCache.files.length }
 }
 
 // sourcePath: path of the original file — content is streamed, never fully buffered

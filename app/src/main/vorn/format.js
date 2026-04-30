@@ -1,4 +1,5 @@
 import { openSync, readSync, writeSync, closeSync, createReadStream, createWriteStream, ftruncateSync, statSync } from 'fs'
+import { Readable } from 'stream'
 
 const MAGIC = Buffer.from('VORN')
 const SEPARATOR = Buffer.from([0xFF, 0x00, 0xFF, 0x00])
@@ -54,9 +55,9 @@ export function readVornMeta(filePath) {
 
 export async function readVorn(filePath) {
   const { meta, contentLen } = readVornMeta(filePath)
+  if (contentLen === 0n) return { meta, content: Buffer.alloc(0) }
   const rs = createReadStream(filePath, { start: HEADER_SIZE, end: HEADER_SIZE + Number(contentLen) - 1 })
   const chunks = []
-  
   return new Promise((resolve, reject) => {
     rs.on('data', c => chunks.push(c))
     rs.on('end', () => resolve({ meta, content: Buffer.concat(chunks) }))
@@ -144,8 +145,9 @@ export function upsertPath(filePath, runTs, pathEntry, session, machine) {
 
 export function contentStream(filePath) {
   const { contentLen } = readVornMeta(filePath)
-  return createReadStream(filePath, { 
-    start: HEADER_SIZE, 
-    end: HEADER_SIZE + Number(contentLen) - 1 
+  if (contentLen === 0n) return Readable.from([])
+  return createReadStream(filePath, {
+    start: HEADER_SIZE,
+    end: HEADER_SIZE + Number(contentLen) - 1
   })
 }

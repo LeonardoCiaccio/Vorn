@@ -20,11 +20,14 @@ contextBridge.exposeInMainWorld('vorn', {
   offBackupDone:     ()                       => ipcRenderer.removeAllListeners('vorn:backup-done'),
 
   // Restore
-  restore:        (sessionName, runTs, destDir) => ipcRenderer.invoke('vorn:restore', { sessionName, runTs, destDir }),
+  restore:           (sessionName, runTs, destDir) => ipcRenderer.invoke('vorn:restore', { sessionName, runTs, destDir }),
+  onRestoreProgress: (cb) => ipcRenderer.on('vorn:restore-progress', (_, data) => cb(data)),
+  offRestoreProgress: ()  => ipcRenderer.removeAllListeners('vorn:restore-progress'),
 
   // Store / Inspect
   inspectHash:    (store, hashVorn)           => ipcRenderer.invoke('vorn:inspect-hash', { store, hashVorn }),
   inspectFile:    (filePath)                  => ipcRenderer.invoke('vorn:inspect-file', filePath),
+  listStoreFiles: (storeDir, offset, limit)   => ipcRenderer.invoke('vorn:list-store-files', { storeDir, offset, limit }),
 
   // App info
   getAppInfo:     ()                          => ipcRenderer.invoke('vorn:get-app-info'),

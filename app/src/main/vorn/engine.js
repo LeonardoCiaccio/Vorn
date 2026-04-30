@@ -140,25 +140,23 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
 
 // ── Restore ───────────────────────────────────────────────────────────────────
 
-export async function restore(manifestsDir, sessionName, runTs, destDir) {
-  const session = loadRun(manifestsDir, sessionName, runTs)
-  
-  const run    = session
+export async function restore(manifestsDir, sessionName, runTs, destDir, opts = {}) {
+  const { onProgress } = opts
+  const run = loadRun(manifestsDir, sessionName, runTs)
   const storePath = run.store
   const errors = []
   let restored = 0
 
   const fileEntries = Object.entries(run.files)
-  
-  for (const [relPath, info] of fileEntries) {
+  const total = fileEntries.length
+
+  for (let i = 0; i < fileEntries.length; i++) {
+    const [relPath, info] = fileEntries[i]
     try {
       const hashVorn = info.hash_vorn
       const rs = extractContent(storePath, hashVorn)
-      
-      // La chiave relPath è già il percorso relativo corretto
       const outPath = join(destDir, relPath)
       mkdirSync(join(outPath, '..'), { recursive: true })
-      
       const ws = createWriteStream(outPath)
       await new Promise((resolve, reject) => {
         rs.pipe(ws)
@@ -166,14 +164,17 @@ export async function restore(manifestsDir, sessionName, runTs, destDir) {
         ws.on('error', reject)
         rs.on('error', reject)
       })
-      
       restored++
     } catch (e) {
-      errors.push({ path: entry.path, error: e.code ?? e.message })
+      errors.push({ path: relPath, hash: info.hash_vorn, error: e.code ?? e.message })
     }
+
+    onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
+
+    if (i % 50 === 0) await sleep(0)
   }
 
-  return { restored, errors }
+  return { restored, total, errors }
 }
 
 // ── Utils ─────────────────────────────────────────────────────────────────────

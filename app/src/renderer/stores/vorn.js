@@ -11,6 +11,8 @@ export const state = reactive({
   storeLoaded: false,
   loading: false,
   runningBackup: null,     // { sessionName, progress }
+  runningRestore: null,    // { sessionName, progress }
+  lastRestoreResult: null, // { restored, total, errors[] }
   appInfo: null,           // { version, platform, manifestsDir }
 })
 
@@ -124,37 +126,33 @@ export function cancelBackup(sessionName) {
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
-export async function loadStoreEntries() {
-  if (state.storeLoaded) return
-  const map = new Map()
-
-  for (const session of state.sessions) {
-    for (const runSummary of session.runs) {
-      let run
-      try { run = await window.vorn.loadRun(session.name, runSummary.ts) }
-      catch { continue }
-
-      for (const [hashVorn, fileEntry] of Object.entries(run.files ?? {})) {
-        if (!map.has(hashVorn)) {
-          map.set(hashVorn, { hash_vorn: hashVorn, bytes: fileEntry.bytes, records: [] })
-        }
-        const entry = map.get(hashVorn)
-        let rec = entry.records.find(r => r.ts === run.ts && r.session === session.name)
-        if (!rec) {
-          rec = { ts: run.ts, session: session.name, machine: run.machine, paths: [] }
-          entry.records.push(rec)
-        }
-        rec.paths.push({ name: fileEntry.name, path: fileEntry.path })
-      }
-    }
+export async function fetchStorePage(storeDir, offset = 0, limit = 50) {
+  state.loading = true
+  try {
+    const result = await window.vorn.listStoreFiles(storeDir, offset, limit)
+    if (offset === 0) state.storeEntries = result.files
+    else state.storeEntries.push(...result.files)
+    
+    state.storeLoaded = true
+    return result
+  } finally {
+    state.loading = false
   }
+}
 
-  state.storeEntries = [...map.values()]
-  state.storeLoaded = true
+export async function handleSelectStoreEntry(storeDir, entry) {
+  state.selectedStoreEntry = { ...entry, loading: true }
+  try {
+    const fullMeta = await window.vorn.inspectHash(storeDir, entry.hash_vorn)
+    state.selectedStoreEntry = { ...entry, ...fullMeta, loading: false }
+  } catch (error) {
+    console.error('Error fetching full metadata:', error)
+    state.selectedStoreEntry.loading = false
+  }
 }
 
 export function selectStoreEntry(entry) {
-  state.selectedStoreEntry = entry
+  // Ora delegato a handleSelectStoreEntry per il caricamento lazy
 }
 
 // ── Formatting ────────────────────────────────────────────────────────────────
@@ -182,20 +180,24 @@ export function shortHash(hash) {
 }
 
 export async function startRestore(sessionName, runTs, destDir) {
-  state.loading = true
+  state.runningRestore = { sessionName, progress: null }
+  state.lastRestoreResult = null
+
+  window.vorn.onRestoreProgress((data) => {
+    if (data.sessionName === sessionName) {
+      state.runningRestore = { sessionName, progress: data }
+    }
+  })
+
   try {
     const result = await window.vorn.restore(sessionName, runTs, destDir)
-    console.log('Restore completed:', result)
-    if (result.errors && result.errors.length > 0) {
-      alert(`Restore completato con ${result.errors.length} errori.`)
-    } else {
-      alert(`Restore completato con successo: ${result.restored} file ripristinati.`)
-    }
+    state.lastRestoreResult = result
     return result
   } catch (error) {
-    console.error('Restore error:', error)
-    alert(`Errore durante il restore: ${error.message}`)
+    state.lastRestoreResult = { restored: 0, total: 0, errors: [{ path: '—', error: error.message }] }
+    throw error
   } finally {
-    state.loading = false
+    window.vorn.offRestoreProgress()
+    state.runningRestore = null
   }
 }

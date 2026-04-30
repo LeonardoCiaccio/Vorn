@@ -5,7 +5,7 @@ import {
   listSessions, createSession, listRuns,
   loadRun, getPausedRun, getSession
 } from './vorn/manifest.js'
-import { getEntry } from './vorn/store.js'
+import { getEntry, listStoreFiles } from './vorn/store.js'
 import { readVorn } from './vorn/format.js'
 import { existsSync } from 'fs'
 
@@ -88,8 +88,11 @@ export function registerIpcHandlers(mainWindow) {
   // ── Restore ───────────────────────────────────────────────────────────────
 
   ipcMain.handle('vorn:restore', async (_, { sessionName, runTs, destDir }) => {
-    console.log(`[IPC] Received restore request for ${sessionName} (Run: ${runTs}) to ${destDir}`);
-    return await restore(manifestsDir, sessionName, runTs, destDir)
+    return await restore(manifestsDir, sessionName, runTs, destDir, {
+      onProgress: (progress) => {
+        mainWindow.webContents.send('vorn:restore-progress', { sessionName, ...progress })
+      }
+    })
   })
 
   // ── Store ─────────────────────────────────────────────────────────────────
@@ -102,6 +105,10 @@ export function registerIpcHandlers(mainWindow) {
     if (!existsSync(filePath)) throw new Error(`File not found: ${filePath}`)
     const { meta } = readVorn(filePath)
     return meta
+  })
+
+  ipcMain.handle('vorn:list-store-files', (_, { storeDir, offset, limit }) => {
+    return listStoreFiles(storeDir, offset, limit)
   })
 
   // ── App info ──────────────────────────────────────────────────────────────
