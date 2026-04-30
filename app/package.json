@@ -1,0 +1,40 @@
+{
+  "name": "vorn",
+  "version": "0.1.0",
+  "description": "Vorn — backup content-addressable",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "package": "electron-vite build && electron-builder"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.4",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "electron": "^35.7.5",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^3.1.0",
+    "tailwindcss": "^4.1.4"
+  },
+  "dependencies": {
+    "@heroicons/vue": "^2.2.0",
+    "vue": "^3.5.13"
+  },
+  "build": {
+    "appId": "com.vorn.app",
+    "productName": "Vorn",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  }
+}
