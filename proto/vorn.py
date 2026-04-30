@@ -6,6 +6,7 @@ from pathlib import Path
 import vorn_manifest as manifest
 import vorn_engine   as engine
 import vorn_output   as output
+import vorn_view     as view
 
 MANIFESTS_DIR = Path.home() / ".vorn" / "sessions"
 
@@ -134,8 +135,18 @@ def cmd_restore(args):
         output.runs_list(runs, name)
         return
 
-    result = engine.restore(MANIFESTS_DIR, name, run_ts=args.ts)
+    try:
+        result = engine.restore(MANIFESTS_DIR, name, run_ts=args.ts)
+    except FileNotFoundError:
+        output.error(f"Run non trovato: {args.ts}\nUsa: vorn session restore {name} --list")
+        sys.exit(1)
     output.restore_summary(result)
+
+
+# -- inspect ------------------------------------------------------------------
+
+def cmd_inspect(args):
+    view.view(args.file)
 
 
 # -- parser -------------------------------------------------------------------
@@ -184,6 +195,11 @@ def build_parser():
     p_restore.add_argument("--list", action="store_true", help="Mostra i run disponibili")
     p_restore.add_argument("--ts", metavar="TIMESTAMP", help="Timestamp esatto del run da ripristinare (usa --list per vedere i valori)")
     p_restore.set_defaults(func=cmd_restore)
+
+    # inspect
+    p_inspect = sub.add_parser("inspect", help="Mostra i metadati di un file .vorn")
+    p_inspect.add_argument("file", help="Percorso del file .vorn")
+    p_inspect.set_defaults(func=cmd_inspect)
 
     return parser
 

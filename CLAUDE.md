@@ -28,15 +28,18 @@ Ogni record ha: `name`, `ts`, `session`, `machine`, `path`.
 
 | File | Ruolo |
 |---|---|
-| `vorn.py` | CLI entry point (session create/add/list/info/run/restore) |
-| `vorn_engine.py` | Logica backup e restore |
-| `vorn_manifest.py` | Gestione sessioni JSON (sources, runs, file→hash_vorn) |
-| `vorn_store.py` | CRUD dei file `.vorn` nello store |
-| `vorn_format.py` | Formato binario `.vorn`: read/write/append_record |
-| `vorn_hash.py` | Algoritmo privato: `vorn_fingerprint()` + `vorn_hash()` → hash_vorn |
-| `test_vorn_manifest.py` | Test suite vorn_manifest (43 test) |
-| `test_vorn_engine.py` | Test suite vorn_engine (30 test) |
-| `ROADMAP.md` | Mappa concettuale completa del progetto |
+| `proto/vorn.py` | CLI entry point |
+| `proto/vorn_engine.py` | Logica backup e restore |
+| `proto/vorn_manifest.py` | Gestione sessioni e run |
+| `proto/vorn_store.py` | CRUD dei file `.vorn` nello store |
+| `proto/vorn_format.py` | Formato binario `.vorn` |
+| `proto/vorn_hash.py` | Algoritmo privato: `vorn_fingerprint()` + `vorn_hash()` |
+| `proto/vorn_view.py` | Lettura header `.vorn` (usato da `inspect`) |
+| `proto/vorn_output.py` | Formatting output CLI |
+| `proto/test_vorn_manifest.py` | Test suite vorn_manifest (53 test) |
+| `proto/test_vorn_engine.py` | Test suite vorn_engine (32 test) |
+| `dist/vorn.exe` | Eseguibile Windows standalone |
+| `ROADMAP.md` | Protocollo, architettura, roadmap |
 
 ## Storico test
 
@@ -62,8 +65,7 @@ Protocollo `hash_vorn` definitivo implementato e testato.
 
 ## Prossimi passi da valutare
 
-- **Stack definitivo** — si valuta Go per il runtime finale (leggerezza RAM)
-- **Interfaccia** — CLI prima, poi UI (Electron o Tauri)
+- **Interfaccia** — UI (Electron o Tauri)
 
 ## Come parlare con l'utente
 
