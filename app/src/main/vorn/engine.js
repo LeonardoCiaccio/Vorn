@@ -4,8 +4,7 @@ import { vornHash } from './hash.js'
 import { createOrAddPath, extractContent } from './store.js'
 import { openRun, saveRun, loadRun, setRunStatus } from './manifest.js'
 
-const FLUSH_EVERY  = 100  // file tra un flush del manifest e l'altro
-const FRAME_MS     = 14   // ms massimi per frame prima di cedere l'event loop
+const YIELD_EVERY  = 100  // file tra un yield dell'event loop e l'altro
 
 // ── Walk ──────────────────────────────────────────────────────────────────────
 // Asincrono: yield ogni 1000 entry per non bloccare l'event loop su dir grandi.
@@ -114,15 +113,7 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
       bytes_new:   bytesNew,
     })
 
-    // Ogni FLUSH_EVERY file: scrivi manifest e cedi l'event loop
-    if (i % FLUSH_EVERY === 0) {
-      run.files_new   = filesNew
-      run.files_dedup = filesDedup
-      run.bytes_total = bytesTotal
-      run.bytes_new   = bytesNew
-      saveRun(manifestsDir, sessionName, runTs, run)
-      await sleep(0)
-    }
+    if (i % YIELD_EVERY === 0) await sleep(0)
   }
 
   // Flush finale con stato e statistiche complete
@@ -172,7 +163,7 @@ export async function restore(manifestsDir, sessionName, runTs, destDir, opts = 
 
     onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
 
-    if (i % FLUSH_EVERY === 0) await sleep(0)
+    if (i % YIELD_EVERY === 0) await sleep(0)
   }
 
   return { restored, total, errors }
