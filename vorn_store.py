@@ -1,5 +1,5 @@
 from pathlib import Path
-from vorn_format import write_vorn, read_vorn, append_record
+from vorn_format import write_vorn, read_vorn, upsert_path
 
 
 def _path(store: Path, hash_vorn: str) -> Path:
@@ -20,5 +20,5 @@ def get(store: Path, hash_vorn: str) -> bytes:
     return content
 
 
-def update_records(store: Path, hash_vorn: str, record: dict):
-    append_record(_path(store, hash_vorn), record)
+def add_path(store: Path, hash_vorn: str, run_ts: str, path_entry: dict, session: str, machine: str):
+    upsert_path(_path(store, hash_vorn), run_ts, path_entry, session, machine)

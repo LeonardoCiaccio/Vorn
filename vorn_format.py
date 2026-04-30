@@ -41,7 +41,17 @@ def read_vorn(path: Path):
                 return meta, content
 
 
-def append_record(path: Path, record: dict):
+def upsert_path(path: Path, run_ts: str, path_entry: dict, session: str, machine: str):
     meta, content = read_vorn(path)
-    meta["records"].append(record)
+    for record in meta["records"]:
+        if record["ts"] == run_ts:
+            record["paths"].append(path_entry)
+            write_vorn(path, meta, content)
+            return
+    meta["records"].append({
+        "ts":      run_ts,
+        "session": session,
+        "machine": machine,
+        "paths":   [path_entry],
+    })
     write_vorn(path, meta, content)

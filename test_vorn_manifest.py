@@ -36,9 +36,9 @@ check("create restituisce dict", isinstance(s, dict))
 check("nome sessione corretto", s["name"] == "Pippo")
 check("store salvato nella sessione", s["store"] == "/vorn/store")
 check("sources vuoto alla creazione", s["sources"] == [])
-check("runs vuoto alla creazione", s["runs"] == [])
 check("exists -> True dopo create", manifest.exists(mdir, "Pippo"))
-check("file JSON creato su disco", (mdir / "Pippo.json").exists())
+check("cartella sessione creata", (mdir / "Pippo").is_dir())
+check("file JSON sessione creato su disco", (mdir / "Pippo" / "Pippo.json").exists())
 
 loaded = manifest.load(mdir, "Pippo")
 check("load restituisce la sessione corretta", loaded["name"] == "Pippo")
@@ -77,16 +77,15 @@ print("\nopen_run")
 ts1 = manifest.open_run(mdir, "Pippo")
 check("open_run restituisce timestamp stringa", isinstance(ts1, str) and len(ts1) > 0)
 check("timestamp senza microsecondi", "." not in ts1)
+check("file run creato su disco", len(list((mdir / "Pippo").glob("Pippo-*.json"))) == 1)
 
-s = manifest.load(mdir, "Pippo")
-check("run creato nella sessione", len(s["runs"]) == 1)
-check("run ha campo ts", s["runs"][0]["ts"] == ts1)
-check("run ha campo files vuoto", s["runs"][0]["files"] == {})
+run1_loaded = manifest.load_run(mdir, "Pippo", ts1)
+check("run ha campo ts", run1_loaded["ts"] == ts1)
+check("run ha campo files vuoto", run1_loaded["files"] == {})
 
 time.sleep(1.01)
 ts2 = manifest.open_run(mdir, "Pippo")
-s = manifest.load(mdir, "Pippo")
-check("secondo run: due run totali", len(s["runs"]) == 2)
+check("secondo run: due file run su disco", len(list((mdir / "Pippo").glob("Pippo-*.json"))) == 2)
 check("secondo run ha ts diverso dal primo", ts1 != ts2)
 check("ts in ordine cronologico", ts1 < ts2)
 
@@ -96,8 +95,7 @@ check("ts in ordine cronologico", ts1 < ts2)
 print("\nadd_file")
 
 manifest.add_file(mdir, "Pippo", ts1, "doc.txt", "hash_doc_v1", "/home/user/docs", True, 0o100644)
-s = manifest.load(mdir, "Pippo")
-run1 = s["runs"][0]
+run1 = manifest.load_run(mdir, "Pippo", ts1)
 check("file aggiunto al run corretto", "doc.txt" in run1["files"])
 check("hash_vorn corretto nel run", run1["files"]["doc.txt"]["hash_vorn"] == "hash_doc_v1")
 check("source salvata nel file entry", run1["files"]["doc.txt"]["source"] == "/home/user/docs")
@@ -105,17 +103,19 @@ check("source_is_dir salvato nel file entry", run1["files"]["doc.txt"]["source_i
 check("permissions salvato nel file entry", run1["files"]["doc.txt"]["permissions"] == 0o100644)
 
 manifest.add_file(mdir, "Pippo", ts1, "img.png", "hash_img", "/home/user/photos", False, 0o100600)
-run1 = manifest.load(mdir, "Pippo")["runs"][0]
+run1 = manifest.load_run(mdir, "Pippo", ts1)
 check("secondo file aggiunto allo stesso run", len(run1["files"]) == 2)
 check("source_is_dir False per file singolo", run1["files"]["img.png"]["source_is_dir"] is False)
 
 manifest.add_file(mdir, "Pippo", ts2, "doc.txt", "hash_doc_v2", "/home/user/docs", True, 0o100644)
-run2 = manifest.load(mdir, "Pippo")["runs"][1]
+run2 = manifest.load_run(mdir, "Pippo", ts2)
 check("stesso file su run diverso ha hash_vorn diverso", run2["files"]["doc.txt"]["hash_vorn"] == "hash_doc_v2")
 
 manifest.add_file(mdir, "Pippo", ts1, "doc.txt", "hash_doc_aggiornato", "/home/user/docs", True, 0o100644)
-run1 = manifest.load(mdir, "Pippo")["runs"][0]
+run1 = manifest.load_run(mdir, "Pippo", ts1)
 check("add_file sovrascrive hash_vorn se file gia presente nel run", run1["files"]["doc.txt"]["hash_vorn"] == "hash_doc_aggiornato")
+
+check("run ts2 non e' stato modificato", manifest.load_run(mdir, "Pippo", ts2)["files"]["doc.txt"]["hash_vorn"] == "hash_doc_v2")
 
 
 # --- get_run_at --------------------------------------------------------------
@@ -149,6 +149,19 @@ check("ogni entry ha ts e files", all("ts" in r and "files" in r for r in runs))
 check("files e' il conteggio dei file nel run", runs[0]["files"] == 2)
 
 
+# --- run isolato: cancella un run senza toccare gli altri --------------------
+
+print("\nisolamento run")
+
+safe_ts1 = ts1.replace(":", "-")
+run_file = mdir / "Pippo" / f"Pippo-{safe_ts1}.json"
+run_file.unlink()
+check("file run eliminato", not run_file.exists())
+check("sessione ancora intatta", manifest.exists(mdir, "Pippo"))
+check("run ts2 ancora presente", manifest.load_run(mdir, "Pippo", ts2) is not None)
+check("list_runs ora mostra solo 1 run", len(manifest.list_runs(mdir, "Pippo")) == 1)
+
+
 # --- sessioni multiple -------------------------------------------------------
 
 print("\nsessioni multiple")
@@ -158,10 +171,10 @@ manifest.create(mdir, "Paperino", "/store/paperino")
 check("sessione Pippo esiste ancora", manifest.exists(mdir, "Pippo"))
 check("sessione Pluto esiste", manifest.exists(mdir, "Pluto"))
 check("sessione Paperino esiste", manifest.exists(mdir, "Paperino"))
-check("sessioni sono file separati",
-      (mdir / "Pippo.json").exists() and
-      (mdir / "Pluto.json").exists() and
-      (mdir / "Paperino.json").exists())
+check("sessioni sono cartelle separate",
+      (mdir / "Pippo").is_dir() and
+      (mdir / "Pluto").is_dir() and
+      (mdir / "Paperino").is_dir())
 check("store di Pluto corretto", manifest.get_store(mdir, "Pluto") == Path("/store/pluto"))
 
 

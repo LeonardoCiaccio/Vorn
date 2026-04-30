@@ -32,22 +32,16 @@ def backup(manifests_dir: Path, session_name: str) -> dict:
                 errors.append({"file": str(file_path), "error": str(e)})
                 continue
 
-            record = {
-                "name":    rel,
-                "ts":      run_ts,
-                "session": session_name,
-                "machine": machine,
-                "path":    str(source),
-            }
+            path_entry = {"name": rel, "path": str(source)}
 
             if store.exists(store_path, h):
-                store.update_records(store_path, h, record)
+                store.add_path(store_path, h, run_ts, path_entry, session_name, machine)
                 deduped += 1
             else:
                 meta = {
                     "hash_vorn": h,
                     "bytes":     file_path.stat().st_size,
-                    "records":   [record],
+                    "records":   [{"ts": run_ts, "session": session_name, "machine": machine, "paths": [path_entry]}],
                 }
                 store.put(store_path, h, meta, file_path.read_bytes())
                 new_files += 1
