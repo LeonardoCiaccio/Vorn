@@ -221,7 +221,10 @@
               <MagnifyingGlassIcon class="w-3.5 h-3.5" />
               Inspect
             </button>
-            <button class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-medium text-white bg-indigo-600/80 hover:bg-indigo-600 transition-colors">
+            <button
+              @click="handleRestore"
+              class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-medium text-white bg-indigo-600/80 hover:bg-indigo-600 transition-colors"
+            >
               <ArrowDownTrayIcon class="w-3.5 h-3.5" />
               Restore
             </button>
@@ -245,7 +248,7 @@ import {
   StopIcon,
 } from '@heroicons/vue/24/outline'
 import { computed } from 'vue'
-import { state, goBack, selectRun, startBackup, cancelBackup, formatTs, formatBytes } from '../stores/vorn.js'
+import { state, goBack, selectRun, startBackup, cancelBackup, startRestore, formatTs, formatBytes } from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
 
 const session  = computed(() => state.selectedSession)
@@ -269,5 +272,22 @@ function pct(part, total) {
 
 function handleBackup() {
   startBackup(session.value.name)
+}
+
+async function handleRestore() {
+  console.log('Restore button clicked');
+  if (!selectedRun.value) {
+    alert('Errore: Nessun run selezionato');
+    return
+  }
+  
+  // prompt() non è supportato in Electron. 
+  // Per ora usiamo il primo percorso sorgente come destinazione predefinita.
+  const destDir = session.value.sources[0];
+  const confirmRestore = confirm(`Vuoi ripristinare i file nella cartella originale?\n${destDir}`);
+  
+  if (!confirmRestore) return
+
+  startRestore(session.value.name, selectedRun.value.ts, destDir)
 }
 </script>

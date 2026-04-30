@@ -180,3 +180,22 @@ export function shortHash(hash) {
   if (!hash) return '—'
   return hash.slice(0, 8) + '…' + hash.slice(-8)
 }
+
+export async function startRestore(sessionName, runTs, destDir) {
+  state.loading = true
+  try {
+    const result = await window.vorn.restore(sessionName, runTs, destDir)
+    console.log('Restore completed:', result)
+    if (result.errors && result.errors.length > 0) {
+      alert(`Restore completato con ${result.errors.length} errori.`)
+    } else {
+      alert(`Restore completato con successo: ${result.restored} file ripristinati.`)
+    }
+    return result
+  } catch (error) {
+    console.error('Restore error:', error)
+    alert(`Errore durante il restore: ${error.message}`)
+  } finally {
+    state.loading = false
+  }
+}

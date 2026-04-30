@@ -1,4 +1,4 @@
-import { statSync, readdirSync, mkdirSync, writeFileSync, readFileSync } from 'fs'
+import { statSync, readdirSync, mkdirSync, createWriteStream } from 'fs'
 import { join, relative, basename } from 'path'
 import { vornHash } from './hash.js'
 import { hasEntry, createEntry, addPath, extractContent } from './store.js'
@@ -50,13 +50,18 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
   let cancelled  = false
 
   // Cancellation handle returned to caller
-  run._cancel = () => { cancelled = true }
+  opts._handle = { _cancel: () => { cancelled = true } }
 
   for (let i = 0; i < allFiles.length; i++) {
     if (cancelled) break
 
     const filePath = allFiles[i]
     const source   = sources.find(s => filePath.startsWith(s)) ?? sources[0]
+    
+    // Calcoliamo il percorso relativo rispetto alla sorgente
+    const relPath = relative(source, filePath)
+
+    if (alreadyDone.has(relPath)) continue
 
     let stat
     try { stat = statSync(filePath) }
@@ -72,38 +77,34 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
     bytesTotal += bytes
 
     const pathEntry = {
-      name:        basename(filePath),
+      name:        relPath, // Usiamo il path relativo completo
       path:        filePath,
       mtime:       stat.mtimeMs,
       permissions: (stat.mode & 0o777).toString(8).padStart(4, '0')
     }
 
-    if (!alreadyDone.has(hashVorn)) {
-      try {
-        if (!hasEntry(store, hashVorn)) {
-          createEntry(store, hashVorn, bytes, readFileSync(filePath), runTs, pathEntry, sessionName, machine)
-          filesNew++
-          bytesNew += bytes
-        } else {
-          addPath(store, hashVorn, runTs, pathEntry, sessionName, machine)
-          filesDedup++
-        }
-
-        addFile(manifestsDir, sessionName, runTs, hashVorn, {
-          name:        pathEntry.name,
-          path:        filePath,
-          source,
-          bytes,
-          mtime:       stat.mtimeMs,
-          permissions: pathEntry.permissions
-        })
-
-        alreadyDone.add(hashVorn)
-      } catch (e) {
-        errors.push({ path: filePath, error: e.code ?? e.message })
+    try {
+      if (!hasEntry(store, hashVorn)) {
+        await createEntry(store, hashVorn, bytes, filePath, runTs, pathEntry, sessionName, machine)
+        filesNew++
+        bytesNew += bytes
+      } else {
+        await addPath(store, hashVorn, runTs, pathEntry, sessionName, machine)
+        filesDedup++
       }
-    } else {
-      filesDedup++
+
+      // IMPORTANTE: La chiave nel manifesto deve essere il PERCORSO, non l'hash
+      addFile(manifestsDir, sessionName, runTs, relPath, {
+        hash_vorn:   hashVorn,
+        source,
+        bytes,
+        mtime:       stat.mtimeMs,
+        permissions: pathEntry.permissions
+      })
+
+      alreadyDone.add(relPath)
+    } catch (e) {
+      errors.push({ path: filePath, error: e.code ?? e.message })
     }
 
     onProgress?.({
@@ -139,18 +140,33 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
 
 // ── Restore ───────────────────────────────────────────────────────────────────
 
-export function restore(manifestsDir, sessionName, runTs, destDir) {
-  const run    = loadRun(manifestsDir, sessionName, runTs)
+export async function restore(manifestsDir, sessionName, runTs, destDir) {
+  const session = loadRun(manifestsDir, sessionName, runTs)
+  
+  const run    = session
+  const storePath = run.store
   const errors = []
   let restored = 0
 
-  for (const [hashVorn, entry] of Object.entries(run.files)) {
+  const fileEntries = Object.entries(run.files)
+  
+  for (const [relPath, info] of fileEntries) {
     try {
-      const content = extractContent(run.store, hashVorn)
-      const relPath = relative(run.sources[0], entry.path)
+      const hashVorn = info.hash_vorn
+      const rs = extractContent(storePath, hashVorn)
+      
+      // La chiave relPath è già il percorso relativo corretto
       const outPath = join(destDir, relPath)
       mkdirSync(join(outPath, '..'), { recursive: true })
-      writeFileSync(outPath, content)
+      
+      const ws = createWriteStream(outPath)
+      await new Promise((resolve, reject) => {
+        rs.pipe(ws)
+        ws.on('finish', resolve)
+        ws.on('error', reject)
+        rs.on('error', reject)
+      })
+      
       restored++
     } catch (e) {
       errors.push({ path: entry.path, error: e.code ?? e.message })

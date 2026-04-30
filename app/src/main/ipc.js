@@ -9,8 +9,10 @@ import { getEntry } from './vorn/store.js'
 import { readVorn } from './vorn/format.js'
 import { existsSync } from 'fs'
 
-// Default manifests directory: userData/sessions
-const manifestsDir = join(app.getPath('userData'), 'sessions')
+import { homedir } from 'os'
+
+// Default manifests directory: aligned with the Python prototype
+const manifestsDir = join(homedir(), '.vorn', 'sessions')
 
 // Active backup handles keyed by sessionName (for cancellation)
 const activeBackups = {}
@@ -50,18 +52,31 @@ export function registerIpcHandlers(mainWindow) {
   ipcMain.handle('vorn:backup', async (_, { sessionName, resumeTs = null, excludes = [], maxBytes = 0 }) => {
     if (activeBackups[sessionName]) throw new Error(`Backup already running for ${sessionName}`)
 
-    const result = await backup(manifestsDir, sessionName, {
+    // Prepariamo l'oggetto per gestire la cancellazione
+    const opts = {
       resumeTs,
       excludes,
       maxBytes,
       onProgress: (progress) => {
         mainWindow.webContents.send('vorn:backup-progress', { sessionName, ...progress })
       }
-    })
+    }
 
-    delete activeBackups[sessionName]
-    mainWindow.webContents.send('vorn:backup-done', { sessionName, ...result })
-    return result
+    // Avviamo il backup (restituisce una promise)
+    const backupPromise = backup(manifestsDir, sessionName, opts)
+    
+    // Recuperiamo l'handle di cancellazione (che viene iniettato sincronicamente da backup() all'avvio)
+    activeBackups[sessionName] = opts._handle
+
+    try {
+      const result = await backupPromise
+      delete activeBackups[sessionName]
+      mainWindow.webContents.send('vorn:backup-done', { sessionName, ...result })
+      return result
+    } catch (error) {
+      delete activeBackups[sessionName]
+      throw error
+    }
   })
 
   ipcMain.handle('vorn:backup-cancel', (_, sessionName) => {
@@ -72,8 +87,9 @@ export function registerIpcHandlers(mainWindow) {
 
   // ── Restore ───────────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:restore', (_, { sessionName, runTs, destDir }) => {
-    return restore(manifestsDir, sessionName, runTs, destDir)
+  ipcMain.handle('vorn:restore', async (_, { sessionName, runTs, destDir }) => {
+    console.log(`[IPC] Received restore request for ${sessionName} (Run: ${runTs}) to ${destDir}`);
+    return await restore(manifestsDir, sessionName, runTs, destDir)
   })
 
   // ── Store ─────────────────────────────────────────────────────────────────
