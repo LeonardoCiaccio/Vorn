@@ -38,3 +38,9 @@ dist/
 *.tmp
 *.log
 *.bak
+
+# Electron app — dipendenze e build artifacts
+app/node_modules/
+app/out/
+app/release/
+app/package-lock.json
