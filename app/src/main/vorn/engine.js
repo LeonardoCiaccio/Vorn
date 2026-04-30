@@ -1,25 +1,29 @@
 import { statSync, readdirSync, mkdirSync, createWriteStream } from 'fs'
-import { join, relative, basename } from 'path'
+import { join, relative } from 'path'
 import { vornHash } from './hash.js'
 import { createOrAddPath, extractContent } from './store.js'
-import { openRun, addFile, setRunStatus, loadRun } from './manifest.js'
+import { openRun, saveRun, loadRun, setRunStatus } from './manifest.js'
+
+const FLUSH_EVERY  = 100  // file tra un flush del manifest e l'altro
+const FRAME_MS     = 14   // ms massimi per frame prima di cedere l'event loop
 
 // ── Walk ──────────────────────────────────────────────────────────────────────
+// Asincrono: yield ogni 1000 entry per non bloccare l'event loop su dir grandi.
 
-function walk(dir, excludes = []) {
-  const results = []
+async function walk(dir, excludes = [], _results = []) {
   try {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name)
       if (excludes.some(p => entry.name === p || full.includes(p))) continue
       if (entry.isDirectory()) {
-        results.push(...walk(full, excludes))
+        await walk(full, excludes, _results)
       } else if (entry.isFile()) {
-        results.push(full)
+        _results.push(full)
+        if (_results.length % 1000 === 0) await sleep(0)
       }
     }
   } catch (_) { /* skip unreadable dirs */ }
-  return results
+  return _results
 }
 
 // ── Backup ────────────────────────────────────────────────────────────────────
@@ -33,15 +37,23 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
 
   if (run.status === 'done') throw new Error('Run already completed')
 
-  if (resumeTs) setRunStatus(manifestsDir, sessionName, run.ts, 'running')
+  // Aggiorna su disco prima di qualsiasi await, così refreshSession vede 'running'
+  if (resumeTs) {
+    run.status = 'running'
+    saveRun(manifestsDir, sessionName, run.ts, run)
+  }
 
   const { ts: runTs, store, sources, machine } = run
   const startTime   = Date.now()
   const alreadyDone = new Set(Object.keys(run.files))
 
-  // Collect all files upfront (needed for accurate total count)
+  // Cancellation handle — iniettato sincronicamente prima del primo await reale
+  let cancelled = false
+  opts._handle  = { _cancel: () => { cancelled = true } }
+
+  // Scansione directory: asincrona, yield ogni 1000 entry
   const allFiles = []
-  for (const src of sources) allFiles.push(...walk(src, excludes))
+  for (const src of sources) await walk(src, excludes, allFiles)
   const total = allFiles.length
 
   let filesNew   = run.files_new   ?? 0
@@ -49,19 +61,13 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
   let bytesTotal = run.bytes_total ?? 0
   let bytesNew   = run.bytes_new   ?? 0
   const errors   = [...(run.files_errors ?? [])]
-  let cancelled  = false
-
-  // Cancellation handle returned to caller
-  opts._handle = { _cancel: () => { cancelled = true } }
 
   for (let i = 0; i < allFiles.length; i++) {
     if (cancelled) break
 
     const filePath = allFiles[i]
     const source   = sources.find(s => filePath.startsWith(s)) ?? sources[0]
-    
-    // Calcoliamo il percorso relativo rispetto alla sorgente
-    const relPath = relative(source, filePath)
+    const relPath  = relative(source, filePath)
 
     if (alreadyDone.has(relPath)) continue
 
@@ -87,22 +93,11 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
 
     try {
       const outcome = await createOrAddPath(store, hashVorn, bytes, filePath, runTs, pathEntry, sessionName, machine)
-      if (outcome === 'new') {
-        filesNew++
-        bytesNew += bytes
-      } else {
-        filesDedup++
-      }
+      if (outcome === 'new') { filesNew++; bytesNew += bytes }
+      else                   { filesDedup++ }
 
-      // IMPORTANTE: La chiave nel manifesto deve essere il PERCORSO, non l'hash
-      addFile(manifestsDir, sessionName, runTs, relPath, {
-        hash_vorn:   hashVorn,
-        source,
-        bytes,
-        mtime:       stat.mtimeMs,
-        permissions: pathEntry.permissions
-      })
-
+      // Accumula in memoria — nessuna I/O per file
+      run.files[relPath] = { hash_vorn: hashVorn, source, bytes, mtime: stat.mtimeMs, permissions: pathEntry.permissions }
       alreadyDone.add(relPath)
     } catch (e) {
       errors.push({ path: filePath, error: e.code ?? e.message })
@@ -119,24 +114,30 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
       bytes_new:   bytesNew,
     })
 
-    // Yield to event loop every 50 files so IPC remains responsive
-    if (i % 50 === 0) await sleep(0)
+    // Ogni FLUSH_EVERY file: scrivi manifest e cedi l'event loop
+    if (i % FLUSH_EVERY === 0) {
+      run.files_new   = filesNew
+      run.files_dedup = filesDedup
+      run.bytes_total = bytesTotal
+      run.bytes_new   = bytesNew
+      saveRun(manifestsDir, sessionName, runTs, run)
+      await sleep(0)
+    }
   }
 
+  // Flush finale con stato e statistiche complete
   const durationSec = Math.round((Date.now() - startTime) / 1000)
-  const status = cancelled ? 'paused' : 'done'
+  run.status       = cancelled ? 'paused' : 'done'
+  run.duration_sec = durationSec
+  run.bytes_total  = bytesTotal
+  run.bytes_new    = bytesNew
+  run.files_total  = total
+  run.files_new    = filesNew
+  run.files_dedup  = filesDedup
+  run.files_errors = errors
+  saveRun(manifestsDir, sessionName, runTs, run)
 
-  setRunStatus(manifestsDir, sessionName, runTs, status, {
-    duration_sec: durationSec,
-    bytes_total:  bytesTotal,
-    bytes_new:    bytesNew,
-    files_total:  total,
-    files_new:    filesNew,
-    files_dedup:  filesDedup,
-    files_errors: errors,
-  })
-
-  return { status, runTs, files_total: total, filesNew, filesDedup, durationSec, errors }
+  return { status: run.status, runTs, files_total: total, filesNew, filesDedup, durationSec, errors }
 }
 
 // ── Restore ───────────────────────────────────────────────────────────────────
@@ -154,8 +155,7 @@ export async function restore(manifestsDir, sessionName, runTs, destDir, opts = 
   for (let i = 0; i < fileEntries.length; i++) {
     const [relPath, info] = fileEntries[i]
     try {
-      const hashVorn = info.hash_vorn
-      const rs = extractContent(storePath, hashVorn)
+      const rs = extractContent(storePath, info.hash_vorn)
       const outPath = join(destDir, relPath)
       mkdirSync(join(outPath, '..'), { recursive: true })
       const ws = createWriteStream(outPath)
@@ -172,7 +172,7 @@ export async function restore(manifestsDir, sessionName, runTs, destDir, opts = 
 
     onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
 
-    if (i % 50 === 0) await sleep(0)
+    if (i % FLUSH_EVERY === 0) await sleep(0)
   }
 
   return { restored, total, errors }

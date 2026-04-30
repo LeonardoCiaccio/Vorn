@@ -79,6 +79,10 @@ export function setRunStatus(manifestsDir, name, runTs, status, stats = {}) {
   save(p, run)
 }
 
+export function saveRun(manifestsDir, name, runTs, runObj) {
+  save(runFile(manifestsDir, name, runTs), runObj)
+}
+
 export function loadRun(manifestsDir, name, runTs) {
   const p = runFile(manifestsDir, name, runTs)
   if (!existsSync(p)) throw new Error(`Run not found: ${name} @ ${runTs}`)
