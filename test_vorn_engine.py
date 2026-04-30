@@ -1,6 +1,7 @@
 import sys
 import tempfile
 import shutil
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -46,12 +47,13 @@ print("\nbackup base")
 
 make_session("S1", [src])
 result = backup(mdir, "S1")
-import time; time.sleep(1)
+time.sleep(1.01)
 
 check("backup restituisce dict", isinstance(result, dict))
 check("3 nuovi file nello store", result["new"] == 3, str(result))
 check("0 deduplicati al primo run", result["deduped"] == 0)
 check("0 errori", result["errors"] == [])
+check("run status done", result["status"] == "done")
 check("3 file .vorn creati", len(list(sdir.glob("*.vorn"))) == 3)
 
 run = manifest.get_run_at(mdir, "S1")
@@ -66,6 +68,7 @@ check("permissions salvato nel file entry", all("permissions" in v for v in run[
 print("\nbackup senza modifiche")
 
 result2 = backup(mdir, "S1")
+time.sleep(1.01)
 check("nessun nuovo file", result2["new"] == 0)
 check("3 deduplicati (stessi hash)", result2["deduped"] == 3, str(result2))
 check("store invariato: ancora 3 file .vorn", len(list(sdir.glob("*.vorn"))) == 3)
@@ -77,6 +80,7 @@ print("\nbackup con modifica")
 
 (src / "a.txt").write_bytes(b"Contenuto A modificato")
 result3 = backup(mdir, "S1")
+time.sleep(1.01)
 check("1 nuovo file (a.txt modificato)", result3["new"] == 1, str(result3))
 check("2 deduplicati (b.txt e c.txt invariati)", result3["deduped"] == 2)
 check("store ora ha 4 file .vorn", len(list(sdir.glob("*.vorn"))) == 4)
@@ -121,14 +125,14 @@ saved_mode = run_last["files"]["a.txt"]["permissions"]
 check("permissions applicati al restore", (_stat.S_IMODE((src / "a.txt").stat().st_mode) & 0o777) == (_stat.S_IMODE(saved_mode) & 0o777))
 
 
-# --- restore a punto nel tempo -----------------------------------------------
+# --- restore a run specifico -------------------------------------------------
 
-print("\nrestore a punto nel tempo")
+print("\nrestore a run specifico")
 
 runs = manifest.list_runs(mdir, "S1")
 ts_primo_run = runs[0]["ts"]
 
-res2 = restore(mdir, "S1", at=ts_primo_run)
+res2 = restore(mdir, "S1", run_ts=ts_primo_run)
 check("restore al primo run senza errori", res2["errors"] == [], str(res2))
 check("a.txt al primo run ha contenuto originale",
       (src / "a.txt").read_bytes() == b"Contenuto A")
@@ -138,12 +142,9 @@ check("a.txt al primo run ha contenuto originale",
 
 print("\nrestore edge cases")
 
-res3 = restore(mdir, "S1", at="2000-01-01T00:00:00+00:00")
-check("restore con data ante-run: 0 file ripristinati", res3["restored"] == 0)
-
 manifest.create(mdir, "Vuota", str(sdir))
-res4 = restore(mdir, "Vuota")
-check("restore sessione senza run: 0 file ripristinati", res4["restored"] == 0)
+res3 = restore(mdir, "Vuota")
+check("restore sessione senza run: 0 file ripristinati", res3["restored"] == 0)
 
 
 # --- backup di file singolo --------------------------------------------------

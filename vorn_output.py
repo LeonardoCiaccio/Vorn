@@ -30,7 +30,6 @@ def session_info(session: dict):
     print(f"  Sorgenti : {len(session['sources'])}")
     for s in session["sources"]:
         print(f"    - {s}")
-    print(f"  Run      : {len(session['runs'])}")
 
 
 def runs_list(runs: list, session_name: str):
@@ -39,8 +38,10 @@ def runs_list(runs: list, session_name: str):
         print("  Nessun run ancora.")
         return
     for i, r in enumerate(runs, 1):
-        ts = datetime.fromisoformat(r["ts"]).strftime("%Y-%m-%d %H:%M:%S")
-        print(f"  [{i}]  {ts}  ({r['files']} file)")
+        ts     = datetime.fromisoformat(r["ts"]).strftime("%Y-%m-%d %H:%M:%S")
+        status = r.get("status", "done")
+        flag   = "  [in pausa]" if status == "paused" else ""
+        print(f"  [{i}]  {ts}  ({r['files']} file){flag}")
 
 
 def error(msg: str):

@@ -23,7 +23,7 @@ def view(vorn_path: str):
                 meta    = json.loads(buffer[:sep_pos].decode("utf-8"))
                 content_size = path.stat().st_size - sep_pos - len(SEPARATOR)
 
-                print(f"\n  hash        : {meta.get('hash')}")
+                print(f"\n  hash_vorn   : {meta.get('hash_vorn')}")
                 print(f"  bytes dati  : {meta.get('bytes')}")
                 print(f"  header size : {sep_pos} bytes")
                 print(f"  totale file : {path.stat().st_size} bytes")
@@ -31,12 +31,9 @@ def view(vorn_path: str):
 
                 print(f"\n  --- STORIA ---")
                 for i, r in enumerate(meta.get("records", []), 1):
-                    print(f"\n  [{i}]")
-                    print(f"    nome     : {r.get('name')}")
-                    print(f"    ts       : {r.get('ts')}")
-                    print(f"    sessione : {r.get('session') or '-'}")
-                    print(f"    macchina : {r.get('machine')}")
-                    print(f"    path     : {r.get('path')}")
+                    print(f"\n  [{i}]  {r.get('ts')}  sessione: {r.get('session')}  macchina: {r.get('machine')}")
+                    for p in r.get("paths", []):
+                        print(f"    -> {p.get('name')}  ({p.get('path')})")
                 return
 
     print("Separatore non trovato — file corrotto.")

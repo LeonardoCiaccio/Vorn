@@ -49,11 +49,27 @@ def add_source(manifests_dir: Path, session_name: str, source: str):
 def open_run(manifests_dir: Path, session_name: str) -> str:
     session = load(manifests_dir, session_name)
     ts = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    run = {"ts": ts, "name": session["name"], "store": session["store"], "files": {}}
+    run = {"ts": ts, "name": session["name"], "store": session["store"], "status": "running", "files": {}}
     _run_path(manifests_dir, session_name, ts).write_text(
         json.dumps(run, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     return ts
+
+
+def set_run_status(manifests_dir: Path, session_name: str, run_ts: str, status: str):
+    path = _run_path(manifests_dir, session_name, run_ts)
+    run = json.loads(path.read_text(encoding="utf-8"))
+    run["status"] = status
+    path.write_text(json.dumps(run, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def get_paused_run(manifests_dir: Path, session_name: str) -> str:
+    run_files = sorted(_session_dir(manifests_dir, session_name).glob(f"{session_name}-*.json"))
+    for f in reversed(run_files):
+        run = json.loads(f.read_text(encoding="utf-8"))
+        if run.get("status") == "paused":
+            return run["ts"]
+    return None
 
 
 def add_file(manifests_dir: Path, session_name: str, run_ts: str, filename: str, hash_vorn: str, source: str, source_is_dir: bool, permissions: int):
@@ -72,7 +88,7 @@ def list_runs(manifests_dir: Path, session_name: str) -> list:
     result = []
     for f in run_files:
         run = json.loads(f.read_text(encoding="utf-8"))
-        result.append({"ts": run["ts"], "files": len(run["files"])})
+        result.append({"ts": run["ts"], "files": len(run["files"]), "status": run.get("status", "done")})
     return result
 
 

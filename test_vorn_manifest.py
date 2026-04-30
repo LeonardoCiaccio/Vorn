@@ -33,6 +33,7 @@ check("sessione non esiste prima di create", not manifest.exists(mdir, "Pippo"))
 
 s = manifest.create(mdir, "Pippo", "/vorn/store")
 check("create restituisce dict", isinstance(s, dict))
+check("ts creazione presente", "ts" in s and len(s["ts"]) > 0)
 check("nome sessione corretto", s["name"] == "Pippo")
 check("store salvato nella sessione", s["store"] == "/vorn/store")
 check("sources vuoto alla creazione", s["sources"] == [])
@@ -81,6 +82,9 @@ check("file run creato su disco", len(list((mdir / "Pippo").glob("Pippo-*.json")
 
 run1_loaded = manifest.load_run(mdir, "Pippo", ts1)
 check("run ha campo ts", run1_loaded["ts"] == ts1)
+check("run ha campo name", run1_loaded["name"] == "Pippo")
+check("run ha campo store", run1_loaded["store"] == "/vorn/store")
+check("run ha status running", run1_loaded["status"] == "running")
 check("run ha campo files vuoto", run1_loaded["files"] == {})
 
 time.sleep(1.01)

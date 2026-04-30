@@ -1,5 +1,6 @@
 import sys
 import argparse
+from datetime import datetime
 from pathlib import Path
 
 import vorn_manifest as manifest
@@ -46,7 +47,7 @@ def cmd_add(args):
 # -- session list -------------------------------------------------------------
 
 def cmd_list(args):
-    sessions = sorted(MANIFESTS_DIR.glob("*.json")) if MANIFESTS_DIR.exists() else []
+    sessions = sorted(MANIFESTS_DIR.glob("*/")) if MANIFESTS_DIR.exists() else []
 
     if not sessions:
         print("\nNessuna sessione trovata.")
@@ -54,9 +55,11 @@ def cmd_list(args):
 
     print(f"\nSessioni ({len(sessions)}):")
     for s in sessions:
-        name    = s.stem
+        name    = s.name
+        if not manifest.exists(MANIFESTS_DIR, name):
+            continue
         session = manifest.load(MANIFESTS_DIR, name)
-        runs    = len(session.get("runs", []))
+        runs    = len(manifest.list_runs(MANIFESTS_DIR, name))
         sources = len(session.get("sources", []))
         print(f"  {name:<20}  {sources} sorgenti  |  {runs} run")
 
@@ -89,8 +92,31 @@ def cmd_run(args):
         output.error(f"Nessuna sorgente nella sessione '{name}'. Usa: vorn session add {name} <percorso>")
         sys.exit(1)
 
-    print(f"\nAvvio backup sessione '{name}'...")
-    result = engine.backup(MANIFESTS_DIR, name)
+    resume_ts  = None
+    paused_ts  = manifest.get_paused_run(MANIFESTS_DIR, name)
+    if paused_ts:
+        ts_fmt = datetime.fromisoformat(paused_ts).strftime("%Y-%m-%d %H:%M:%S")
+        answer = input(f"\nRun in pausa trovato [{ts_fmt}]. Riprendere? [S/n] ").strip().lower()
+        if answer in ("", "s", "si", "y", "yes"):
+            resume_ts = paused_ts
+            print(f"Ripresa del run [{ts_fmt}]...")
+        else:
+            print("Avvio nuovo run...")
+    else:
+        print(f"\nAvvio backup sessione '{name}'...")
+
+    def on_progress(current, total, new, dedup, errors, filename):
+        pct       = int(current * 100 / total) if total > 0 else 0
+        name_short = filename[-45:] if len(filename) > 45 else filename
+        line      = f"\r  [{pct:3d}%]  {current}/{total}  nuovi: {new}  dedup: {dedup}  errori: {len(errors)}  -> {name_short:<45}"
+        print(line, end="", flush=True)
+
+    result = engine.backup(MANIFESTS_DIR, name, resume_ts=resume_ts, on_progress=on_progress)
+    print()
+
+    if result.get("status") == "paused":
+        print(f"\nBackup in pausa. Riprendi con: vorn session run {name}")
+
     output.backup_summary(result)
 
 
@@ -108,7 +134,7 @@ def cmd_restore(args):
         output.runs_list(runs, name)
         return
 
-    result = engine.restore(MANIFESTS_DIR, name, at=args.date)
+    result = engine.restore(MANIFESTS_DIR, name, run_ts=args.ts)
     output.restore_summary(result)
 
 
@@ -156,7 +182,7 @@ def build_parser():
     p_restore = session_sub.add_parser("restore", help="Ripristina file da una sessione")
     p_restore.add_argument("name", help="Nome della sessione")
     p_restore.add_argument("--list", action="store_true", help="Mostra i run disponibili")
-    p_restore.add_argument("--date", metavar="TIMESTAMP", help="Ripristina allo stato di questa data (ISO 8601)")
+    p_restore.add_argument("--ts", metavar="TIMESTAMP", help="Timestamp esatto del run da ripristinare (usa --list per vedere i valori)")
     p_restore.set_defaults(func=cmd_restore)
 
     return parser
