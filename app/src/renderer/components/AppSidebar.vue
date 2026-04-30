@@ -29,7 +29,12 @@
           'w-4.5 h-4.5 shrink-0 transition-colors',
           currentView === item.id ? 'text-indigo-400' : 'text-gray-500 group-hover:text-gray-300'
         ]" />
-        <span>{{ item.label }}</span>
+        <span class="flex-1">{{ item.label }}</span>
+        <!-- badge task attivi per questa view -->
+        <span
+          v-if="item.id === 'sessions' && runningTasks.length"
+          class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500 text-white leading-none animate-pulse"
+        >{{ runningTasks.length }}</span>
       </button>
     </nav>
 
@@ -59,8 +64,9 @@ import { computed } from 'vue'
 import { state, goBack, navigateTo } from '../stores/vorn.js'
 import { t } from '../stores/i18n.js'
 
-const currentView = computed(() => state.currentView)
-const storeList = computed(() => [...new Set(state.sessions.map(s => s.store))])
+const currentView   = computed(() => state.currentView)
+const storeList     = computed(() => [...new Set(state.sessions.map(s => s.store))])
+const runningTasks  = computed(() => Object.values(state.tasks).filter(t => t.status === 'running'))
 
 const navItems = computed(() => [
   { id: 'sessions',  label: t.value.nav.sessions,  icon: RectangleStackIcon },

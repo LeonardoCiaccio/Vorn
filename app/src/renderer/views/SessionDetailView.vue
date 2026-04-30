@@ -19,7 +19,7 @@
       <div class="flex items-center gap-2">
         <button
           v-if="isRunning"
-          @click="cancelBackup(session.name)"
+          @click="handleCancel"
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-amber-300 border border-amber-600/50 hover:bg-amber-500/10 transition-colors"
         >
           <StopIcon class="w-4 h-4" />
@@ -28,10 +28,10 @@
         <button
           v-else
           @click="handleBackup"
-          :disabled="isRunning"
-          class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-500/20"
+          :disabled="!!activeTask"
+          class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
         >
-          <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': isRunning }" />
+          <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': isRestoring }" />
           {{ hasPaused ? 'Riprendi' : 'Backup' }}
         </button>
       </div>
@@ -116,142 +116,178 @@
       </div>
     </div>
 
-    <!-- Scroll area -->
-    <div class="flex-1 overflow-auto">
+    <!-- Main + sidebar -->
+    <div class="flex flex-1 overflow-hidden">
 
-      <!-- Info cards -->
-      <div class="px-8 pt-6 pb-4 grid grid-cols-4 gap-4">
-        <div class="bg-gray-900 border border-gray-800 rounded-md p-4">
-          <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2">Run totali</p>
-          <p class="text-3xl font-bold text-white">{{ session.runs.length }}</p>
-        </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-md p-4">
-          <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2">File indicizzati</p>
-          <p class="text-3xl font-bold text-white">{{ (session.runs[0]?.files_total ?? 0).toLocaleString('it-IT') }}</p>
-        </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-md p-4">
-          <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2">Deduplicati</p>
-          <p class="text-3xl font-bold text-white">
-            {{ session.runs[0] ? pct(session.runs[0].files_dedup, session.runs[0].files_total) : '—' }}
-          </p>
-        </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-md p-4">
-          <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2">Sorgenti</p>
-          <p class="text-3xl font-bold text-white">{{ session.sources.length }}</p>
-        </div>
-      </div>
+      <!-- Scroll area principale -->
+      <div class="flex-1 overflow-auto">
 
-      <!-- Sources -->
-      <div class="px-8 pb-4">
-        <div class="bg-gray-900/50 border border-gray-800 rounded-md p-4">
-          <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">Cartelle sorgente</p>
-          <div class="flex flex-wrap gap-2">
-            <span
-              v-for="src in session.sources"
-              :key="src"
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800 border border-gray-700 text-xs font-mono text-gray-300"
-            >
-              <FolderIcon class="w-3.5 h-3.5 text-gray-500 shrink-0" />
-              {{ src }}
-            </span>
+        <!-- Info cards -->
+        <div class="px-8 pt-6 pb-4 grid grid-cols-4 gap-4">
+          <div class="bg-gray-900 border border-gray-800 rounded-md p-4">
+            <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2">Run totali</p>
+            <p class="text-3xl font-bold text-white">{{ session.runs.length }}</p>
           </div>
-          <p class="text-xs text-gray-600 mt-2 font-mono">Store: {{ session.store }}</p>
+          <div class="bg-gray-900 border border-gray-800 rounded-md p-4">
+            <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2">File indicizzati</p>
+            <p class="text-3xl font-bold text-white">{{ (session.runs[0]?.files_total ?? 0).toLocaleString('it-IT') }}</p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-md p-4">
+            <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2">Deduplicati</p>
+            <p class="text-3xl font-bold text-white">
+              {{ session.runs[0] ? pct(session.runs[0].files_dedup, session.runs[0].files_total) : '—' }}
+            </p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-md p-4">
+            <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-2">Sorgenti</p>
+            <p class="text-3xl font-bold text-white">{{ session.sources.length }}</p>
+          </div>
         </div>
-      </div>
 
-      <!-- Two-column: runs list + run detail -->
-      <div class="px-8 pb-8 flex gap-5 min-h-0">
+        <!-- Sources -->
+        <div class="px-8 pb-4">
+          <div class="bg-gray-900/50 border border-gray-800 rounded-md p-4">
+            <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">Cartelle sorgente</p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                v-for="src in session.sources"
+                :key="src"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-800 border border-gray-700 text-xs font-mono text-gray-300"
+              >
+                <FolderIcon class="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                {{ src }}
+              </span>
+            </div>
+            <p class="text-xs text-gray-600 mt-2 font-mono">Store: {{ session.store }}</p>
+          </div>
+        </div>
 
         <!-- Runs table -->
-        <div class="flex-1 min-w-0 bg-gray-900 border border-gray-800 rounded-md overflow-hidden">
-          <div class="px-5 py-3.5 border-b border-gray-800">
-            <p class="text-sm font-semibold text-gray-200">Cronologia run</p>
+        <div class="px-8 pb-8">
+          <div class="bg-gray-900 border border-gray-800 rounded-md overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-gray-800">
+              <p class="text-sm font-semibold text-gray-200">Cronologia run</p>
+            </div>
+            <div v-if="session.runs.length === 0" class="flex flex-col items-center justify-center h-32 text-gray-600 text-sm">
+              Nessuna run ancora
+            </div>
+            <table v-else class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-800">
+                  <th class="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Data / Ora</th>
+                  <th class="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Stato</th>
+                  <th class="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">File</th>
+                  <th class="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Nuovi</th>
+                  <th class="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Dedup</th>
+                  <th class="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Durata</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-800/60">
+                <tr
+                  v-for="run in session.runs"
+                  :key="run.ts"
+                  @click="run.status !== 'running' && selectRun(run)"
+                  :class="[
+                    'transition-colors',
+                    run.status === 'running'
+                      ? 'cursor-default'
+                      : 'cursor-pointer',
+                    selectedRun?.ts === run.ts
+                      ? 'bg-indigo-500/10 border-l-2 border-l-indigo-500'
+                      : run.status !== 'running' ? 'hover:bg-gray-800/50' : ''
+                  ]"
+                >
+                  <td class="px-5 py-3 text-gray-300 font-mono text-xs">{{ formatTs(run.ts) }}</td>
+                  <td class="px-5 py-3"><StatusBadge :status="run.status" /></td>
+                  <td class="px-5 py-3 text-right font-mono font-medium text-gray-300">
+                    {{ run.status === 'running' && backupProgress
+                        ? backupProgress.total?.toLocaleString('it-IT') ?? '…'
+                        : run.files_total?.toLocaleString('it-IT') ?? '—' }}
+                  </td>
+                  <td class="px-5 py-3 text-right font-mono text-emerald-400 font-medium">
+                    +{{ run.status === 'running' && backupProgress
+                        ? backupProgress.files_new ?? 0
+                        : run.files_new ?? 0 }}
+                  </td>
+                  <td class="px-5 py-3 text-right font-mono text-gray-500">
+                    {{ run.status === 'running' && backupProgress
+                        ? backupProgress.files_dedup?.toLocaleString('it-IT') ?? '—'
+                        : run.files_dedup?.toLocaleString('it-IT') ?? '—' }}
+                  </td>
+                  <td class="px-5 py-3 text-right font-mono text-xs text-gray-500">
+                    {{ run.duration_sec != null ? run.duration_sec + 's' : '—' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div v-if="session.runs.length === 0" class="flex flex-col items-center justify-center h-32 text-gray-600 text-sm">
-            Nessuna run ancora
-          </div>
-          <table v-else class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-gray-800">
-                <th class="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Data / Ora</th>
-                <th class="px-5 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Stato</th>
-                <th class="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">File</th>
-                <th class="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Nuovi</th>
-                <th class="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Dedup</th>
-                <th class="px-5 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Durata</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-800/60">
-              <tr
-                v-for="run in session.runs"
-                :key="run.ts"
-                @click="selectRun(run)"
-                :class="[
-                  'cursor-pointer transition-colors',
-                  selectedRun?.ts === run.ts
-                    ? 'bg-indigo-500/10 border-l-2 border-l-indigo-500'
-                    : 'hover:bg-gray-800/50'
-                ]"
-              >
-                <td class="px-5 py-3 text-gray-300 font-mono text-xs">{{ formatTs(run.ts) }}</td>
-                <td class="px-5 py-3"><StatusBadge :status="run.status" /></td>
-                <td class="px-5 py-3 text-right font-mono font-medium text-gray-300">{{ run.files_total?.toLocaleString('it-IT') ?? '—' }}</td>
-                <td class="px-5 py-3 text-right font-mono text-emerald-400 font-medium">+{{ run.files_new ?? 0 }}</td>
-                <td class="px-5 py-3 text-right font-mono text-gray-500">{{ run.files_dedup?.toLocaleString('it-IT') ?? '—' }}</td>
-                <td class="px-5 py-3 text-right font-mono text-xs text-gray-500">{{ run.duration_sec != null ? run.duration_sec + 's' : '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
         </div>
 
-        <!-- Run detail -->
-        <div class="w-80 shrink-0 bg-gray-900 border border-gray-800 rounded-md overflow-hidden">
-          <div class="px-5 py-3.5 border-b border-gray-800 flex items-center justify-between">
-            <p class="text-sm font-semibold text-gray-200">Dettaglio run</p>
-            <span v-if="selectedRun" class="text-xs text-gray-500 font-mono">{{ formatTs(selectedRun.ts) }}</span>
+      </div>
+
+      <!-- Sidebar dettaglio run -->
+      <transition name="slide">
+        <div
+          v-if="selectedRun"
+          class="w-96 shrink-0 border-l border-gray-800 bg-gray-900 flex flex-col overflow-hidden shadow-2xl"
+        >
+          <!-- Header sidebar -->
+          <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-gray-900/90 backdrop-blur-md z-10">
+            <div>
+              <p class="text-sm font-bold text-white">Dettaglio run</p>
+              <p class="text-[10px] text-gray-500 font-mono mt-0.5">{{ formatTs(selectedRun.ts) }}</p>
+            </div>
+            <button @click="closeRunDetail" class="p-1 rounded-md text-gray-600 hover:text-white transition-colors">
+              <XMarkIcon class="w-4 h-4" />
+            </button>
           </div>
 
-          <div v-if="!selectedRun" class="flex flex-col items-center justify-center h-32 text-gray-600 text-sm px-5 text-center">
-            Seleziona una run dalla lista
-          </div>
+          <div class="flex-1 overflow-auto">
 
-          <div v-else class="overflow-auto max-h-72">
-            <!-- Run stats -->
-            <div class="px-5 py-3 grid grid-cols-3 gap-2 border-b border-gray-800/60">
+            <!-- Stats -->
+            <div class="px-5 py-4 grid grid-cols-3 gap-3 border-b border-gray-800">
               <div class="text-center">
-                <p class="text-lg font-bold text-white">{{ selectedRun.files_total?.toLocaleString('it-IT') ?? '—' }}</p>
-                <p class="text-[10px] text-gray-500 uppercase tracking-wider">Totali</p>
+                <p class="text-xl font-bold text-white">{{ selectedRun.files_total?.toLocaleString('it-IT') ?? '—' }}</p>
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Totali</p>
               </div>
               <div class="text-center">
-                <p class="text-lg font-bold text-emerald-400">{{ selectedRun.files_new ?? 0 }}</p>
-                <p class="text-[10px] text-gray-500 uppercase tracking-wider">Nuovi</p>
+                <p class="text-xl font-bold text-emerald-400">{{ selectedRun.files_new ?? 0 }}</p>
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Nuovi</p>
               </div>
               <div class="text-center">
-                <p class="text-lg font-bold text-gray-400">{{ selectedRun.files_dedup ?? 0 }}</p>
-                <p class="text-[10px] text-gray-500 uppercase tracking-wider">Dedup</p>
+                <p class="text-xl font-bold text-gray-400">{{ selectedRun.files_dedup ?? 0 }}</p>
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Dedup</p>
               </div>
             </div>
 
-            <!-- Extra stats row -->
-            <div v-if="selectedRun.bytes_total != null" class="px-5 py-2 grid grid-cols-2 gap-2 border-b border-gray-800/60 text-center">
+            <div v-if="selectedRun.bytes_total != null" class="px-5 py-3 grid grid-cols-2 gap-3 border-b border-gray-800 text-center">
               <div>
                 <p class="text-sm font-semibold text-white">{{ formatBytes(selectedRun.bytes_total) }}</p>
-                <p class="text-[10px] text-gray-500 uppercase tracking-wider">Dimensione</p>
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Dimensione</p>
               </div>
               <div>
                 <p class="text-sm font-semibold text-white">{{ formatBytes(selectedRun.bytes_new) }}</p>
-                <p class="text-[10px] text-gray-500 uppercase tracking-wider">Scritti</p>
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Scritti</p>
               </div>
             </div>
 
             <!-- File list -->
-            <div v-if="fullRunFiles.length" class="divide-y divide-gray-800/40">
-              <div
-                v-for="file in fullRunFiles"
-                :key="file.hash_vorn"
-                class="px-5 py-2.5 hover:bg-gray-800/40 transition-colors"
-              >
-                <div class="flex items-start gap-2">
+            <div class="px-5 py-3 border-b border-gray-800">
+              <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">File nel run</p>
+
+              <div v-if="!state.selectedRunFull" class="flex items-center gap-1.5 text-xs text-gray-600 py-4 justify-center">
+                <ArrowPathIcon class="w-3.5 h-3.5 animate-spin" />
+                Caricamento…
+              </div>
+              <div v-else-if="fullRunFiles.length === 0" class="text-xs text-gray-600 italic py-4 text-center">
+                Nessun file in questa run
+              </div>
+              <div v-else class="space-y-1">
+                <div
+                  v-for="file in fullRunFiles"
+                  :key="file.hash_vorn"
+                  class="flex items-start gap-2 px-2 py-1.5 rounded-md hover:bg-gray-800/40 transition-colors"
+                >
                   <DocumentIcon class="w-3.5 h-3.5 text-gray-600 mt-0.5 shrink-0" />
                   <div class="min-w-0">
                     <p class="text-xs font-medium text-gray-300 truncate">{{ file.name }}</p>
@@ -261,32 +297,31 @@
                 </div>
               </div>
             </div>
-            <div v-else-if="state.selectedRunFull" class="px-5 py-4 text-xs text-gray-600 italic text-center">
-              Nessun file in questa run
-            </div>
-            <div v-else class="px-5 py-4 text-xs text-gray-600 italic text-center flex items-center justify-center gap-1.5">
-              <ArrowPathIcon class="w-3.5 h-3.5 animate-spin" />
-              Caricamento…
-            </div>
+
           </div>
 
-          <!-- Run actions -->
-          <div v-if="selectedRun" class="px-5 py-3 border-t border-gray-800 flex gap-2">
-            <button class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-medium text-gray-300 border border-gray-700 hover:bg-gray-800 transition-colors">
-              <MagnifyingGlassIcon class="w-3.5 h-3.5" />
-              Inspect
+          <!-- Azioni -->
+          <div class="px-5 py-4 border-t border-gray-800 bg-gray-950 flex gap-2">
+            <button
+              @click="handleDeleteRun"
+              :disabled="cannotDeleteRun"
+              class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-md text-xs font-medium text-red-400 border border-red-900/50 hover:bg-red-950/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <TrashIcon class="w-3.5 h-3.5" />
+              Cancella
             </button>
             <button
               @click="handleRestore"
-              class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-medium text-white bg-indigo-600/80 hover:bg-indigo-600 transition-colors"
+              :disabled="sessionBusy"
+              class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-md text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
             >
               <ArrowDownTrayIcon class="w-3.5 h-3.5" />
               Restore
             </button>
           </div>
         </div>
+      </transition>
 
-      </div>
     </div>
 
     <!-- Modals -->
@@ -300,6 +335,16 @@
   </div>
 </template>
 
+<style scoped>
+.slide-enter-active, .slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide-enter-from, .slide-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+</style>
+
 <script setup>
 import {
   ArrowLeftIcon,
@@ -308,42 +353,67 @@ import {
   DocumentIcon,
   ArrowPathIcon,
   ArrowDownTrayIcon,
-  MagnifyingGlassIcon,
+  TrashIcon,
   StopIcon,
+
   CheckCircleIcon,
   ExclamationTriangleIcon,
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
 import { computed, ref } from 'vue'
-import { state, goBack, selectRun, startBackup, cancelBackup, startRestore, formatTs, formatBytes } from '../stores/vorn.js'
+import {
+  state, goBack, selectRun, deleteRun,
+  startBackup, startRestore, cancelTask, getActiveTask, getLastTask,
+  formatTs, formatBytes
+} from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import RestoreModal from '../components/RestoreModal.vue'
 
-const session  = computed(() => state.selectedSession)
+const session     = computed(() => state.selectedSession)
 const selectedRun = computed(() => state.selectedRun)
-const isRunning  = computed(() => state.runningBackup?.sessionName === session.value?.name)
-const backupProgress = computed(() => state.runningBackup?.progress)
-const hasPaused = computed(() => session.value?.runs.some(r => r.status === 'paused') ?? false)
+const hasPaused   = computed(() => session.value?.runs.some(r => r.status === 'paused') ?? false)
 
-const isRestoring    = computed(() => state.runningRestore?.sessionName === session.value?.name)
-const restoreProgress = computed(() => state.runningRestore?.progress)
-const restoreResult  = computed(() => state.lastRestoreResult)
-const restorePct = computed(() => {
-  const p = restoreProgress.value
-  if (!p || !p.total) return 0
-  return Math.round((p.current / p.total) * 100)
+// Task attivo per questa sessione (backup o restore in corso)
+const activeTask      = computed(() => getActiveTask(session.value?.name))
+
+// Sessione occupata (running o paused): blocca restore
+const sessionBusy = computed(() => {
+  const name = session.value?.name
+  if (!name) return false
+  return Object.values(state.tasks).some(
+    t => t.sessionName === name && (t.status === 'running' || t.status === 'paused')
+  ) || hasPaused.value
 })
 
-function clearRestoreResult() { state.lastRestoreResult = null }
+// Cancella disabilitato solo se il run selezionato è quello attivamente in scrittura
+const cannotDeleteRun = computed(() => selectedRun.value?.status === 'running')
+const isRunning       = computed(() => activeTask.value?.type === 'backup')
+const isRestoring     = computed(() => activeTask.value?.type === 'restore')
+const backupProgress  = computed(() => isRunning.value   ? activeTask.value?.progress : null)
+const restoreProgress = computed(() => isRestoring.value ? activeTask.value?.progress : null)
 
-const showRestoreModal = ref(false)
+// Ultimo task completato di restore per questa sessione
+const lastRestoreTask = computed(() => getLastTask(session.value?.name, 'restore'))
+const restoreResult   = computed(() => lastRestoreTask.value?.status !== 'running' ? lastRestoreTask.value?.result : null)
 
 const progressPct = computed(() => {
   const p = backupProgress.value
-  if (!p || !p.total) return 0
+  if (!p?.total) return 0
   return Math.round((p.current / p.total) * 100)
 })
 
+const restorePct = computed(() => {
+  const p = restoreProgress.value
+  if (!p?.total) return 0
+  return Math.round((p.current / p.total) * 100)
+})
+
+function clearRestoreResult() {
+  const t = lastRestoreTask.value
+  if (t) t.result = null
+}
+
+const showRestoreModal = ref(false)
 const fullRunFiles = computed(() => state.selectedRunFull?.filesArray ?? [])
 
 function pct(part, total) {
@@ -351,8 +421,23 @@ function pct(part, total) {
   return Math.round(part / total * 100) + '%'
 }
 
-function handleBackup() {
-  startBackup(session.value.name)
+function closeRunDetail() {
+  state.selectedRun     = null
+  state.selectedRunFull = null
+}
+
+function handleBackup() { startBackup(session.value.name) }
+
+function handleCancel() {
+  if (activeTask.value) cancelTask(activeTask.value.id)
+}
+
+async function handleDeleteRun() {
+  if (!selectedRun.value) return
+  const sessionName = session.value.name
+  const runTs = selectedRun.value.ts
+  closeRunDetail()
+  await deleteRun(sessionName, runTs)
 }
 
 function handleRestore() {
@@ -362,9 +447,6 @@ function handleRestore() {
 
 async function onRestoreConfirm(destDir) {
   showRestoreModal.value = false
-  state.lastRestoreResult = null
-  try {
-    await startRestore(session.value.name, selectedRun.value.ts, destDir)
-  } catch (_) { /* risultato già in state.lastRestoreResult */ }
+  await startRestore(session.value.name, selectedRun.value.ts, destDir)
 }
 </script>

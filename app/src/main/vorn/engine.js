@@ -1,7 +1,7 @@
 import { statSync, readdirSync, mkdirSync, createWriteStream } from 'fs'
 import { join, relative, basename } from 'path'
 import { vornHash } from './hash.js'
-import { hasEntry, createEntry, addPath, extractContent } from './store.js'
+import { createOrAddPath, extractContent } from './store.js'
 import { openRun, addFile, setRunStatus, loadRun } from './manifest.js'
 
 // ── Walk ──────────────────────────────────────────────────────────────────────
@@ -32,6 +32,8 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
     : openRun(manifestsDir, sessionName)
 
   if (run.status === 'done') throw new Error('Run already completed')
+
+  if (resumeTs) setRunStatus(manifestsDir, sessionName, run.ts, 'running')
 
   const { ts: runTs, store, sources, machine } = run
   const startTime   = Date.now()
@@ -77,19 +79,18 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
     bytesTotal += bytes
 
     const pathEntry = {
-      name:        relPath, // Usiamo il path relativo completo
+      name:        relPath,
       path:        filePath,
       mtime:       stat.mtimeMs,
       permissions: (stat.mode & 0o777).toString(8).padStart(4, '0')
     }
 
     try {
-      if (!hasEntry(store, hashVorn)) {
-        await createEntry(store, hashVorn, bytes, filePath, runTs, pathEntry, sessionName, machine)
+      const outcome = await createOrAddPath(store, hashVorn, bytes, filePath, runTs, pathEntry, sessionName, machine)
+      if (outcome === 'new') {
         filesNew++
         bytesNew += bytes
       } else {
-        await addPath(store, hashVorn, runTs, pathEntry, sessionName, machine)
         filesDedup++
       }
 

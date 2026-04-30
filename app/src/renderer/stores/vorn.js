@@ -1,19 +1,17 @@
 import { reactive } from 'vue'
 
 export const state = reactive({
-  currentView: 'sessions',
-  selectedSession: null,
-  selectedRun: null,
-  selectedRunFull: null,   // full run data with files map
+  currentView:      'sessions',
+  selectedSession:  null,
+  selectedRun:      null,
+  selectedRunFull:  null,
   selectedStoreEntry: null,
-  sessions: [],
-  storeEntries: [],
-  storeLoaded: false,
-  loading: false,
-  runningBackup: null,     // { sessionName, progress }
-  runningRestore: null,    // { sessionName, progress }
-  lastRestoreResult: null, // { restored, total, errors[] }
-  appInfo: null,           // { version, platform, manifestsDir }
+  sessions:         [],
+  storeEntries:     [],
+  storeLoaded:      false,
+  loading:          false,
+  tasks:            {},   // taskId → task (shape pubblica dal backend)
+  appInfo:          null,
 })
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
@@ -21,52 +19,67 @@ export const state = reactive({
 export async function init() {
   state.loading = true
   try {
-    const [sessions, appInfo] = await Promise.all([
+    const [sessions, appInfo, tasks] = await Promise.all([
       window.vorn.listSessions(),
       window.vorn.getAppInfo(),
+      window.vorn.listTasks(),
     ])
     state.sessions = sessions
     state.appInfo  = appInfo
+    for (const t of tasks) state.tasks[t.id] = t
   } finally {
     state.loading = false
   }
+
+  // Listeners globali: sopravvivono alla navigazione tra view
+  window.vorn.onTaskProgress(({ taskId, ...progress }) => {
+    if (state.tasks[taskId]) state.tasks[taskId].progress = progress
+  })
+
+  window.vorn.onTaskDone(async ({ taskId, result, error }) => {
+    const t = state.tasks[taskId]
+    if (!t) return
+    t.status   = error ? 'error' : (result?.status ?? 'done')
+    t.result   = result  ?? null
+    t.error    = error   ?? null
+    t.progress = null
+    await refreshSession(t.sessionName)
+  })
 }
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
 
 export async function refreshSession(name) {
   const updated = await window.vorn.getSession(name)
   if (!updated) return
   const runs = await window.vorn.listRuns(name)
-  const idx = state.sessions.findIndex(s => s.name === name)
   const merged = { ...updated, runs }
+  const idx = state.sessions.findIndex(s => s.name === name)
   if (idx >= 0) state.sessions[idx] = merged
   else state.sessions.unshift(merged)
-  if (state.selectedSession?.name === name) {
-    state.selectedSession = merged
-  }
+  if (state.selectedSession?.name === name) state.selectedSession = merged
 }
 
-// ── Sessions ──────────────────────────────────────────────────────────────────
-
 export function selectSession(session) {
-  state.selectedSession = session
-  state.selectedRun = session.runs[0] ?? null
-  state.selectedRunFull = null
-  state.currentView = 'detail'
+  state.selectedSession  = session
+  state.selectedRun      = session.runs[0] ?? null
+  state.selectedRunFull  = null
+  state.currentView      = 'detail'
   if (state.selectedRun) loadFullRun(session.name, state.selectedRun.ts)
 }
 
 export function goBack() {
-  state.selectedSession = null
-  state.selectedRun = null
-  state.selectedRunFull = null
-  state.currentView = 'sessions'
+  state.selectedSession  = null
+  state.selectedRun      = null
+  state.selectedRunFull  = null
+  state.currentView      = 'sessions'
 }
 
 export function navigateTo(view) {
-  state.currentView = view
-  state.selectedSession = null
-  state.selectedRun = null
-  state.selectedRunFull = null
+  state.currentView      = view
+  state.selectedSession  = null
+  state.selectedRun      = null
+  state.selectedRunFull  = null
   state.selectedStoreEntry = null
 }
 
@@ -78,8 +91,13 @@ export async function createSession(name, store, sources) {
 
 // ── Runs ──────────────────────────────────────────────────────────────────────
 
+export async function deleteRun(sessionName, runTs) {
+  await window.vorn.deleteRun(sessionName, runTs)
+  await refreshSession(sessionName)
+}
+
 export function selectRun(run) {
-  state.selectedRun = run
+  state.selectedRun     = run
   state.selectedRunFull = null
   loadFullRun(state.selectedSession.name, run.ts)
 }
@@ -88,51 +106,61 @@ export async function loadFullRun(sessionName, runTs) {
   const full = await window.vorn.loadRun(sessionName, runTs)
   state.selectedRunFull = {
     ...full,
-    filesArray: Object.entries(full.files ?? {}).map(([hash_vorn, e]) => ({ hash_vorn, ...e }))
+    filesArray: Object.entries(full.files ?? {}).map(([name, e]) => ({ name, ...e }))
   }
 }
 
-// ── Backup ────────────────────────────────────────────────────────────────────
+// ── Tasks ─────────────────────────────────────────────────────────────────────
 
 export async function startBackup(sessionName, opts = {}) {
-  if (state.runningBackup) return
-
-  // Check for paused run to resume
   const paused = await window.vorn.getPausedRun(sessionName)
   const finalOpts = paused ? { ...opts, resumeTs: paused.ts } : opts
-
-  state.runningBackup = { sessionName, progress: null }
-
-  window.vorn.onBackupProgress((data) => {
-    if (data.sessionName === sessionName) {
-      state.runningBackup = { sessionName, progress: data }
-    }
-  })
-
-  try {
-    const result = await window.vorn.backup(sessionName, finalOpts)
-    await refreshSession(sessionName)
-    return result
-  } finally {
-    window.vorn.offBackupProgress()
-    window.vorn.offBackupDone()
-    state.runningBackup = null
+  const { taskId } = await window.vorn.startBackup(sessionName, finalOpts)
+  state.tasks[taskId] = {
+    id: taskId, type: 'backup', sessionName,
+    status: 'running', progress: null, result: null, error: null,
+    createdAt: new Date().toISOString(),
   }
+  // Aggiorna la lista run subito: openRun() è già stato chiamato nel main process
+  // prima che il taskId arrivasse qui, quindi il file esiste già su disco.
+  await refreshSession(sessionName)
+  return taskId
 }
 
-export function cancelBackup(sessionName) {
-  window.vorn.backupCancel(sessionName)
+export async function startRestore(sessionName, runTs, destDir) {
+  const { taskId } = await window.vorn.startRestore(sessionName, runTs, destDir)
+  state.tasks[taskId] = {
+    id: taskId, type: 'restore', sessionName,
+    status: 'running', progress: null, result: null, error: null,
+    createdAt: new Date().toISOString(),
+  }
+  return taskId
+}
+
+export function cancelTask(taskId) {
+  window.vorn.cancelTask(taskId)
+}
+
+// Ritorna il task attivo (running) per una sessione, o null
+export function getActiveTask(sessionName) {
+  return Object.values(state.tasks).find(t => t.sessionName === sessionName && t.status === 'running') ?? null
+}
+
+// Ritorna l'ultimo task completato di un certo tipo per una sessione
+export function getLastTask(sessionName, type) {
+  return Object.values(state.tasks)
+    .filter(t => t.sessionName === sessionName && t.type === type && t.status !== 'running')
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
-export async function fetchStorePage(storeDir, offset = 0, limit = 50) {
+export async function fetchStorePage(storeDir, offset = 0, limit = 20) {
   state.loading = true
   try {
     const result = await window.vorn.listStoreFiles(storeDir, offset, limit)
     if (offset === 0) state.storeEntries = result.files
     else state.storeEntries.push(...result.files)
-    
     state.storeLoaded = true
     return result
   } finally {
@@ -145,14 +173,9 @@ export async function handleSelectStoreEntry(storeDir, entry) {
   try {
     const fullMeta = await window.vorn.inspectHash(storeDir, entry.hash_vorn)
     state.selectedStoreEntry = { ...entry, ...fullMeta, loading: false }
-  } catch (error) {
-    console.error('Error fetching full metadata:', error)
+  } catch {
     state.selectedStoreEntry.loading = false
   }
-}
-
-export function selectStoreEntry(entry) {
-  // Ora delegato a handleSelectStoreEntry per il caricamento lazy
 }
 
 // ── Formatting ────────────────────────────────────────────────────────────────
@@ -177,27 +200,4 @@ export function formatBytes(bytes) {
 export function shortHash(hash) {
   if (!hash) return '—'
   return hash.slice(0, 8) + '…' + hash.slice(-8)
-}
-
-export async function startRestore(sessionName, runTs, destDir) {
-  state.runningRestore = { sessionName, progress: null }
-  state.lastRestoreResult = null
-
-  window.vorn.onRestoreProgress((data) => {
-    if (data.sessionName === sessionName) {
-      state.runningRestore = { sessionName, progress: data }
-    }
-  })
-
-  try {
-    const result = await window.vorn.restore(sessionName, runTs, destDir)
-    state.lastRestoreResult = result
-    return result
-  } catch (error) {
-    state.lastRestoreResult = { restored: 0, total: 0, errors: [{ path: '—', error: error.message }] }
-    throw error
-  } finally {
-    window.vorn.offRestoreProgress()
-    state.runningRestore = null
-  }
 }

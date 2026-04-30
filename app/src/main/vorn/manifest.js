@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs'
 import { join } from 'path'
 import { hostname } from 'os'
 
@@ -102,6 +102,12 @@ export function listRuns(manifestsDir, name) {
 
 export function getPausedRun(manifestsDir, name) {
   return listRuns(manifestsDir, name).find(r => r.status === 'paused') ?? null
+}
+
+export function deleteRun(manifestsDir, name, runTs) {
+  const p = runFile(manifestsDir, name, runTs)
+  if (!existsSync(p)) throw new Error(`Run not found: ${name} @ ${runTs}`)
+  unlinkSync(p)
 }
 
 export function recoverSession(manifestsDir, name) {
