@@ -14,32 +14,32 @@ import {
   finishTask, failTask, cancelTask, listTasks, hasRunningTask
 } from './vorn/taskManager.js'
 
-const manifestsDir = join(homedir(), '.vorn', 'sessions')
+const dbPath = join(homedir(), '.vorn', 'vorn.db')
 
 export function registerIpcHandlers(mainWindow) {
 
   // ── Sessions ──────────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:list-sessions', () => listSessions(manifestsDir))
+  ipcMain.handle('vorn:list-sessions', () => listSessions(dbPath))
 
   ipcMain.handle('vorn:create-session', (_, { name, store, sources }) =>
-    createSession(manifestsDir, name, store, sources)
+    createSession(dbPath, name, store, sources)
   )
 
-  ipcMain.handle('vorn:get-session', (_, name) => getSession(manifestsDir, name))
+  ipcMain.handle('vorn:get-session', (_, name) => getSession(dbPath, name))
 
   // ── Runs ──────────────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:list-runs', (_, sessionName) => listRuns(manifestsDir, sessionName))
+  ipcMain.handle('vorn:list-runs', (_, sessionName) => listRuns(dbPath, sessionName))
 
   ipcMain.handle('vorn:load-run', (_, { sessionName, runTs }) =>
-    loadRun(manifestsDir, sessionName, runTs)
+    loadRun(dbPath, sessionName, runTs)
   )
 
-  ipcMain.handle('vorn:get-paused-run', (_, sessionName) => getPausedRun(manifestsDir, sessionName))
+  ipcMain.handle('vorn:get-paused-run', (_, sessionName) => getPausedRun(dbPath, sessionName))
 
   ipcMain.handle('vorn:delete-run', (_, { sessionName, runTs }) =>
-    deleteRun(manifestsDir, sessionName, runTs)
+    deleteRun(dbPath, sessionName, runTs)
   )
 
   // ── Tasks: Backup ─────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ export function registerIpcHandlers(mainWindow) {
       },
     }
 
-    backup(manifestsDir, sessionName, opts)
+    backup(dbPath, sessionName, opts)
       .then(result => {
         finishTask(task.id, result)
         mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
@@ -65,7 +65,6 @@ export function registerIpcHandlers(mainWindow) {
         mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error: err.message })
       })
 
-    // _handle è iniettato sincronicamente da backup() prima del primo await
     setTaskCancelFn(task.id, () => opts._handle?._cancel())
 
     return { taskId: task.id }
@@ -83,7 +82,7 @@ export function registerIpcHandlers(mainWindow) {
       },
     }
 
-    restore(manifestsDir, sessionName, runTs, destDir, opts)
+    restore(dbPath, sessionName, runTs, destDir, opts)
       .then(result => {
         finishTask(task.id, { ...result, status: 'done' })
         mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
@@ -118,7 +117,7 @@ export function registerIpcHandlers(mainWindow) {
   // ── App info ──────────────────────────────────────────────────────────────
 
   ipcMain.handle('vorn:get-app-info', () => ({
-    manifestsDir,
+    dbPath,
     version:  app.getVersion(),
     platform: process.platform,
   }))

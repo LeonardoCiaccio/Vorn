@@ -7,18 +7,21 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "package": "electron-vite build && electron-builder"
+    "package": "electron-vite build && electron-builder",
+    "postinstall": "electron-rebuild -f -w better-sqlite3"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
     "@tailwindcss/vite": "^4.1.4",
     "@vitejs/plugin-vue": "^5.2.1",
-    "electron": "^35.7.5",
+    "electron": "^41.3.0",
     "electron-builder": "^26.0.12",
     "electron-vite": "^3.1.0",
     "tailwindcss": "^4.1.4"
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
+    "better-sqlite3": "^12.9.0",
     "vue": "^3.5.13"
   },
   "build": {

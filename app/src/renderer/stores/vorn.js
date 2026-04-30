@@ -62,10 +62,9 @@ export async function refreshSession(name) {
 
 export function selectSession(session) {
   state.selectedSession  = session
-  state.selectedRun      = session.runs[0] ?? null
+  state.selectedRun      = null
   state.selectedRunFull  = null
   state.currentView      = 'detail'
-  if (state.selectedRun) loadFullRun(session.name, state.selectedRun.ts)
 }
 
 export function goBack() {

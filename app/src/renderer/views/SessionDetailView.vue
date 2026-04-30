@@ -116,11 +116,8 @@
       </div>
     </div>
 
-    <!-- Main + sidebar -->
-    <div class="flex flex-1 overflow-hidden">
-
-      <!-- Scroll area principale -->
-      <div class="flex-1 overflow-auto">
+    <!-- Scroll area principale -->
+    <div class="flex-1 overflow-auto">
 
         <!-- Info cards -->
         <div class="px-8 pt-6 pb-4 grid grid-cols-4 gap-4">
@@ -223,14 +220,13 @@
           </div>
         </div>
 
-      </div>
+    </div>
 
-      <!-- Sidebar dettaglio run -->
-      <transition name="slide">
-        <div
-          v-if="selectedRun"
-          class="w-96 shrink-0 border-l border-gray-800 bg-gray-900 flex flex-col overflow-hidden shadow-2xl"
-        >
+    <!-- Sidebar dettaglio run — drawer modale a tutta altezza -->
+    <transition name="slide">
+      <div v-if="selectedRun" class="fixed inset-0 z-40 flex justify-end">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeRunDetail" />
+        <div class="drawer-panel relative w-md h-full bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl overflow-hidden">
           <!-- Header sidebar -->
           <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-gray-900/90 backdrop-blur-md z-10">
             <div>
@@ -320,9 +316,8 @@
             </button>
           </div>
         </div>
-      </transition>
-
-    </div>
+      </div>
+    </transition>
 
     <!-- Modals -->
     <RestoreModal
@@ -336,12 +331,21 @@
 </template>
 
 <style scoped>
-.slide-enter-active, .slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.slide-enter-active,
+.slide-leave-active {
+  transition: opacity 0.25s ease;
 }
-.slide-enter-from, .slide-leave-to {
-  transform: translateX(100%);
+.slide-enter-active .drawer-panel,
+.slide-leave-active .drawer-panel {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide-enter-from,
+.slide-leave-to {
   opacity: 0;
+}
+.slide-enter-from .drawer-panel,
+.slide-leave-to .drawer-panel {
+  transform: translateX(100%);
 }
 </style>
 

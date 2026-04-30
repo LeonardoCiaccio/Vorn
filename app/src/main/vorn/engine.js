@@ -27,19 +27,19 @@ async function walk(dir, excludes = [], _results = []) {
 
 // ── Backup ────────────────────────────────────────────────────────────────────
 
-export async function backup(manifestsDir, sessionName, opts = {}) {
+export async function backup(dbPath, sessionName, opts = {}) {
   const { onProgress, excludes = [], resumeTs = null, maxBytes = 0 } = opts
 
   const run = resumeTs
-    ? loadRun(manifestsDir, sessionName, resumeTs)
-    : openRun(manifestsDir, sessionName)
+    ? loadRun(dbPath, sessionName, resumeTs)
+    : openRun(dbPath, sessionName)
 
   if (run.status === 'done') throw new Error('Run already completed')
 
   // Aggiorna su disco prima di qualsiasi await, così refreshSession vede 'running'
   if (resumeTs) {
     run.status = 'running'
-    saveRun(manifestsDir, sessionName, run.ts, run)
+    saveRun(dbPath, sessionName, run.ts, run)
   }
 
   const { ts: runTs, store, sources, machine } = run
@@ -126,16 +126,16 @@ export async function backup(manifestsDir, sessionName, opts = {}) {
   run.files_new    = filesNew
   run.files_dedup  = filesDedup
   run.files_errors = errors
-  saveRun(manifestsDir, sessionName, runTs, run)
+  saveRun(dbPath, sessionName, runTs, run)
 
   return { status: run.status, runTs, files_total: total, filesNew, filesDedup, durationSec, errors }
 }
 
 // ── Restore ───────────────────────────────────────────────────────────────────
 
-export async function restore(manifestsDir, sessionName, runTs, destDir, opts = {}) {
+export async function restore(dbPath, sessionName, runTs, destDir, opts = {}) {
   const { onProgress } = opts
-  const run = loadRun(manifestsDir, sessionName, runTs)
+  const run = loadRun(dbPath, sessionName, runTs)
   const storePath = run.store
   const errors = []
   let restored = 0
