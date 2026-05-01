@@ -256,42 +256,9 @@
               </div>
             </div>
 
-            <div v-if="selectedRun.bytes_total != null" class="px-5 py-3 grid grid-cols-2 gap-3 border-b border-gray-800 text-center">
-              <div>
-                <p class="text-sm font-semibold text-white">{{ formatBytes(selectedRun.bytes_total) }}</p>
-                <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Dimensione</p>
-              </div>
-              <div>
-                <p class="text-sm font-semibold text-white">{{ formatBytes(selectedRun.bytes_new) }}</p>
-                <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Scritti</p>
-              </div>
-            </div>
-
-            <!-- File list -->
-            <div class="px-5 py-3 border-b border-gray-800">
-              <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">File nel run</p>
-
-              <div v-if="!state.selectedRunFull" class="flex items-center gap-1.5 text-xs text-gray-600 py-4 justify-center">
-                <ArrowPathIcon class="w-3.5 h-3.5 animate-spin" />
-                Caricamento…
-              </div>
-              <div v-else-if="fullRunFiles.length === 0" class="text-xs text-gray-600 italic py-4 text-center">
-                Nessun file in questa run
-              </div>
-              <div v-else class="space-y-1">
-                <div
-                  v-for="file in fullRunFiles"
-                  :key="file.hash_vorn"
-                  class="flex items-start gap-2 px-2 py-1.5 rounded-md hover:bg-gray-800/40 transition-colors"
-                >
-                  <DocumentIcon class="w-3.5 h-3.5 text-gray-600 mt-0.5 shrink-0" />
-                  <div class="min-w-0">
-                    <p class="text-xs font-medium text-gray-300 truncate">{{ file.name }}</p>
-                    <p class="text-[10px] text-gray-600 font-mono truncate mt-0.5">{{ file.hash_vorn }}</p>
-                    <p class="text-[10px] text-gray-500 mt-0.5">{{ formatBytes(file.bytes) }}</p>
-                  </div>
-                </div>
-              </div>
+            <!-- File explorer -->
+            <div class="px-3 py-3">
+              <FileTree :files="state.selectedRunFull?.files ?? null" />
             </div>
 
           </div>
@@ -354,7 +321,6 @@ import {
   ArrowLeftIcon,
   FolderOpenIcon,
   FolderIcon,
-  DocumentIcon,
   ArrowPathIcon,
   ArrowDownTrayIcon,
   TrashIcon,
@@ -372,6 +338,7 @@ import {
 } from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import RestoreModal from '../components/RestoreModal.vue'
+import FileTree from '../components/FileTree.vue'
 
 const session     = computed(() => state.selectedSession)
 const selectedRun = computed(() => state.selectedRun)
@@ -412,7 +379,6 @@ function clearRestoreResult() {
 }
 
 const showRestoreModal = ref(false)
-const fullRunFiles = computed(() => state.selectedRunFull?.filesArray ?? [])
 
 function pct(part, total) {
   if (!total) return '—'
