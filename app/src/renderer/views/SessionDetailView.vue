@@ -444,7 +444,10 @@ function handleRestore() {
 }
 
 async function onRestoreConfirm(destDir) {
+  const sessionName = session.value.name
+  const runTs = selectedRun.value.ts
   showRestoreModal.value = false
-  await startRestore(session.value.name, selectedRun.value.ts, destDir)
+  closeRunDetail()
+  await startRestore(sessionName, runTs, destDir)
 }
 </script>
