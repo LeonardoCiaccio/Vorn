@@ -29,6 +29,7 @@
     <!-- File -->
     <div
       v-else
+      :title="node.hash_vorn"
       class="flex items-center gap-1.5 py-0.5 rounded hover:bg-gray-800/30 transition-colors"
       :style="{ paddingLeft: (indent + 16) + 'px' }"
     >
