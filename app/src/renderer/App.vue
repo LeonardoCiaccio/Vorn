@@ -1,6 +1,6 @@
 <template>
-  <div class="flex h-screen bg-gray-950 text-gray-100 overflow-hidden">
-    <AppSidebar />
+  <div class="flex flex-col h-screen bg-gray-950 text-gray-100 overflow-hidden">
+    <AppTopBar />
     <div class="flex-1 flex flex-col overflow-hidden">
 
       <!-- Banner store non configurato -->
@@ -32,7 +32,7 @@
 <script setup>
 import { onMounted } from 'vue'
 import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
-import AppSidebar from './components/AppSidebar.vue'
+import AppTopBar from './components/AppTopBar.vue'
 import SessionsView from './views/SessionsView.vue'
 import SessionDetailView from './views/SessionDetailView.vue'
 import StoreView from './views/StoreView.vue'

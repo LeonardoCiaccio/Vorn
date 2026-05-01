@@ -35,58 +35,71 @@
       </div>
 
       <!-- Table Area -->
-      <div class="flex-1 overflow-auto px-8 py-4">
-        <table class="w-full text-sm">
-          <thead class="sticky top-0 bg-gray-950 z-10">
-            <tr>
-              <th class="pb-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pr-5 w-1/2">Hash</th>
-              <th class="pb-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider pr-5">Dimensione</th>
-              <th class="pb-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ultima modifica</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-800/60">
-            <tr
-              v-for="entry in state.storeEntries"
-              :key="entry.hash_vorn"
-              @click="onEntrySelect(entry)"
-              :class="[
-                'group cursor-pointer transition-colors',
-                state.selectedStoreEntry?.hash_vorn === entry.hash_vorn
-                  ? 'bg-indigo-500/10'
-                  : 'hover:bg-gray-800/40'
-              ]"
-            >
-              <!-- Hash (troncato) -->
-              <td class="py-3 pr-5">
-                <span class="font-mono text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md group-hover:bg-indigo-500/20 transition-colors">
-                  {{ entry.hash_vorn.slice(0, 12) }}…{{ entry.hash_vorn.slice(-8) }}
-                </span>
-              </td>
+      <div class="flex-1 overflow-hidden flex flex-col">
 
-              <!-- Size (.vorn container) -->
-              <td class="py-3 pr-5 text-right font-mono text-sm text-gray-300">
-                {{ formatBytes(entry.bytes_file) }}
-              </td>
-
-              <!-- mtime -->
-              <td class="py-3 text-xs text-gray-400">
-                {{ formatTs(entry.mtime) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Sentinel per IntersectionObserver -->
-        <div ref="sentinel" class="h-4"></div>
-
-        <!-- Spinner caricamento pagina successiva -->
-        <div v-if="state.loading" class="py-6 flex justify-center">
-          <ArrowPathIcon class="w-6 h-6 text-indigo-500 animate-spin" />
+        <!-- Header fisso -->
+        <div class="shrink-0 bg-gray-950 border-b border-gray-800 px-8">
+          <table class="w-full text-sm" style="table-layout:fixed">
+            <colgroup>
+              <col style="width:50%" />
+              <col style="width:25%" />
+              <col style="width:25%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pr-5">Hash</th>
+                <th class="py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider pr-5">Dimensione</th>
+                <th class="py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ultima modifica</th>
+              </tr>
+            </thead>
+          </table>
         </div>
 
-        <div v-if="state.storeEntries.length === 0 && !state.loading" class="flex flex-col items-center justify-center h-48 text-center">
-          <ArchiveBoxIcon class="w-8 h-8 text-gray-700 mb-3" />
-          <p class="text-gray-500 text-sm">Nessun file nel cassetto</p>
+        <!-- Body scrollabile -->
+        <div class="flex-1 overflow-auto px-8 pb-4">
+          <table class="w-full text-sm" style="table-layout:fixed">
+            <colgroup>
+              <col style="width:50%" />
+              <col style="width:25%" />
+              <col style="width:25%" />
+            </colgroup>
+            <tbody class="divide-y divide-gray-800/60">
+              <tr
+                v-for="entry in state.storeEntries"
+                :key="entry.hash_vorn"
+                @click="onEntrySelect(entry)"
+                :class="[
+                  'group cursor-pointer transition-colors',
+                  state.selectedStoreEntry?.hash_vorn === entry.hash_vorn
+                    ? 'bg-indigo-500/10'
+                    : 'hover:bg-gray-800/40'
+                ]"
+              >
+                <td class="py-3 pr-5">
+                  <span class="font-mono text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md group-hover:bg-indigo-500/20 transition-colors">
+                    {{ entry.hash_vorn.slice(0, 12) }}…{{ entry.hash_vorn.slice(-8) }}
+                  </span>
+                </td>
+                <td class="py-3 pr-5 text-right font-mono text-sm text-gray-300">
+                  {{ formatBytes(entry.bytes_file) }}
+                </td>
+                <td class="py-3 text-xs text-gray-400">
+                  {{ formatTs(entry.mtime) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div ref="sentinel" class="h-4"></div>
+
+          <div v-if="state.loading" class="py-6 flex justify-center">
+            <ArrowPathIcon class="w-6 h-6 text-indigo-500 animate-spin" />
+          </div>
+
+          <div v-if="state.storeEntries.length === 0 && !state.loading" class="flex flex-col items-center justify-center h-48 text-center">
+            <ArchiveBoxIcon class="w-8 h-8 text-gray-700 mb-3" />
+            <p class="text-gray-500 text-sm">Nessun file nel cassetto</p>
+          </div>
         </div>
       </div>
     </div>
