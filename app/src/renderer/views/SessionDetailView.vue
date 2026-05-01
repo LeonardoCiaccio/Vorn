@@ -380,14 +380,8 @@ const hasPaused   = computed(() => session.value?.runs.some(r => r.status === 'p
 // Task attivo per questa sessione (backup o restore in corso)
 const activeTask      = computed(() => getActiveTask(session.value?.name))
 
-// Sessione occupata (running o paused): blocca restore
-const sessionBusy = computed(() => {
-  const name = session.value?.name
-  if (!name) return false
-  return Object.values(state.tasks).some(
-    t => t.sessionName === name && (t.status === 'running' || t.status === 'paused')
-  ) || hasPaused.value
-})
+// Sessione occupata: c'è un task attivamente in esecuzione
+const sessionBusy = computed(() => !!getActiveTask(session.value?.name))
 
 // Cancella disabilitato solo se il run selezionato è quello attivamente in scrittura
 const cannotDeleteRun = computed(() => selectedRun.value?.status === 'running')

@@ -173,3 +173,10 @@ export function recoverSession(dbPath, name) {
   if (!session) throw new Error(`Session not found: ${name}`)
   return { ...session, sources: JSON.parse(session.sources) }
 }
+
+// Chiamata all'avvio: run rimaste 'running' per un crash precedente vengono
+// messe in 'paused' così possono essere riprese normalmente.
+export function fixOrphanedRuns(dbPath) {
+  const db = openDb(dbPath)
+  db.prepare(`UPDATE runs SET status = 'paused' WHERE status = 'running'`).run()
+}

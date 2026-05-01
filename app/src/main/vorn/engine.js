@@ -2,24 +2,17 @@ import { statSync, readdirSync, mkdirSync, createWriteStream } from 'fs'
 import { join, relative } from 'path'
 import { vornHash } from './hash.js'
 import { createOrAddPath, extractContent } from './store.js'
-import { openRun, saveRun, loadRun, setRunStatus } from './manifest.js'
-
-const YIELD_EVERY  = 100  // file tra un yield dell'event loop e l'altro
+import { openRun, saveRun, loadRun } from './manifest.js'
 
 // ── Walk ──────────────────────────────────────────────────────────────────────
-// Asincrono: yield ogni 1000 entry per non bloccare l'event loop su dir grandi.
 
-async function walk(dir, excludes = [], _results = []) {
+function walk(dir, excludes = [], _results = []) {
   try {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name)
       if (excludes.some(p => entry.name === p || full.includes(p))) continue
-      if (entry.isDirectory()) {
-        await walk(full, excludes, _results)
-      } else if (entry.isFile()) {
-        _results.push(full)
-        if (_results.length % 1000 === 0) await sleep(0)
-      }
+      if (entry.isDirectory()) walk(full, excludes, _results)
+      else if (entry.isFile()) _results.push(full)
     }
   } catch (_) { /* skip unreadable dirs */ }
   return _results
@@ -28,7 +21,7 @@ async function walk(dir, excludes = [], _results = []) {
 // ── Backup ────────────────────────────────────────────────────────────────────
 
 export async function backup(dbPath, sessionName, opts = {}) {
-  const { onProgress, excludes = [], resumeTs = null, maxBytes = 0 } = opts
+  const { onProgress, excludes = [], resumeTs = null, maxBytes = 0, isCancelled } = opts
 
   const run = resumeTs
     ? loadRun(dbPath, sessionName, resumeTs)
@@ -36,23 +29,14 @@ export async function backup(dbPath, sessionName, opts = {}) {
 
   if (run.status === 'done') throw new Error('Run already completed')
 
-  // Aggiorna su disco prima di qualsiasi await, così refreshSession vede 'running'
-  if (resumeTs) {
-    run.status = 'running'
-    saveRun(dbPath, sessionName, run.ts, run)
-  }
+  if (resumeTs) run.status = 'running'
 
   const { ts: runTs, store, sources, machine } = run
   const startTime   = Date.now()
   const alreadyDone = new Set(Object.keys(run.files))
 
-  // Cancellation handle — iniettato sincronicamente prima del primo await reale
-  let cancelled = false
-  opts._handle  = { _cancel: () => { cancelled = true } }
-
-  // Scansione directory: asincrona, yield ogni 1000 entry
   const allFiles = []
-  for (const src of sources) await walk(src, excludes, allFiles)
+  for (const src of sources) walk(src, excludes, allFiles)
   const total = allFiles.length
 
   let filesNew   = run.files_new   ?? 0
@@ -62,7 +46,7 @@ export async function backup(dbPath, sessionName, opts = {}) {
   const errors   = [...(run.files_errors ?? [])]
 
   for (let i = 0; i < allFiles.length; i++) {
-    if (cancelled) break
+    if (isCancelled?.()) break
 
     const filePath = allFiles[i]
     const source   = sources.find(s => filePath.startsWith(s)) ?? sources[0]
@@ -95,7 +79,6 @@ export async function backup(dbPath, sessionName, opts = {}) {
       if (outcome === 'new') { filesNew++; bytesNew += bytes }
       else                   { filesDedup++ }
 
-      // Accumula in memoria — nessuna I/O per file
       run.files[relPath] = { hash_vorn: hashVorn, source, bytes, mtime: stat.mtimeMs, permissions: pathEntry.permissions }
       alreadyDone.add(relPath)
     } catch (e) {
@@ -112,13 +95,10 @@ export async function backup(dbPath, sessionName, opts = {}) {
       bytes_total: bytesTotal,
       bytes_new:   bytesNew,
     })
-
-    if (i % YIELD_EVERY === 0) await sleep(0)
   }
 
-  // Flush finale con stato e statistiche complete
   const durationSec = Math.round((Date.now() - startTime) / 1000)
-  run.status       = cancelled ? 'paused' : 'done'
+  run.status       = isCancelled?.() ? 'paused' : 'done'
   run.duration_sec = durationSec
   run.bytes_total  = bytesTotal
   run.bytes_new    = bytesNew
@@ -134,7 +114,7 @@ export async function backup(dbPath, sessionName, opts = {}) {
 // ── Restore ───────────────────────────────────────────────────────────────────
 
 export async function restore(dbPath, sessionName, runTs, destDir, opts = {}) {
-  const { onProgress } = opts
+  const { onProgress, isCancelled } = opts
   const run = loadRun(dbPath, sessionName, runTs)
   const storePath = run.store
   const errors = []
@@ -144,6 +124,8 @@ export async function restore(dbPath, sessionName, runTs, destDir, opts = {}) {
   const total = fileEntries.length
 
   for (let i = 0; i < fileEntries.length; i++) {
+    if (isCancelled?.()) break
+
     const [relPath, info] = fileEntries[i]
     try {
       const rs = extractContent(storePath, info.hash_vorn)
@@ -162,13 +144,7 @@ export async function restore(dbPath, sessionName, runTs, destDir, opts = {}) {
     }
 
     onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
-
-    if (i % YIELD_EVERY === 0) await sleep(0)
   }
 
   return { restored, total, errors }
 }
-
-// ── Utils ─────────────────────────────────────────────────────────────────────
-
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }

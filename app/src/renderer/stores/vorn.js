@@ -16,7 +16,11 @@ export const state = reactive({
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
+let _initDone = false
+
 export async function init() {
+  if (_initDone) return
+  _initDone = true
   state.loading = true
   try {
     const [sessions, appInfo, tasks] = await Promise.all([

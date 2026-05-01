@@ -1,10 +1,20 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
+import { resolve } from 'path'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        input: {
+          index:         resolve(__dirname, 'src/main/index.js'),
+          backupWorker:  resolve(__dirname, 'src/main/vorn/backupWorker.js'),
+          restoreWorker: resolve(__dirname, 'src/main/vorn/restoreWorker.js'),
+        }
+      }
+    }
   },
   preload: {
     plugins: [externalizeDepsPlugin()]

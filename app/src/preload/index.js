@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+// Riferimenti espliciti ai listener attivi — evita removeAllListeners (troppo aggressivo)
+let _onProgress = null
+let _onDone     = null
+
 contextBridge.exposeInMainWorld('vorn', {
   // Sessions
   listSessions:   ()                        => ipcRenderer.invoke('vorn:list-sessions'),
@@ -17,10 +21,23 @@ contextBridge.exposeInMainWorld('vorn', {
   startRestore:   (sessionName, runTs, destDir)     => ipcRenderer.invoke('vorn:start-restore', { sessionName, runTs, destDir }),
   cancelTask:     (taskId)                          => ipcRenderer.invoke('vorn:task-cancel', taskId),
   listTasks:      ()                                => ipcRenderer.invoke('vorn:task-list'),
-  onTaskProgress: (cb)  => ipcRenderer.on('vorn:task-progress', (_, data) => cb(data)),
-  offTaskProgress: ()   => ipcRenderer.removeAllListeners('vorn:task-progress'),
-  onTaskDone:     (cb)  => ipcRenderer.on('vorn:task-done',     (_, data) => cb(data)),
-  offTaskDone:    ()    => ipcRenderer.removeAllListeners('vorn:task-done'),
+
+  onTaskProgress: (cb) => {
+    if (_onProgress) ipcRenderer.off('vorn:task-progress', _onProgress)
+    _onProgress = (_, data) => cb(data)
+    ipcRenderer.on('vorn:task-progress', _onProgress)
+  },
+  offTaskProgress: () => {
+    if (_onProgress) { ipcRenderer.off('vorn:task-progress', _onProgress); _onProgress = null }
+  },
+  onTaskDone: (cb) => {
+    if (_onDone) ipcRenderer.off('vorn:task-done', _onDone)
+    _onDone = (_, data) => cb(data)
+    ipcRenderer.on('vorn:task-done', _onDone)
+  },
+  offTaskDone: () => {
+    if (_onDone) { ipcRenderer.off('vorn:task-done', _onDone); _onDone = null }
+  },
 
   // Store / Inspect
   inspectHash:    (store, hashVorn)         => ipcRenderer.invoke('vorn:inspect-hash', { store, hashVorn }),
