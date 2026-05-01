@@ -151,8 +151,8 @@ export async function startBackup(sessionName, opts = {}) {
   return taskId
 }
 
-export async function startRestore(sessionName, runTs, destDir) {
-  const { taskId } = await window.vorn.startRestore(sessionName, runTs, destDir)
+export async function startRestore(sessionName, runTs, destDir, selectedFiles = null) {
+  const { taskId } = await window.vorn.startRestore(sessionName, runTs, destDir, selectedFiles)
   state.tasks[taskId] = {
     id: taskId, type: 'restore', sessionName,
     status: 'running', progress: null, result: null, error: null,

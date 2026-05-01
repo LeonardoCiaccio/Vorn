@@ -258,7 +258,11 @@
 
             <!-- File explorer -->
             <div class="px-3 py-3">
-              <FileTree :files="state.selectedRunFull?.files ?? null" />
+              <FileTree
+                :files="state.selectedRunFull?.files ?? null"
+                @update:selected="selectedFiles = $event"
+                @update:selectionMode="inSelectionMode = $event"
+              />
             </div>
 
           </div>
@@ -269,14 +273,19 @@
             <div v-if="confirmingDelete" class="flex items-center gap-2">
               <ExclamationTriangleIcon class="w-4 h-4 text-amber-400 shrink-0" />
               <span class="text-xs text-gray-400 flex-1">Eliminare questo run?</span>
+              <button @click="confirmDeleteRun" class="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+              <button @click="confirmingDelete = false" class="px-3 py-1.5 rounded-md text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Annulla</button>
+            </div>
+            <!-- Ripristino selettivo -->
+            <div v-else-if="inSelectionMode" class="flex gap-2">
               <button
-                @click="confirmDeleteRun"
-                class="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors"
-              >Elimina</button>
-              <button
-                @click="confirmingDelete = false"
-                class="px-3 py-1.5 rounded-md text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-              >Annulla</button>
+                @click="selectedFiles.length ? handleRestore() : (showSelectionWarn = true)"
+                :disabled="sessionBusy"
+                class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
+              >
+                <ArrowDownTrayIcon class="w-3.5 h-3.5" />
+                Ripristina file e cartelle ({{ selectedFiles.length }})
+              </button>
             </div>
             <!-- Azioni normali -->
             <div v-else class="flex gap-2">
@@ -302,11 +311,32 @@
       </div>
     </transition>
 
+    <!-- Modal: nessun file selezionato -->
+    <div v-if="showSelectionWarn" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="showSelectionWarn = false">
+      <div class="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div class="px-6 py-5 flex items-start gap-4">
+          <div class="w-9 h-9 rounded-md bg-amber-500/15 border border-amber-500/20 flex items-center justify-center shrink-0">
+            <ExclamationTriangleIcon class="w-4.5 h-4.5 text-amber-400" />
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-white mb-1">Nessun file selezionato</p>
+            <p class="text-xs text-gray-400">Seleziona almeno un file o una cartella dalla lista prima di avviare il ripristino selettivo.</p>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-800 flex justify-end">
+          <button @click="showSelectionWarn = false" class="px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 transition-colors">
+            Capito
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modals -->
     <RestoreModal
       :show="showRestoreModal"
       :run-ts="selectedRun?.ts"
       :original-path="session?.sources[0]"
+      :selected-files="selectedFiles.length ? selectedFiles : null"
       @close="showRestoreModal = false"
       @confirm="onRestoreConfirm"
     />
@@ -396,6 +426,9 @@ function clearRestoreResult() {
 
 const showRestoreModal  = ref(false)
 const confirmingDelete  = ref(false)
+const selectedFiles     = ref([])
+const inSelectionMode   = ref(false)
+const showSelectionWarn = ref(false)
 
 function pct(part, total) {
   if (!total) return '—'
@@ -403,9 +436,12 @@ function pct(part, total) {
 }
 
 function closeRunDetail() {
-  state.selectedRun     = null
-  state.selectedRunFull = null
-  confirmingDelete.value = false
+  state.selectedRun       = null
+  state.selectedRunFull   = null
+  confirmingDelete.value  = false
+  selectedFiles.value     = []
+  inSelectionMode.value   = false
+  showSelectionWarn.value = false
 }
 
 function handleBackup() { startBackup(session.value.name) }
@@ -429,9 +465,10 @@ function handleRestore() {
 
 async function onRestoreConfirm(destDir) {
   const sessionName = session.value.name
-  const runTs = selectedRun.value.ts
+  const runTs       = selectedRun.value.ts
+  const files       = selectedFiles.value.length ? [...selectedFiles.value] : null
   showRestoreModal.value = false
   closeRunDetail()
-  await startRestore(sessionName, runTs, destDir)
+  await startRestore(sessionName, runTs, destDir, files)
 }
 </script>

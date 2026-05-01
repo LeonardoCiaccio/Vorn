@@ -132,11 +132,11 @@ export function registerIpcHandlers(mainWindow) {
 
   // ── Tasks: Restore ────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:start-restore', (_, { sessionName, runTs, destDir }) => {
+  ipcMain.handle('vorn:start-restore', (_, { sessionName, runTs, destDir, selectedFiles = null }) => {
     if (hasRunningTask(sessionName)) throw new Error(`Operazione già in corso per la sessione: ${sessionName}`)
     const task = createTask('restore', sessionName)
 
-    _spawnWorker('restoreWorker.js', { dbPath, sessionName, runTs, destDir }, task.id, mainWindow,
+    _spawnWorker('restoreWorker.js', { dbPath, sessionName, runTs, destDir, selectedFiles }, task.id, mainWindow,
       (result, error) => {
         if (error) {
           failTask(task.id, error)

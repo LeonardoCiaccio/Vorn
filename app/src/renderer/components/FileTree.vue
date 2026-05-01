@@ -1,17 +1,34 @@
 <template>
   <div>
-    <!-- Header: label + expand/collapse controls -->
+    <!-- Header -->
     <div class="flex items-center justify-between px-2 mb-1">
       <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">File nel run</p>
-      <button
-        v-if="tree.length"
-        @click="toggleAll"
-        :title="allExpanded ? 'Comprimi tutto' : 'Espandi tutto'"
-        class="p-1 rounded text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
-      >
-        <ArrowsPointingInIcon v-if="allExpanded" class="w-3.5 h-3.5" />
-        <ArrowsPointingOutIcon v-else             class="w-3.5 h-3.5" />
-      </button>
+      <div class="flex items-center gap-0.5">
+        <!-- Selezione toggle -->
+        <button
+          v-if="tree.length"
+          @click="toggleSelectionMode"
+          :title="selectionMode ? 'Esci dalla selezione' : 'Seleziona file'"
+          :class="[
+            'p-1 rounded transition-colors text-[10px] font-medium px-2',
+            selectionMode
+              ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30'
+              : 'text-gray-600 hover:text-gray-300 hover:bg-gray-800'
+          ]"
+        >
+          {{ selectionMode ? 'Esci' : 'Seleziona' }}
+        </button>
+        <!-- Expand/collapse -->
+        <button
+          v-if="tree.length"
+          @click="toggleAll"
+          :title="allExpanded ? 'Comprimi tutto' : 'Espandi tutto'"
+          class="p-1 rounded text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+        >
+          <ArrowsPointingInIcon v-if="allExpanded" class="w-3.5 h-3.5" />
+          <ArrowsPointingOutIcon v-else             class="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -38,7 +55,7 @@
 </template>
 
 <script setup>
-import { computed, provide, ref } from 'vue'
+import { computed, provide, ref, watch } from 'vue'
 import { ArrowPathIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/vue/24/outline'
 import FileTreeNode from './FileTreeNode.vue'
 
@@ -46,7 +63,9 @@ const props = defineProps({
   files: { type: Object, default: null },
 })
 
-// Segnali per expand/collapse globale — FileTreeNode li inietta e li osserva
+const emit = defineEmits(['update:selected', 'update:selectionMode'])
+
+// Expand/collapse globale
 const expandSignal   = ref(0)
 const collapseSignal = ref(0)
 const allExpanded    = ref(true)
@@ -58,6 +77,28 @@ function toggleAll() {
   if (allExpanded.value) expandSignal.value++
   else                   collapseSignal.value++
 }
+
+// Modalità selezione
+const selectionMode = ref(false)
+provide('selectionMode', selectionMode)
+
+function toggleSelectionMode() {
+  selectionMode.value = !selectionMode.value
+  if (!selectionMode.value) selectedPaths.value = new Set()
+  emit('update:selectionMode', selectionMode.value)
+}
+
+// Selezione file
+const selectedPaths = ref(new Set())
+provide('selectedPaths', selectedPaths)
+
+watch(() => props.files, () => {
+  selectedPaths.value = new Set()
+  selectionMode.value = false
+  emit('update:selectionMode', false)
+})
+
+watch(selectedPaths, (s) => emit('update:selected', [...s]))
 
 function buildTree(files) {
   const dirMap = new Map()

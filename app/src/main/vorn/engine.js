@@ -114,13 +114,15 @@ export async function backup(dbPath, sessionName, opts = {}) {
 // ── Restore ───────────────────────────────────────────────────────────────────
 
 export async function restore(dbPath, sessionName, runTs, destDir, opts = {}) {
-  const { onProgress, isCancelled } = opts
+  const { onProgress, isCancelled, selectedFiles } = opts
   const run = loadRun(dbPath, sessionName, runTs)
   const storePath = run.store
   const errors = []
   let restored = 0
 
-  const fileEntries = Object.entries(run.files)
+  const fileEntries = selectedFiles?.length
+    ? Object.entries(run.files).filter(([k]) => selectedFiles.includes(k))
+    : Object.entries(run.files)
   const total = fileEntries.length
 
   for (let i = 0; i < fileEntries.length; i++) {

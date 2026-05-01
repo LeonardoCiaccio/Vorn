@@ -12,10 +12,14 @@
 
       <!-- Body -->
       <div class="p-6">
-        <p class="text-xs text-gray-400 mb-6">
-          Seleziona dove vuoi ripristinare i file per la run del 
+        <p class="text-xs text-gray-400 mb-4">
+          Seleziona dove vuoi ripristinare i file per la run del
           <span class="text-indigo-400 font-mono">{{ formatTs(runTs) }}</span>.
         </p>
+        <div v-if="selectedFiles?.length" class="flex items-center gap-2 mb-5 px-3 py-2 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300">
+          <span>Ripristino selettivo:</span>
+          <span class="font-semibold">{{ selectedFiles.length }} file</span>
+        </div>
 
         <div class="space-y-4">
           <!-- Option: Original Path -->
@@ -81,7 +85,8 @@ import { formatTs } from '../stores/vorn.js'
 const props = defineProps({
   show: Boolean,
   runTs: String,
-  originalPath: String
+  originalPath: String,
+  selectedFiles: { type: Array, default: null },
 })
 
 const emit = defineEmits(['close', 'confirm'])
