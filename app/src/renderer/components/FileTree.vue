@@ -3,22 +3,15 @@
     <!-- Header: label + expand/collapse controls -->
     <div class="flex items-center justify-between px-2 mb-1">
       <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">File nel run</p>
-      <div v-if="tree.length" class="flex items-center gap-1">
-        <button
-          @click="expandAll"
-          title="Espandi tutto"
-          class="p-1 rounded text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
-        >
-          <ArrowsPointingOutIcon class="w-3.5 h-3.5" />
-        </button>
-        <button
-          @click="collapseAll"
-          title="Comprimi tutto"
-          class="p-1 rounded text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
-        >
-          <ArrowsPointingInIcon class="w-3.5 h-3.5" />
-        </button>
-      </div>
+      <button
+        v-if="tree.length"
+        @click="toggleAll"
+        :title="allExpanded ? 'Comprimi tutto' : 'Espandi tutto'"
+        class="p-1 rounded text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+      >
+        <ArrowsPointingInIcon v-if="allExpanded" class="w-3.5 h-3.5" />
+        <ArrowsPointingOutIcon v-else             class="w-3.5 h-3.5" />
+      </button>
     </div>
 
     <!-- Loading -->
@@ -56,11 +49,15 @@ const props = defineProps({
 // Segnali per expand/collapse globale — FileTreeNode li inietta e li osserva
 const expandSignal   = ref(0)
 const collapseSignal = ref(0)
+const allExpanded    = ref(true)
 provide('expandSignal',   expandSignal)
 provide('collapseSignal', collapseSignal)
 
-function expandAll()   { expandSignal.value++ }
-function collapseAll() { collapseSignal.value++ }
+function toggleAll() {
+  allExpanded.value = !allExpanded.value
+  if (allExpanded.value) expandSignal.value++
+  else                   collapseSignal.value++
+}
 
 function buildTree(files) {
   const dirMap = new Map()
