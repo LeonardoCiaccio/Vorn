@@ -178,6 +178,46 @@ export function registerIpcHandlers(mainWindow) {
     return { taskId: task.id }
   })
 
+  // ── Tasks: Sanitize ──────────────────────────────────────────────────────
+
+  ipcMain.handle('vorn:start-sanitize', (_, { storeDir, cutoffTs }) => {
+    const task = createTask('sanitize', null)
+
+    _spawnWorker('sanitizeWorker.js', { storeDir, dbPath, cutoffTs }, task.id, mainWindow,
+      (result, error) => {
+        if (error) {
+          failTask(task.id, error)
+          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error })
+        } else {
+          finishTask(task.id, result)
+          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
+        }
+      }
+    )
+
+    return { taskId: task.id }
+  })
+
+  // ── Tasks: Integrity check ───────────────────────────────────────────────
+
+  ipcMain.handle('vorn:start-integrity', (_, { storeDir }) => {
+    const task = createTask('integrity', null)
+
+    _spawnWorker('integrityWorker.js', { storeDir }, task.id, mainWindow,
+      (result, error) => {
+        if (error) {
+          failTask(task.id, error)
+          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error })
+        } else {
+          finishTask(task.id, result)
+          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
+        }
+      }
+    )
+
+    return { taskId: task.id }
+  })
+
   // ── Store ─────────────────────────────────────────────────────────────────
 
   ipcMain.handle('vorn:inspect-hash', (_, { store, hashVorn }) => getEntry(store, hashVorn))

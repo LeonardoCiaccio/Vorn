@@ -43,6 +43,12 @@ contextBridge.exposeInMainWorld('vorn', {
   // Reconstruct
   startReconstruct: (storeDir) => ipcRenderer.invoke('vorn:start-reconstruct', { storeDir }),
 
+  // Integrity check
+  startIntegrity: (storeDir) => ipcRenderer.invoke('vorn:start-integrity', { storeDir }),
+
+  // Sanitize
+  startSanitize: (storeDir, cutoffTs) => ipcRenderer.invoke('vorn:start-sanitize', { storeDir, cutoffTs }),
+
   // Store / Inspect
   inspectHash:    (store, hashVorn)         => ipcRenderer.invoke('vorn:inspect-hash', { store, hashVorn }),
   inspectFile:    (filePath)                => ipcRenderer.invoke('vorn:inspect-file', filePath),

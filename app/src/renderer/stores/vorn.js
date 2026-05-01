@@ -14,6 +14,8 @@ export const state = reactive({
   tasks:            {},   // taskId → task (shape pubblica dal backend)
   appInfo:          null,
   activeStore:      null, // percorso store attivo (ultimo usato → default → null)
+  integrity:        { running: false, progress: null, report: null },
+  sanitize:         { running: false, progress: null, report: null },
 })
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
@@ -42,6 +44,12 @@ export async function init() {
 
   window.vorn.onTaskProgress(({ taskId, ...progress }) => {
     if (state.tasks[taskId]) state.tasks[taskId].progress = progress
+    if (state.integrity.running && state.tasks[taskId]?.type === 'integrity') {
+      state.integrity.progress = progress
+    }
+    if (state.sanitize.running && state.tasks[taskId]?.type === 'sanitize') {
+      state.sanitize.progress = progress
+    }
   })
 
   window.vorn.onTaskDone(async ({ taskId, result, error }) => {
@@ -51,8 +59,20 @@ export async function init() {
     t.result   = result  ?? null
     t.error    = error   ?? null
     t.progress = null
-    if (t.type === 'reconstruct') await refreshAllSessions()
-    else                          await refreshSession(t.sessionName)
+    if (t.type === 'integrity') {
+      state.integrity.running  = false
+      state.integrity.progress = null
+      state.integrity.report   = error ? { total: 0, ok: 0, errors: [], fatalError: error } : result
+    } else if (t.type === 'sanitize') {
+      state.sanitize.running  = false
+      state.sanitize.progress = null
+      state.sanitize.report   = error ? { fatalError: error } : result
+      await refreshAllSessions()
+    } else if (t.type === 'reconstruct') {
+      await refreshAllSessions()
+    } else {
+      await refreshSession(t.sessionName)
+    }
   })
 }
 
@@ -155,6 +175,28 @@ export async function startRestore(sessionName, runTs, destDir, selectedFiles = 
   const { taskId } = await window.vorn.startRestore(sessionName, runTs, destDir, selectedFiles)
   state.tasks[taskId] = {
     id: taskId, type: 'restore', sessionName,
+    status: 'running', progress: null, result: null, error: null,
+    createdAt: new Date().toISOString(),
+  }
+  return taskId
+}
+
+export async function startSanitize(storeDir, cutoffTs) {
+  state.sanitize = { running: true, progress: null, report: null }
+  const { taskId } = await window.vorn.startSanitize(storeDir, cutoffTs)
+  state.tasks[taskId] = {
+    id: taskId, type: 'sanitize', sessionName: null,
+    status: 'running', progress: null, result: null, error: null,
+    createdAt: new Date().toISOString(),
+  }
+  return taskId
+}
+
+export async function startIntegrity(storeDir) {
+  state.integrity = { running: true, progress: { current: 0, total: 0 }, report: null }
+  const { taskId } = await window.vorn.startIntegrity(storeDir)
+  state.tasks[taskId] = {
+    id: taskId, type: 'integrity', sessionName: null,
     status: 'running', progress: null, result: null, error: null,
     createdAt: new Date().toISOString(),
   }
