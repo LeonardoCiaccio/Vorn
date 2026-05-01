@@ -100,13 +100,13 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { FolderPlusIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
-import { createSession } from '../stores/vorn.js'
+import { state, createSession } from '../stores/vorn.js'
 
 const emit = defineEmits(['close', 'created'])
 
 const form = reactive({
   name: '',
-  store: '',
+  store: state.activeStore ?? '',
   sources: [''],
 })
 const saving = ref(false)

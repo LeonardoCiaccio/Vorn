@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('vorn', {
   loadRun:        (sessionName, runTs)      => ipcRenderer.invoke('vorn:load-run', { sessionName, runTs }),
   getPausedRun:   (sessionName)             => ipcRenderer.invoke('vorn:get-paused-run', sessionName),
   deleteRun:      (sessionName, runTs)      => ipcRenderer.invoke('vorn:delete-run', { sessionName, runTs }),
+  deleteSession:  (name)                    => ipcRenderer.invoke('vorn:delete-session', name),
 
   // Tasks
   startBackup:    (sessionName, opts = {})          => ipcRenderer.invoke('vorn:start-backup', { sessionName, ...opts }),
@@ -39,10 +40,15 @@ contextBridge.exposeInMainWorld('vorn', {
     if (_onDone) { ipcRenderer.off('vorn:task-done', _onDone); _onDone = null }
   },
 
+  // Reconstruct
+  startReconstruct: (storeDir) => ipcRenderer.invoke('vorn:start-reconstruct', { storeDir }),
+
   // Store / Inspect
   inspectHash:    (store, hashVorn)         => ipcRenderer.invoke('vorn:inspect-hash', { store, hashVorn }),
   inspectFile:    (filePath)                => ipcRenderer.invoke('vorn:inspect-file', filePath),
   listStoreFiles: (storeDir, offset, limit) => ipcRenderer.invoke('vorn:list-store-files', { storeDir, offset, limit }),
+
+  resolveStore:   (defaultStore)            => ipcRenderer.invoke('vorn:resolve-store', { defaultStore }),
 
   // App info
   getAppInfo:     ()                        => ipcRenderer.invoke('vorn:get-app-info'),

@@ -10,8 +10,9 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index:         resolve(__dirname, 'src/main/index.js'),
-          backupWorker:  resolve(__dirname, 'src/main/vorn/backupWorker.js'),
-          restoreWorker: resolve(__dirname, 'src/main/vorn/restoreWorker.js'),
+          backupWorker:      resolve(__dirname, 'src/main/vorn/backupWorker.js'),
+          restoreWorker:     resolve(__dirname, 'src/main/vorn/restoreWorker.js'),
+          reconstructWorker: resolve(__dirname, 'src/main/vorn/reconstructWorker.js'),
         }
       }
     }

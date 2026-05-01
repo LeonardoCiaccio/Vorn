@@ -7,13 +7,24 @@
         <h1 class="text-xl font-semibold text-white">Sessioni</h1>
         <p class="text-sm text-gray-500 mt-0.5">{{ sessions.length }} sessioni configurate</p>
       </div>
-      <button
-        @click="showModal = true"
-        class="flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
-      >
-        <PlusIcon class="w-4 h-4" />
-        Nuova sessione
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          @click="showReconstructModal = true"
+          :disabled="anyTaskRunning"
+          class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          title="Ricostruisci sessioni leggendo i metadati dallo store"
+        >
+          <CircleStackIcon class="w-4 h-4" />
+          Ricostruisci dallo store
+        </button>
+        <button
+          @click="showModal = true"
+          class="flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
+        >
+          <PlusIcon class="w-4 h-4" />
+          Nuova sessione
+        </button>
+      </div>
     </div>
 
     <!-- Stats strip -->
@@ -43,6 +54,7 @@
             <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider pr-6">Stato</th>
             <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider pr-6 text-right">Run</th>
             <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">File</th>
+            <th class="pb-3 w-10"></th>
           </tr>
         </thead>
         <tbody>
@@ -111,11 +123,37 @@
                   </template>
                 </span>
               </td>
+
+              <!-- Azioni -->
+              <td class="py-3.5 pl-3 text-right" @click.stop>
+                <!-- Conferma eliminazione -->
+                <div v-if="confirmName === session.name" class="flex items-center justify-end gap-1.5">
+                  <ExclamationTriangleIcon class="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <button
+                    @click="confirmDelete($event, session.name)"
+                    class="px-2 py-1 rounded text-[11px] font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors"
+                  >Elimina</button>
+                  <button
+                    @click="cancelDelete($event)"
+                    class="px-2 py-1 rounded text-[11px] text-gray-400 hover:text-white transition-colors"
+                  >Annulla</button>
+                </div>
+                <!-- Tasto cestino (visibile su hover, disabilitato se task attivo) -->
+                <button
+                  v-else
+                  @click="askDelete($event, session.name)"
+                  :disabled="!!activeTask(session.name)"
+                  class="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                  title="Elimina sessione"
+                >
+                  <TrashIcon class="w-3.5 h-3.5" />
+                </button>
+              </td>
             </tr>
 
             <!-- Sub-row progresso — visibile solo quando il backup è in corso -->
             <tr v-if="activeTask(session.name)" @click="selectSession(session)" class="cursor-pointer bg-indigo-950/10 hover:bg-indigo-950/20 transition-colors">
-              <td colspan="6" class="px-6 pb-3 pt-0">
+              <td colspan="7" class="px-6 pb-3 pt-0">
                 <div class="pl-11">
                   <!-- Barra di avanzamento -->
                   <div class="w-full h-1 bg-gray-800 rounded-full overflow-hidden mb-2">
@@ -166,17 +204,22 @@
   </div>
 
   <NewSessionModal v-if="showModal" @close="showModal = false" @created="showModal = false" />
+  <ReconstructModal v-if="showReconstructModal" @close="showReconstructModal = false" />
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
-import { state, selectSession, getActiveTask, formatTs, formatBytes } from '../stores/vorn.js'
+import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, ExclamationTriangleIcon, CircleStackIcon } from '@heroicons/vue/24/outline'
+import { state, selectSession, deleteSession, getActiveTask, formatTs, formatBytes } from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
+import ReconstructModal from '../components/ReconstructModal.vue'
 
-const showModal = ref(false)
-const sessions  = computed(() => state.sessions)
+const showModal            = ref(false)
+const showReconstructModal = ref(false)
+const sessions             = computed(() => state.sessions)
+const anyTaskRunning       = computed(() => Object.values(state.tasks).some(t => t.status === 'running'))
+const confirmName = ref(null) // nome sessione in attesa di conferma eliminazione
 
 function activeTask(sessionName) {
   return getActiveTask(sessionName)
@@ -186,6 +229,22 @@ function progressPct(sessionName) {
   const p = getActiveTask(sessionName)?.progress
   if (!p?.total) return 0
   return Math.round((p.current / p.total) * 100)
+}
+
+function askDelete(e, sessionName) {
+  e.stopPropagation()
+  confirmName.value = sessionName
+}
+
+function cancelDelete(e) {
+  e.stopPropagation()
+  confirmName.value = null
+}
+
+async function confirmDelete(e, sessionName) {
+  e.stopPropagation()
+  confirmName.value = null
+  await deleteSession(sessionName)
 }
 
 const globalStats = computed(() => {

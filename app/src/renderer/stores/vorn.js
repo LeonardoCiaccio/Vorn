@@ -1,4 +1,5 @@
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
+import { settings } from './settings.js'
 
 export const state = reactive({
   currentView:      'sessions',
@@ -12,6 +13,7 @@ export const state = reactive({
   loading:          false,
   tasks:            {},   // taskId → task (shape pubblica dal backend)
   appInfo:          null,
+  activeStore:      null, // percorso store attivo (ultimo usato → default → null)
 })
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
@@ -35,7 +37,9 @@ export async function init() {
     state.loading = false
   }
 
-  // Listeners globali: sopravvivono alla navigazione tra view
+  await _resolveStore()
+  watch(() => settings.defaultStore, _resolveStore)
+
   window.vorn.onTaskProgress(({ taskId, ...progress }) => {
     if (state.tasks[taskId]) state.tasks[taskId].progress = progress
   })
@@ -47,11 +51,23 @@ export async function init() {
     t.result   = result  ?? null
     t.error    = error   ?? null
     t.progress = null
-    await refreshSession(t.sessionName)
+    if (t.type === 'reconstruct') await refreshAllSessions()
+    else                          await refreshSession(t.sessionName)
   })
 }
 
+async function _resolveStore() {
+  const { store } = await window.vorn.resolveStore(settings.defaultStore)
+  state.activeStore = store
+}
+
 // ── Sessions ──────────────────────────────────────────────────────────────────
+
+export async function refreshAllSessions() {
+  const sessions = await window.vorn.listSessions()
+  state.sessions = sessions
+  await _resolveStore()
+}
 
 export async function refreshSession(name) {
   const updated = await window.vorn.getSession(name)
@@ -92,6 +108,13 @@ export async function createSession(name, store, sources) {
   return session
 }
 
+export async function deleteSession(sessionName) {
+  await window.vorn.deleteSession(sessionName)
+  const idx = state.sessions.findIndex(s => s.name === sessionName)
+  if (idx >= 0) state.sessions.splice(idx, 1)
+  if (state.selectedSession?.name === sessionName) goBack()
+}
+
 // ── Runs ──────────────────────────────────────────────────────────────────────
 
 export async function deleteRun(sessionName, runTs) {
@@ -124,8 +147,6 @@ export async function startBackup(sessionName, opts = {}) {
     status: 'running', progress: null, result: null, error: null,
     createdAt: new Date().toISOString(),
   }
-  // Aggiorna la lista run subito: openRun() è già stato chiamato nel main process
-  // prima che il taskId arrivasse qui, quindi il file esiste già su disco.
   await refreshSession(sessionName)
   return taskId
 }
@@ -140,16 +161,24 @@ export async function startRestore(sessionName, runTs, destDir) {
   return taskId
 }
 
+export async function startReconstruct(storeDir) {
+  const { taskId } = await window.vorn.startReconstruct(storeDir)
+  state.tasks[taskId] = {
+    id: taskId, type: 'reconstruct', sessionName: null,
+    status: 'running', progress: null, result: null, error: null,
+    createdAt: new Date().toISOString(),
+  }
+  return taskId
+}
+
 export function cancelTask(taskId) {
   window.vorn.cancelTask(taskId)
 }
 
-// Ritorna il task attivo (running) per una sessione, o null
 export function getActiveTask(sessionName) {
   return Object.values(state.tasks).find(t => t.sessionName === sessionName && t.status === 'running') ?? null
 }
 
-// Ritorna l'ultimo task completato di un certo tipo per una sessione
 export function getLastTask(sessionName, type) {
   return Object.values(state.tasks)
     .filter(t => t.sessionName === sessionName && t.type === type && t.status !== 'running')

@@ -176,6 +176,22 @@ export function recoverSession(dbPath, name) {
 
 // Chiamata all'avvio: run rimaste 'running' per un crash precedente vengono
 // messe in 'paused' così possono essere riprese normalmente.
+export function getLastUsedStore(dbPath) {
+  const db = openDb(dbPath)
+  const row = db.prepare(`
+    SELECT s.store FROM runs r
+    JOIN sessions s ON r.session_name = s.name
+    ORDER BY r.ts DESC LIMIT 1
+  `).get()
+  return row?.store ?? null
+}
+
+export function deleteSession(dbPath, name) {
+  const db = openDb(dbPath)
+  const result = db.prepare('DELETE FROM sessions WHERE name = ?').run(name)
+  if (result.changes === 0) throw new Error(`Session not found: ${name}`)
+}
+
 export function fixOrphanedRuns(dbPath) {
   const db = openDb(dbPath)
   db.prepare(`UPDATE runs SET status = 'paused' WHERE status = 'running'`).run()

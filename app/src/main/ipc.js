@@ -3,8 +3,8 @@ import { join } from 'path'
 import { Worker } from 'worker_threads'
 import {
   listSessions, createSession, listRuns,
-  loadRun, saveRun, getPausedRun, getSession, deleteRun,
-  fixOrphanedRuns
+  loadRun, saveRun, getPausedRun, getSession, deleteRun, deleteSession,
+  getLastUsedStore, fixOrphanedRuns
 } from './vorn/manifest.js'
 import { getEntry, listStoreFiles } from './vorn/store.js'
 import { readVorn } from './vorn/format.js'
@@ -98,6 +98,11 @@ export function registerIpcHandlers(mainWindow) {
     deleteRun(dbPath, sessionName, runTs)
   )
 
+  ipcMain.handle('vorn:delete-session', (_, name) => {
+    if (hasRunningTask(name)) throw new Error(`Impossibile eliminare: backup o restore in corso per la sessione "${name}"`)
+    deleteSession(dbPath, name)
+  })
+
   // ── Tasks: Backup ─────────────────────────────────────────────────────────
 
   ipcMain.handle('vorn:start-backup', (_, { sessionName, resumeTs = null, excludes = [], maxBytes = 0 }) => {
@@ -151,6 +156,28 @@ export function registerIpcHandlers(mainWindow) {
   ipcMain.handle('vorn:task-cancel', (_, taskId) => cancelTask(taskId))
   ipcMain.handle('vorn:task-list',   ()           => listTasks())
 
+  // ── Reconstruct ───────────────────────────────────────────────────────────
+
+  ipcMain.handle('vorn:start-reconstruct', (_, { storeDir }) => {
+    const anyRunning = listTasks().some(t => t.status === 'running')
+    if (anyRunning) throw new Error('Impossibile ricostruire: operazioni in corso')
+    const task = createTask('reconstruct', null)
+
+    _spawnWorker('reconstructWorker.js', { dbPath, storeDir }, task.id, mainWindow,
+      (result, error) => {
+        if (error) {
+          failTask(task.id, error)
+          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error })
+        } else {
+          finishTask(task.id, result)
+          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
+        }
+      }
+    )
+
+    return { taskId: task.id }
+  })
+
   // ── Store ─────────────────────────────────────────────────────────────────
 
   ipcMain.handle('vorn:inspect-hash', (_, { store, hashVorn }) => getEntry(store, hashVorn))
@@ -166,6 +193,13 @@ export function registerIpcHandlers(mainWindow) {
   )
 
   // ── App info ──────────────────────────────────────────────────────────────
+
+  ipcMain.handle('vorn:resolve-store', (_, { defaultStore }) => {
+    const last = getLastUsedStore(dbPath)
+    if (last && existsSync(last)) return { store: last, source: 'last' }
+    if (defaultStore && existsSync(defaultStore)) return { store: defaultStore, source: 'default' }
+    return { store: null, source: 'none' }
+  })
 
   ipcMain.handle('vorn:get-app-info', () => ({
     dbPath,
