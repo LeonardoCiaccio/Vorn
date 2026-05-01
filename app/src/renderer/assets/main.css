@@ -42,40 +42,72 @@ html.light #app {
   color: var(--text-hi);
 }
 
-/* Main surfaces */
-html.light .bg-gray-950 { background-color: var(--bg-root)   !important; }
-html.light .bg-gray-900 { background-color: var(--bg-base)   !important; }
-html.light .bg-gray-800 { background-color: var(--bg-raised) !important; }
-html.light .bg-gray-800\/40,
-html.light .bg-gray-800\/50,
-html.light .bg-gray-800\/60 { background-color: rgba(243,244,246,0.6) !important; }
+/* ── Surfaces ── */
+html.light .bg-gray-950     { background-color: #f3f4f6 !important; }
+html.light .bg-gray-900     { background-color: #ffffff !important; }
+html.light .bg-gray-800     { background-color: #e5e7eb !important; }
+html.light .bg-gray-900\/50 { background-color: rgba(255,255,255,0.85) !important; }
+html.light .bg-gray-900\/60 { background-color: rgba(255,255,255,0.85) !important; }
+html.light .bg-gray-900\/90 { background-color: rgba(255,255,255,0.92) !important; }
+html.light .bg-gray-800\/30 { background-color: rgba(229,231,235,0.5)  !important; }
+html.light .bg-gray-800\/40 { background-color: rgba(229,231,235,0.6)  !important; }
+html.light .bg-gray-800\/50 { background-color: rgba(229,231,235,0.7)  !important; }
+html.light .bg-gray-800\/60 { background-color: rgba(229,231,235,0.8)  !important; }
 
-/* Borders */
-html.light .border-gray-800 { border-color: var(--border) !important; }
-html.light .border-gray-700 { border-color: #d1d5db !important; }
+/* ── Borders ── */
+html.light .border-gray-800     { border-color: #d1d5db !important; }
+html.light .border-gray-700     { border-color: #e5e7eb !important; }
+html.light .divide-gray-800\/60 > * + * { border-color: rgba(209,213,219,0.8) !important; }
 
-/* Dividers */
-html.light .divide-gray-800\/60 > * + * { border-color: rgba(229,231,235,0.7) !important; }
+/* ── Text — neutral scale ── */
+html.light .text-white    { color: #111827 !important; }
+html.light .text-gray-100 { color: #1f2937 !important; }
+html.light .text-gray-200 { color: #374151 !important; }
+html.light .text-gray-300 { color: #4b5563 !important; }
+html.light .text-gray-400 { color: #6b7280 !important; }
+html.light .text-gray-500 { color: #9ca3af !important; }
+html.light .text-gray-600 { color: #9ca3af !important; }  /* era #d1d5db → illeggibile su bianco */
+html.light .text-gray-700 { color: #6b7280 !important; }
 
-/* Text */
-html.light .text-white       { color: #111827 !important; }
-html.light .text-gray-100    { color: #1f2937 !important; }
-html.light .text-gray-200    { color: #374151 !important; }
-html.light .text-gray-300    { color: #4b5563 !important; }
-html.light .text-gray-400    { color: #6b7280 !important; }
-html.light .text-gray-500    { color: #9ca3af !important; }
-html.light .text-gray-600    { color: #d1d5db !important; }
+/* ── Text — accent colors: usa varianti scure per contrasto su fondo chiaro ── */
+html.light .text-indigo-400 { color: #4f46e5 !important; }  /* indigo-600 */
+html.light .text-indigo-300 { color: #4338ca !important; }  /* indigo-700 */
+html.light .text-emerald-400 { color: #059669 !important; } /* emerald-600 */
+html.light .text-emerald-500 { color: #047857 !important; } /* emerald-700 */
+html.light .text-red-400     { color: #dc2626 !important; } /* red-600     */
+html.light .text-amber-400   { color: #d97706 !important; } /* amber-600   */
+html.light .text-amber-300   { color: #b45309 !important; } /* amber-700   */
 
-/* Sidebar */
-html.light .bg-gray-900\/50  { background-color: rgba(255,255,255,0.8) !important; }
+/* ── Testo bianco su bottoni e badge colorati deve rimanere bianco ── */
+html.light .bg-indigo-600 { color: #ffffff !important; }
+html.light .bg-indigo-500 { color: #ffffff !important; }
+html.light .bg-red-600    { color: #ffffff !important; }
+html.light .bg-amber-600  { color: #ffffff !important; }
 
-/* Inputs */
+/* Hover variants: il testo deve restare bianco anche durante hover */
+html.light .bg-indigo-600 .text-white,
+html.light .bg-indigo-500 .text-white { color: #ffffff !important; }
+
+/* ── Badge indigo (bg semitrasparente) ── */
+html.light .bg-indigo-500\/5  { background-color: rgba(99,102,241,0.10) !important; }
+html.light .bg-indigo-500\/10 { background-color: rgba(99,102,241,0.14) !important; }
+html.light .bg-indigo-500\/15 { background-color: rgba(99,102,241,0.18) !important; }
+html.light .bg-indigo-500\/20 { background-color: rgba(99,102,241,0.20) !important; }
+
+/* ── Sezioni warning/danger: usa tinte chiare invece dei dark-950 ── */
+html.light .bg-amber-950\/30   { background-color: rgba(254,243,199,0.8) !important; }
+html.light .border-amber-900\/40 { border-color: rgba(217,119,6,0.35)   !important; }
+html.light .bg-red-950\/20     { background-color: rgba(254,226,226,0.8) !important; }
+html.light .border-red-900\/40 { border-color: rgba(220,38,38,0.35)     !important; }
+html.light .bg-indigo-500\/5   { background-color: rgba(99,102,241,0.08) !important; }
+
+/* ── Inputs ── */
 html.light input, html.light textarea {
   background-color: #f9fafb !important;
   border-color: #d1d5db !important;
   color: #111827 !important;
 }
 
-/* Scrollbar light */
+/* ── Scrollbar light ── */
 html.light ::-webkit-scrollbar-thumb { background: #d1d5db; }
 html.light ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
