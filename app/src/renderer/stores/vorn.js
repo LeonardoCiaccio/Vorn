@@ -31,33 +31,18 @@ export async function init() {
     state.loading = false
   }
 
-  // Polling snapshot: attivo solo quando c'è almeno un task in corso
-  let _pollTimer = null
+  // Listeners globali: sopravvivono alla navigazione tra view
+  window.vorn.onTaskProgress(({ taskId, ...progress }) => {
+    if (state.tasks[taskId]) state.tasks[taskId].progress = progress
+  })
 
-  function _startPolling() {
-    if (_pollTimer) return
-    _pollTimer = setInterval(async () => {
-      const tasks = await window.vorn.getSnapshot()
-      for (const t of tasks) {
-        if (state.tasks[t.id]) state.tasks[t.id].progress = t.progress
-      }
-    }, 200)
-  }
-
-  function _stopPolling() {
-    if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null }
-  }
-
-  // Evento terminale: start / paused / done / error
   window.vorn.onTaskDone(async ({ taskId, result, error }) => {
     const t = state.tasks[taskId]
     if (!t) return
     t.status   = error ? 'error' : (result?.status ?? 'done')
-    t.result   = result ?? null
-    t.error    = error  ?? null
+    t.result   = result  ?? null
+    t.error    = error   ?? null
     t.progress = null
-    const anyRunning = Object.values(state.tasks).some(x => x.status === 'running')
-    if (!anyRunning) _stopPolling()
     await refreshSession(t.sessionName)
   })
 }
@@ -135,7 +120,8 @@ export async function startBackup(sessionName, opts = {}) {
     status: 'running', progress: null, result: null, error: null,
     createdAt: new Date().toISOString(),
   }
-  _startPolling()
+  // Aggiorna la lista run subito: openRun() è già stato chiamato nel main process
+  // prima che il taskId arrivasse qui, quindi il file esiste già su disco.
   await refreshSession(sessionName)
   return taskId
 }
@@ -147,7 +133,6 @@ export async function startRestore(sessionName, runTs, destDir) {
     status: 'running', progress: null, result: null, error: null,
     createdAt: new Date().toISOString(),
   }
-  _startPolling()
   return taskId
 }
 
