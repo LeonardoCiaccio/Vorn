@@ -49,10 +49,7 @@ export function registerIpcHandlers(mainWindow) {
     const task = createTask('backup', sessionName)
     const opts = {
       resumeTs, excludes, maxBytes,
-      onProgress: (progress) => {
-        updateTaskProgress(task.id, progress)
-        mainWindow.webContents.send('vorn:task-progress', { taskId: task.id, ...progress })
-      },
+      onProgress: (progress) => updateTaskProgress(task.id, progress),
     }
 
     backup(dbPath, sessionName, opts)
@@ -76,10 +73,7 @@ export function registerIpcHandlers(mainWindow) {
     if (hasRunningTask(sessionName)) throw new Error(`Operazione già in corso per la sessione: ${sessionName}`)
     const task = createTask('restore', sessionName)
     const opts = {
-      onProgress: (progress) => {
-        updateTaskProgress(task.id, progress)
-        mainWindow.webContents.send('vorn:task-progress', { taskId: task.id, ...progress })
-      },
+      onProgress: (progress) => updateTaskProgress(task.id, progress),
     }
 
     restore(dbPath, sessionName, runTs, destDir, opts)
@@ -97,8 +91,9 @@ export function registerIpcHandlers(mainWindow) {
 
   // ── Tasks: controllo ─────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:task-cancel', (_, taskId) => cancelTask(taskId))
-  ipcMain.handle('vorn:task-list',   ()           => listTasks())
+  ipcMain.handle('vorn:task-cancel',   (_, taskId) => cancelTask(taskId))
+  ipcMain.handle('vorn:task-list',     ()           => listTasks())
+  ipcMain.handle('vorn:task-snapshot', ()           => listTasks())
 
   // ── Store ─────────────────────────────────────────────────────────────────
 

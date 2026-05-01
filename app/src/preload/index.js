@@ -13,14 +13,13 @@ contextBridge.exposeInMainWorld('vorn', {
   deleteRun:      (sessionName, runTs)      => ipcRenderer.invoke('vorn:delete-run', { sessionName, runTs }),
 
   // Tasks
-  startBackup:    (sessionName, opts = {})          => ipcRenderer.invoke('vorn:start-backup', { sessionName, ...opts }),
-  startRestore:   (sessionName, runTs, destDir)     => ipcRenderer.invoke('vorn:start-restore', { sessionName, runTs, destDir }),
-  cancelTask:     (taskId)                          => ipcRenderer.invoke('vorn:task-cancel', taskId),
-  listTasks:      ()                                => ipcRenderer.invoke('vorn:task-list'),
-  onTaskProgress: (cb)  => ipcRenderer.on('vorn:task-progress', (_, data) => cb(data)),
-  offTaskProgress: ()   => ipcRenderer.removeAllListeners('vorn:task-progress'),
-  onTaskDone:     (cb)  => ipcRenderer.on('vorn:task-done',     (_, data) => cb(data)),
-  offTaskDone:    ()    => ipcRenderer.removeAllListeners('vorn:task-done'),
+  startBackup:    (sessionName, opts = {})      => ipcRenderer.invoke('vorn:start-backup', { sessionName, ...opts }),
+  startRestore:   (sessionName, runTs, destDir) => ipcRenderer.invoke('vorn:start-restore', { sessionName, runTs, destDir }),
+  cancelTask:     (taskId)                      => ipcRenderer.invoke('vorn:task-cancel', taskId),
+  listTasks:      ()                            => ipcRenderer.invoke('vorn:task-list'),
+  getSnapshot:    ()                            => ipcRenderer.invoke('vorn:task-snapshot'),
+  onTaskDone:     (cb) => ipcRenderer.on('vorn:task-done', (_, data) => cb(data)),
+  offTaskDone:    ()   => ipcRenderer.removeAllListeners('vorn:task-done'),
 
   // Store / Inspect
   inspectHash:    (store, hashVorn)         => ipcRenderer.invoke('vorn:inspect-hash', { store, hashVorn }),
