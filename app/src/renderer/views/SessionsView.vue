@@ -5,18 +5,9 @@
     <div class="px-8 py-6 border-b border-gray-800 flex items-center justify-between shrink-0">
       <div>
         <h1 class="text-xl font-semibold text-white">Sessioni</h1>
-        <p class="text-sm text-gray-500 mt-0.5">{{ sessions.length }} sessioni configurate</p>
+        <p class="text-sm text-gray-500 mt-0.5">{{ sessions.length }} sessioni · {{ totalRuns }} run</p>
       </div>
       <div class="flex items-center gap-2">
-        <button
-          @click="showReconstructModal = true"
-          :disabled="anyTaskRunning"
-          class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          title="Ricostruisci sessioni leggendo i metadati dallo store"
-        >
-          <CircleStackIcon class="w-4 h-4" />
-          Ricostruisci dallo store
-        </button>
         <button
           @click="showModal = true"
           class="flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
@@ -24,14 +15,6 @@
           <PlusIcon class="w-4 h-4" />
           Nuova sessione
         </button>
-      </div>
-    </div>
-
-    <!-- Stats strip -->
-    <div class="px-8 py-4 grid grid-cols-3 gap-4 border-b border-gray-800 shrink-0">
-      <div v-for="stat in globalStats" :key="stat.label" class="bg-gray-900 rounded-md p-4 border border-gray-800">
-        <p class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">{{ stat.label }}</p>
-        <p class="text-2xl font-bold text-white">{{ stat.value }}</p>
       </div>
     </div>
 
@@ -49,7 +32,6 @@
         <thead>
           <tr class="text-left">
             <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Sessione</th>
-            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Store</th>
             <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Ultima run</th>
             <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Stato</th>
             <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Run</th>
@@ -78,11 +60,6 @@
                     <p class="text-xs text-gray-500 mt-0.5">{{ session.sources.length }} sorgente{{ session.sources.length !== 1 ? 'i' : '' }}</p>
                   </div>
                 </div>
-              </td>
-
-              <!-- Store -->
-              <td class="py-3.5 px-4">
-                <p class="text-gray-400 font-mono text-xs truncate max-w-45">{{ session.store }}</p>
               </td>
 
               <!-- Last run -->
@@ -127,11 +104,12 @@
                   <!-- Tasti azione (visibili su hover) -->
                   <div v-else class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <button
-                      @click.stop="editingSession = session"
-                      class="p-1.5 rounded-md text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
-                      title="Modifica sessione"
+                      @click.stop="startBackup(session.name)"
+                      :disabled="!!activeTask(session.name)"
+                      class="p-1.5 rounded-md text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      title="Avvia backup"
                     >
-                      <PencilSquareIcon class="w-3.5 h-3.5" />
+                      <PlayIcon class="w-3.5 h-3.5" />
                     </button>
                     <button
                       @click="askDelete($event, session.name)"
@@ -208,25 +186,20 @@
   </div>
 
   <NewSessionModal v-if="showModal" @close="showModal = false" @created="showModal = false" />
-  <EditSessionModal v-if="editingSession" :session="editingSession" @close="editingSession = null" @saved="editingSession = null" />
-  <ReconstructModal v-if="showReconstructModal" @close="showReconstructModal = false" />
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, CircleStackIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
-import { state, selectSession, deleteSession, getActiveTask, formatTs, formatBytes } from '../stores/vorn.js'
+import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon } from '@heroicons/vue/24/outline'
+import { state, selectSession, deleteSession, getActiveTask, startBackup, formatTs, formatBytes } from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
-import EditSessionModal from '../components/EditSessionModal.vue'
-import ReconstructModal from '../components/ReconstructModal.vue'
 
-const showModal            = ref(false)
-const showReconstructModal = ref(false)
-const sessions             = computed(() => state.sessions)
-const anyTaskRunning       = computed(() => Object.values(state.tasks).some(t => t.status === 'running'))
-const confirmName   = ref(null)
-const editingSession = ref(null)
+const showModal   = ref(false)
+const sessions    = computed(() => state.sessions)
+const confirmName = ref(null)
+
+const totalRuns = computed(() => sessions.value.reduce((acc, s) => acc + s.runs.length, 0))
 
 function activeTask(sessionName) {
   return getActiveTask(sessionName)
@@ -254,14 +227,4 @@ async function confirmDelete(e, sessionName) {
   await deleteSession(sessionName)
 }
 
-const globalStats = computed(() => {
-  const totalRuns  = sessions.value.reduce((acc, s) => acc + s.runs.length, 0)
-  const lastRun    = sessions.value.flatMap(s => s.runs).sort((a, b) => b.ts.localeCompare(a.ts))[0]
-
-  return [
-    { label: 'Sessioni',      value: sessions.value.length },
-    { label: 'Run totali',    value: totalRuns },
-    { label: 'Ultimo backup', value: lastRun ? formatTs(lastRun.ts).split(',')[0] : '—' },
-  ]
-})
 </script>

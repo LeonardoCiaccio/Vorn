@@ -22,14 +22,6 @@
               <FolderIcon class="w-3 h-3 shrink-0" />
               <span class="max-w-[100ch] truncate">{{ src }}</span>
             </span>
-            <ArrowRightIcon class="w-3 h-3 text-gray-700 shrink-0" />
-            <span
-              class="flex items-center gap-1 text-[11px] font-mono text-indigo-400/70"
-              :title="session.store"
-            >
-              <CircleStackIcon class="w-3 h-3 shrink-0" />
-              <span class="max-w-[100ch] truncate">{{ session.store }}</span>
-            </span>
           </div>
         </div>
       </div>
@@ -38,10 +30,12 @@
         <button
           v-if="isRunning"
           @click="handleCancel"
-          class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-amber-300 border border-amber-600/50 hover:bg-amber-500/10 transition-colors"
+          :disabled="cancelling"
+          class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-amber-300 border border-amber-600/50 hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <StopIcon class="w-4 h-4" />
-          Sospendi
+          <ArrowPathIcon v-if="cancelling" class="w-4 h-4 animate-spin" />
+          <StopIcon v-else class="w-4 h-4" />
+          {{ cancelling ? 'Sospensione…' : 'Sospendi' }}
         </button>
         <button
           v-else
@@ -148,10 +142,7 @@
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Data / Ora</th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Stato</th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">File</th>
-                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Nuovi</th>
-                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Dedup</th>
-                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Durata</th>
-                <th class="pb-3 w-10"></th>
+                <th class="pb-3 w-14"></th>
               </tr>
             </thead>
             <tbody>
@@ -174,23 +165,14 @@
                       ? backupProgress.total?.toLocaleString('it-IT') ?? '…'
                       : run.files_total?.toLocaleString('it-IT') ?? '—' }}
                 </td>
-                <td class="py-3.5 px-4 text-right font-mono text-emerald-400 font-medium">
-                  +{{ run.status === 'running' && backupProgress
-                      ? backupProgress.files_new ?? 0
-                      : run.files_new ?? 0 }}
-                </td>
-                <td class="py-3.5 px-4 text-right font-mono text-gray-500">
-                  {{ run.status === 'running' && backupProgress
-                      ? backupProgress.files_dedup?.toLocaleString('it-IT') ?? '—'
-                      : run.files_dedup?.toLocaleString('it-IT') ?? '—' }}
-                </td>
-                <td class="py-3.5 px-4 text-right font-mono text-xs text-gray-500">
-                  {{ run.duration_sec != null ? run.duration_sec + 's' : '—' }}
-                </td>
-                <td class="py-3.5 pl-3 text-right" @click.stop>
+                <td class="py-3.5 px-4 text-right" @click.stop>
+                  <div v-if="pendingDeleteRun?.ts === run.ts" class="flex items-center justify-end gap-1.5">
+                    <button @click="pendingDeleteRun = null" class="px-2 py-1 rounded text-xs text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors">Annulla</button>
+                    <button @click="confirmDeleteRun(run)" class="px-2 py-1 rounded text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+                  </div>
                   <button
-                    v-if="run.status !== 'running'"
-                    @click="handleDeleteRun(run)"
+                    v-else-if="run.status !== 'running'"
+                    @click="pendingDeleteRun = run"
                     class="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
                   >
                     <TrashIcon class="w-3.5 h-3.5" />
@@ -206,7 +188,7 @@
     <!-- Sidebar dettaglio run — drawer modale a tutta altezza -->
     <transition name="slide">
       <div v-if="selectedRun" class="fixed inset-0 z-40 flex justify-end">
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeRunDetail" />
+        <div class="backdrop absolute inset-0 bg-black/30 backdrop-blur-[2px]" @click="closeRunDetail" />
         <div class="drawer-panel relative w-md h-full bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl overflow-hidden">
           <!-- Header sidebar -->
           <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-gray-900/90 backdrop-blur-md z-10">
@@ -220,22 +202,6 @@
           </div>
 
           <div class="flex-1 overflow-auto">
-
-            <!-- Stats -->
-            <div class="px-5 py-4 grid grid-cols-3 gap-3 border-b border-gray-800">
-              <div class="text-center">
-                <p class="text-xl font-bold text-white">{{ selectedRun.files_total?.toLocaleString('it-IT') ?? '—' }}</p>
-                <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Totali</p>
-              </div>
-              <div class="text-center">
-                <p class="text-xl font-bold text-emerald-400">{{ selectedRun.files_new ?? 0 }}</p>
-                <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Nuovi</p>
-              </div>
-              <div class="text-center">
-                <p class="text-xl font-bold text-gray-400">{{ selectedRun.files_dedup ?? 0 }}</p>
-                <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Dedup</p>
-              </div>
-            </div>
 
             <!-- File explorer -->
             <div class="px-3 py-3">
@@ -254,18 +220,22 @@
             <div v-if="confirmingDelete" class="flex items-center gap-2">
               <ExclamationTriangleIcon class="w-4 h-4 text-amber-400 shrink-0" />
               <span class="text-xs text-gray-400 flex-1">Eliminare questo run?</span>
-              <button @click="confirmDeleteRun" class="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+              <button @click="confirmDeleteSelectedRun" class="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
               <button @click="confirmingDelete = false" class="px-3 py-1.5 rounded-md text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Annulla</button>
             </div>
-            <!-- Ripristino selettivo -->
-            <div v-else-if="inSelectionMode" class="flex gap-2">
+            <!-- Selezione attiva -->
+            <div v-else-if="inSelectionMode" class="flex items-center gap-3">
+              <span class="text-[11px] text-gray-500 flex-1">
+                <template v-if="selectedFiles.length">{{ selectedFiles.length }} selezionati</template>
+                <template v-else>Nessun file selezionato</template>
+              </span>
               <button
-                @click="selectedFiles.length ? handleRestore() : (showSelectionWarn = true)"
-                :disabled="sessionBusy"
-                class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
+                @click="selectedFiles.length ? handleRestore() : null"
+                :disabled="sessionBusy || !selectedFiles.length"
+                class="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
               >
                 <ArrowDownTrayIcon class="w-3.5 h-3.5" />
-                Ripristina file e cartelle ({{ selectedFiles.length }})
+                Ripristina
               </button>
             </div>
             <!-- Azioni normali -->
@@ -292,26 +262,6 @@
       </div>
     </transition>
 
-    <!-- Modal: nessun file selezionato -->
-    <div v-if="showSelectionWarn" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="showSelectionWarn = false">
-      <div class="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-        <div class="px-6 py-5 flex items-start gap-4">
-          <div class="w-9 h-9 rounded-md bg-amber-500/15 border border-amber-500/20 flex items-center justify-center shrink-0">
-            <ExclamationTriangleIcon class="w-4.5 h-4.5 text-amber-400" />
-          </div>
-          <div>
-            <p class="text-sm font-semibold text-white mb-1">Nessun file selezionato</p>
-            <p class="text-xs text-gray-400">Seleziona almeno un file o una cartella dalla lista prima di avviare il ripristino selettivo.</p>
-          </div>
-        </div>
-        <div class="px-6 py-4 border-t border-gray-800 flex justify-end">
-          <button @click="showSelectionWarn = false" class="px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 transition-colors">
-            Capito
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- Modals -->
     <RestoreModal
       :show="showRestoreModal"
@@ -325,20 +275,23 @@
 </template>
 
 <style scoped>
-.slide-enter-active,
-.slide-leave-active {
+/* Backdrop: fade indipendente */
+.slide-enter-active .backdrop,
+.slide-leave-active .backdrop {
   transition: opacity 0.25s ease;
 }
+.slide-enter-from .backdrop,
+.slide-leave-to   .backdrop {
+  opacity: 0;
+}
+
+/* Drawer panel: slide da destra */
 .slide-enter-active .drawer-panel,
 .slide-leave-active .drawer-panel {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.slide-enter-from,
-.slide-leave-to {
-  opacity: 0;
-}
 .slide-enter-from .drawer-panel,
-.slide-leave-to .drawer-panel {
+.slide-leave-to   .drawer-panel {
   transform: translateX(100%);
 }
 </style>
@@ -346,20 +299,17 @@
 <script setup>
 import {
   ArrowLeftIcon,
-  ArrowRightIcon,
   FolderOpenIcon,
   FolderIcon,
-  CircleStackIcon,
   ArrowPathIcon,
   ArrowDownTrayIcon,
   TrashIcon,
   StopIcon,
-
   CheckCircleIcon,
   ExclamationTriangleIcon,
   XMarkIcon,
 } from '@heroicons/vue/24/outline'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   state, goBack, selectRun, deleteRun,
   startBackup, startRestore, cancelTask, getActiveTask, getLastTask,
@@ -371,7 +321,8 @@ import FileTree from '../components/FileTree.vue'
 
 const session     = computed(() => state.selectedSession)
 const selectedRun = computed(() => state.selectedRun)
-const hasPaused   = computed(() => session.value?.runs.some(r => r.status === 'paused') ?? false)
+const pausedRun   = computed(() => session.value?.runs[0]?.status === 'paused' ? session.value.runs[0] : null)
+const hasPaused   = computed(() => !!pausedRun.value)
 
 // Task attivo per questa sessione (backup o restore in corso)
 const activeTask      = computed(() => getActiveTask(session.value?.name))
@@ -402,7 +353,8 @@ const restorePct = computed(() => {
   return Math.round((p.current / p.total) * 100)
 })
 
-async function handleDeleteRun(run) {
+async function confirmDeleteRun(run) {
+  pendingDeleteRun.value = null
   await deleteRun(session.value.name, run.ts)
 }
 
@@ -411,29 +363,31 @@ function clearRestoreResult() {
   if (t) t.result = null
 }
 
-const showRestoreModal  = ref(false)
-const confirmingDelete  = ref(false)
-const selectedFiles     = ref([])
-const inSelectionMode   = ref(false)
-const showSelectionWarn = ref(false)
-
+const showRestoreModal = ref(false)
+const confirmingDelete = ref(false)
+const selectedFiles    = ref([])
+const inSelectionMode  = ref(false)
+const pendingDeleteRun = ref(null)
 
 function closeRunDetail() {
-  state.selectedRun       = null
-  state.selectedRunFull   = null
-  confirmingDelete.value  = false
-  selectedFiles.value     = []
-  inSelectionMode.value   = false
-  showSelectionWarn.value = false
+  state.selectedRun      = null
+  state.selectedRunFull  = null
+  confirmingDelete.value = false
+  selectedFiles.value    = []
+  inSelectionMode.value  = false
 }
 
-function handleBackup() { startBackup(session.value.name) }
+const cancelling = ref(false)
+
+watch(isRunning, (v) => { if (!v) cancelling.value = false })
+
+function handleBackup() { startBackup(session.value.name, pausedRun.value?.ts ?? null) }
 
 function handleCancel() {
-  if (activeTask.value) cancelTask(activeTask.value.id)
+  if (activeTask.value) { cancelling.value = true; cancelTask(activeTask.value.id) }
 }
 
-async function confirmDeleteRun() {
+async function confirmDeleteSelectedRun() {
   if (!selectedRun.value) return
   const sessionName = session.value.name
   const runTs       = selectedRun.value.ts

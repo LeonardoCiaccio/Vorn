@@ -1,28 +1,32 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-// Riferimenti espliciti ai listener attivi — evita removeAllListeners (troppo aggressivo)
 let _onProgress = null
 let _onDone     = null
+let _onDisconn  = null
 
 contextBridge.exposeInMainWorld('vorn', {
+
+  // Store
+  openStore:        (storeDir)    => ipcRenderer.invoke('vorn:open-store', { storeDir }),
+  closeStore:       ()            => ipcRenderer.invoke('vorn:close-store'),
+  getRecentStores:  ()            => ipcRenderer.invoke('vorn:get-recent-stores'),
+
   // Sessions
-  listSessions:   ()                        => ipcRenderer.invoke('vorn:list-sessions'),
-  createSession:  (name, store, sources)    => ipcRenderer.invoke('vorn:create-session', { name, store, sources }),
-  getSession:     (name)                    => ipcRenderer.invoke('vorn:get-session', name),
+  listSessions:   ()              => ipcRenderer.invoke('vorn:list-sessions'),
+  getSession:     (name)          => ipcRenderer.invoke('vorn:get-session', name),
+  createSession:  (session)       => ipcRenderer.invoke('vorn:create-session', session),
+  deleteSession:  (name)          => ipcRenderer.invoke('vorn:delete-session', name),
 
   // Runs
-  listRuns:       (sessionName)             => ipcRenderer.invoke('vorn:list-runs', sessionName),
-  loadRun:        (sessionName, runTs)      => ipcRenderer.invoke('vorn:load-run', { sessionName, runTs }),
-  getPausedRun:   (sessionName)             => ipcRenderer.invoke('vorn:get-paused-run', sessionName),
-  deleteRun:      (sessionName, runTs)      => ipcRenderer.invoke('vorn:delete-run', { sessionName, runTs }),
-  updateSession:  (name, store, sources)    => ipcRenderer.invoke('vorn:update-session', { name, store, sources }),
-  deleteSession:  (name)                    => ipcRenderer.invoke('vorn:delete-session', name),
+  listRuns:   (sessionName)             => ipcRenderer.invoke('vorn:list-runs', sessionName),
+  loadRun:    (sessionName, runTs)      => ipcRenderer.invoke('vorn:load-run', { sessionName, runTs }),
+  deleteRun:  (sessionName, runTs)      => ipcRenderer.invoke('vorn:delete-run', { sessionName, runTs }),
 
   // Tasks
-  startBackup:    (sessionName, opts = {})          => ipcRenderer.invoke('vorn:start-backup', { sessionName, ...opts }),
-  startRestore:   (sessionName, runTs, destDir, selectedFiles = null) => ipcRenderer.invoke('vorn:start-restore', { sessionName, runTs, destDir, selectedFiles }),
-  cancelTask:     (taskId)                          => ipcRenderer.invoke('vorn:task-cancel', taskId),
-  listTasks:      ()                                => ipcRenderer.invoke('vorn:task-list'),
+  startBackup:  (sessionName, resumeTs = null)                      => ipcRenderer.invoke('vorn:start-backup', { sessionName, resumeTs }),
+  startRestore: (sessionName, runTs, destDir, selectedFiles = null) => ipcRenderer.invoke('vorn:start-restore', { sessionName, runTs, destDir, selectedFiles }),
+  cancelTask:   (taskId)                                            => ipcRenderer.invoke('vorn:task-cancel', taskId),
+  listTasks:    ()                                                  => ipcRenderer.invoke('vorn:task-list'),
 
   onTaskProgress: (cb) => {
     if (_onProgress) ipcRenderer.off('vorn:task-progress', _onProgress)
@@ -41,30 +45,35 @@ contextBridge.exposeInMainWorld('vorn', {
     if (_onDone) { ipcRenderer.off('vorn:task-done', _onDone); _onDone = null }
   },
 
-  // Reconstruct
-  startReconstruct: (storeDir) => ipcRenderer.invoke('vorn:start-reconstruct', { storeDir }),
+  // Store disconnect
+  onStoreDisconnected: (cb) => {
+    if (_onDisconn) ipcRenderer.off('vorn:store-disconnected', _onDisconn)
+    _onDisconn = () => cb()
+    ipcRenderer.on('vorn:store-disconnected', _onDisconn)
+  },
+  offStoreDisconnected: () => {
+    if (_onDisconn) { ipcRenderer.off('vorn:store-disconnected', _onDisconn); _onDisconn = null }
+  },
 
-  // Integrity check
-  startIntegrity: (storeDir) => ipcRenderer.invoke('vorn:start-integrity', { storeDir }),
+  // Integrity
+  startIntegrity: () => ipcRenderer.invoke('vorn:start-integrity'),
 
-  // Sanitize
-  startSanitize: (storeDir, cutoffTs) => ipcRenderer.invoke('vorn:start-sanitize', { storeDir, cutoffTs }),
+  // Store browser
+  inspectHash:      (hashVorn)                        => ipcRenderer.invoke('vorn:inspect-hash', { hashVorn }),
+  extractHash:      (hashVorn, destDir, filename)     => ipcRenderer.invoke('vorn:extract-hash', { hashVorn, destDir, filename }),
+  deleteStoreEntry: (hashVorn)                        => ipcRenderer.invoke('vorn:delete-store-entry', { hashVorn }),
+  listStoreFiles:   (offset, limit, query)            => ipcRenderer.invoke('vorn:list-store-files', { offset, limit, query }),
+  countStoreFiles:  ()                                => ipcRenderer.invoke('vorn:count-store-files'),
+  startClearStore:  ()                                => ipcRenderer.invoke('vorn:start-clear-store'),
 
-  // Store / Inspect
-  inspectHash:    (store, hashVorn)         => ipcRenderer.invoke('vorn:inspect-hash', { store, hashVorn }),
-  inspectFile:    (filePath)                => ipcRenderer.invoke('vorn:inspect-file', filePath),
-  extractHash:     (storeDir, hashVorn, destDir, filename) => ipcRenderer.invoke('vorn:extract-hash', { storeDir, hashVorn, destDir, filename }),
-  listStoreFiles:  (storeDir, offset, limit, query) => ipcRenderer.invoke('vorn:list-store-files', { storeDir, offset, limit, query }),
-  countStoreFiles: (storeDir)               => ipcRenderer.invoke('vorn:count-store-files', { storeDir }),
-  deleteStoreEntry: (storeDir, hashVorn)     => ipcRenderer.invoke('vorn:delete-store-entry', { storeDir, hashVorn }),
-  startClearStore: (storeDir)               => ipcRenderer.invoke('vorn:start-clear-store', { storeDir }),
+  // Settings
+  getSettings:  ()        => ipcRenderer.invoke('vorn:get-settings'),
+  saveSettings: (patch)   => ipcRenderer.invoke('vorn:save-settings', patch),
 
-  pickFolder:     ()                         => ipcRenderer.invoke('vorn:pick-folder'),
-  resolveStore:   (defaultStore)            => ipcRenderer.invoke('vorn:resolve-store', { defaultStore }),
-  getSessionStats: ()                       => ipcRenderer.invoke('vorn:get-session-stats'),
-
-  // App info
-  getAppInfo:     ()                        => ipcRenderer.invoke('vorn:get-app-info'),
+  // Utils
+  pickFolder:  () => ipcRenderer.invoke('vorn:pick-folder'),
+  getAppInfo:  () => ipcRenderer.invoke('vorn:get-app-info'),
+  listDir:     (dirPath) => ipcRenderer.invoke('vorn:list-dir', { dirPath }),
 
   platform: process.platform,
 })

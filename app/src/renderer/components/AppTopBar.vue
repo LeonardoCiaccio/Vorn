@@ -1,5 +1,5 @@
 <template>
-  <header class="shrink-0 relative flex items-center px-4 h-11 bg-gray-900 border-b border-gray-800">
+  <header class="shrink-0 relative flex items-center px-4 h-13 bg-gray-900 border-b border-gray-800">
 
     <!-- Brand -->
     <div class="flex items-baseline gap-1.5 mr-4">
@@ -14,49 +14,64 @@
         :key="item.id"
         @click="navigate(item.id)"
         :class="[
-          'relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150',
+          'relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-150',
           currentView === item.id
             ? 'bg-indigo-500/15 text-indigo-400'
             : 'text-gray-400 hover:text-gray-100 hover:bg-gray-800/60'
         ]"
       >
-        <component :is="item.icon" class="w-3.5 h-3.5 shrink-0" />
+        <component :is="item.icon" class="w-4 h-4 shrink-0" />
         {{ item.label }}
-        <span
-          v-if="item.id === 'sessions' && runningTasks.length"
-          class="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded-full bg-indigo-500 text-white animate-pulse"
-        >{{ runningTasks.length }}</span>
       </button>
     </nav>
 
-
+    <!-- Destra: tema -->
+    <div class="ml-auto flex items-center gap-1">
+      <button
+        @click="toggleTheme"
+        class="p-2 rounded-md text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
+        :title="isDark ? 'Passa al tema chiaro' : 'Passa al tema scuro'"
+      >
+        <SunIcon  v-if="isDark"  class="w-4.5 h-4.5" />
+        <MoonIcon v-else         class="w-4.5 h-4.5" />
+      </button>
+    </div>
 
   </header>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
   RectangleStackIcon,
   CircleStackIcon,
-  Cog6ToothIcon,
-  ChartBarIcon,
+  SunIcon,
+  MoonIcon,
 } from '@heroicons/vue/24/outline'
 import { state, goBack, navigateTo } from '../stores/vorn.js'
-import { t } from '../stores/i18n.js'
 
-const currentView  = computed(() => state.currentView)
-const runningTasks = computed(() => Object.values(state.tasks).filter(t => t.status === 'running'))
+const currentView = computed(() => state.currentView)
 
-const navItems = computed(() => [
-  { id: 'sessions', label: t.value.nav.sessions, icon: RectangleStackIcon },
-  { id: 'store',    label: t.value.nav.store,    icon: CircleStackIcon },
-  { id: 'stats',    label: t.value.nav.stats,    icon: ChartBarIcon },
-  { id: 'settings', label: t.value.nav.settings, icon: Cog6ToothIcon },
-])
+const navItems = [
+  { id: 'sessions', label: 'Sessioni', icon: RectangleStackIcon },
+  { id: 'store',    label: 'Store',    icon: CircleStackIcon },
+]
 
 function navigate(id) {
   if (id === 'sessions') goBack()
   else navigateTo(id)
 }
+
+// Tema
+const isDark = ref(document.documentElement.classList.contains('dark'))
+
+function toggleTheme() {
+  isDark.value = !isDark.value
+  const theme = isDark.value ? 'dark' : 'light'
+  document.documentElement.classList.toggle('dark',  isDark.value)
+  document.documentElement.classList.toggle('light', !isDark.value)
+  localStorage.setItem('vorn-theme', theme)
+  window.vorn.saveSettings({ theme })
+}
+
 </script>

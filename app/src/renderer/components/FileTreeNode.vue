@@ -19,8 +19,8 @@
           class="w-3 h-3 text-gray-600 shrink-0 transition-transform duration-150"
           :class="open ? 'rotate-90' : ''"
         />
-        <FolderOpenIcon v-if="open" class="w-3.5 h-3.5 text-indigo-400/80 shrink-0" />
-        <FolderIcon     v-else      class="w-3.5 h-3.5 text-gray-500 shrink-0 group-hover:text-indigo-400/60 transition-colors" />
+        <FolderOpenIcon v-if="open" class="w-3.5 h-3.5 text-amber-300 shrink-0" />
+        <FolderIcon     v-else      class="w-3.5 h-3.5 text-amber-400/80 shrink-0 group-hover:text-amber-300 transition-colors" />
         <span class="text-gray-300 flex-1 truncate text-[12px]">{{ node.name }}</span>
         <span class="text-[10px] text-gray-600 font-mono mr-2 shrink-0">{{ fileCount }}</span>
       </button>
@@ -48,7 +48,7 @@
         @change="toggle"
         class="w-3 h-3 mr-0.5 shrink-0 accent-indigo-500 cursor-pointer"
       />
-      <DocumentIcon class="w-3.5 h-3.5 text-gray-600 shrink-0" />
+      <DocumentTextIcon class="w-3.5 h-3.5 text-sky-400/70 shrink-0" />
       <span class="text-gray-400 flex-1 truncate text-[12px]">{{ node.name }}</span>
       <span class="text-[10px] text-gray-600 font-mono mr-2 shrink-0">{{ formatBytes(node.bytes) }}</span>
     </div>
@@ -57,7 +57,7 @@
 
 <script setup>
 import { ref, computed, inject, watch, watchEffect } from 'vue'
-import { FolderIcon, FolderOpenIcon, DocumentIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
+import { FolderIcon, FolderOpenIcon, DocumentTextIcon, ChevronRightIcon } from '@heroicons/vue/24/outline'
 import { formatBytes } from '../stores/vorn.js'
 
 const props = defineProps({
@@ -71,8 +71,8 @@ const cbRef  = ref(null)
 
 const expandSignal   = inject('expandSignal',   ref(0))
 const collapseSignal = inject('collapseSignal', ref(0))
-const selectedPaths  = inject('selectedPaths',  ref(new Set()))
-const selectionMode  = inject('selectionMode',  ref(false))
+const selectedPaths = inject('selectedPaths', ref(new Set()))
+const selectionMode = inject('selectionMode', ref(false))
 
 watch(expandSignal,   () => { if (props.node.type === 'dir') open.value = true  })
 watch(collapseSignal, () => { if (props.node.type === 'dir') open.value = false })

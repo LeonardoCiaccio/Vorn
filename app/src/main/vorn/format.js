@@ -1,4 +1,4 @@
-import { openSync, readSync, writeSync, closeSync, createReadStream, createWriteStream, ftruncateSync, statSync } from 'fs'
+import { openSync, readSync, closeSync, createReadStream, createWriteStream, statSync } from 'fs'
 import { Readable } from 'stream'
 
 const MAGIC = Buffer.from('VORN')
@@ -94,51 +94,6 @@ export async function writeVornFromSource(destPath, meta, sourcePath) {
     ws.on('error', reject)
     rs.on('error', reject)
   })
-}
-
-// ── SURGICAL Update: Only touch the tail ─────────────────────────────────────
-
-export function upsertPath(filePath, runTs, pathEntry, session, machine) {
-  const fd = openSync(filePath, 'r+')
-  try {
-    const contentLen = _getContentInfo(fd)
-    const metaOffset = BigInt(HEADER_SIZE) + contentLen
-    
-    // Verify separator
-    const sepBuf = Buffer.alloc(SEPARATOR.length)
-    readSync(fd, sepBuf, 0, SEPARATOR.length, metaOffset)
-    if (!sepBuf.equals(SEPARATOR)) throw new Error('Integrity check failed: separator missing')
-    
-    // Read old meta
-    const stats = statSync(filePath)
-    const oldMetaSize = stats.size - Number(metaOffset) - SEPARATOR.length
-    const oldMetaBuf = Buffer.alloc(oldMetaSize)
-    readSync(fd, oldMetaBuf, 0, oldMetaSize, metaOffset + BigInt(SEPARATOR.length))
-    const meta = JSON.parse(oldMetaBuf.toString('utf8'))
-    
-    // Update logic
-    let updated = false
-    for (const record of meta.records) {
-      if (record.ts === runTs) {
-        record.paths.push(pathEntry)
-        updated = true
-        break
-      }
-    }
-    if (!updated) {
-      meta.records.push({ ts: runTs, session, machine, paths: [pathEntry] })
-    }
-    
-    const newMetaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
-    
-    // CHIRURGIA: Truncate and Append
-    ftruncateSync(fd, Number(metaOffset)) // Sottraiamo i vecchi meta
-    writeSync(fd, SEPARATOR, 0, SEPARATOR.length, Number(metaOffset))
-    writeSync(fd, newMetaBuf, 0, newMetaBuf.length, Number(metaOffset) + SEPARATOR.length) // Sommiamo i nuovi
-    
-  } finally {
-    closeSync(fd)
-  }
 }
 
 // ── Content stream (used by restore) ─────────────────────────────────────────

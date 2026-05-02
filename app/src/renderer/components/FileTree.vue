@@ -8,15 +8,15 @@
         <button
           v-if="tree.length"
           @click="toggleSelectionMode"
-          :title="selectionMode ? 'Esci dalla selezione' : 'Seleziona file'"
+          :title="selectionMode ? 'Esci dalla selezione' : 'Seleziona file per il ripristino'"
           :class="[
-            'p-1 rounded transition-colors text-[10px] font-medium px-2',
+            'p-1 rounded transition-colors',
             selectionMode
-              ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30'
+              ? 'text-indigo-400 bg-indigo-500/15 hover:bg-indigo-500/25'
               : 'text-gray-600 hover:text-gray-300 hover:bg-gray-800'
           ]"
         >
-          {{ selectionMode ? 'Esci' : 'Seleziona' }}
+          <CheckCircleIcon class="w-3.5 h-3.5" />
         </button>
         <!-- Expand/collapse -->
         <button
@@ -56,7 +56,7 @@
 
 <script setup>
 import { computed, provide, ref, watch } from 'vue'
-import { ArrowPathIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, CheckCircleIcon } from '@heroicons/vue/24/outline'
 import FileTreeNode from './FileTreeNode.vue'
 
 const props = defineProps({
@@ -119,12 +119,13 @@ function buildTree(files) {
       siblings = dirMap.get(currentKey).children
     }
 
+    const hash = typeof meta === 'string' ? meta : meta.hash_vorn
     siblings.push({
       name:      parts[parts.length - 1],
       type:      'file',
       relPath,
-      bytes:     meta.bytes ?? 0,
-      hash_vorn: meta.hash_vorn,
+      bytes:     typeof meta === 'string' ? 0 : (meta.bytes ?? 0),
+      hash_vorn: hash,
     })
   }
 

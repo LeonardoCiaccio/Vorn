@@ -1,105 +1,130 @@
 <template>
   <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="$emit('close')">
-      <div class="w-full max-w-lg bg-gray-900 border border-gray-700 rounded-md shadow-2xl">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4" @click.self="$emit('close')">
+      <div class="w-full max-w-3xl bg-gray-900 border border-gray-700 rounded-lg shadow-2xl flex flex-col" style="height: 80vh; max-height: 80vh">
 
         <!-- Header -->
-        <div class="px-6 py-5 border-b border-gray-800 flex items-center justify-between">
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between shrink-0">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
               <FolderPlusIcon class="w-4 h-4 text-indigo-400" />
             </div>
-            <h2 class="text-base font-semibold text-white">Nuova sessione</h2>
+            <h2 class="text-sm font-bold text-white">Nuova sessione</h2>
           </div>
           <button @click="$emit('close')" class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors">
             <XMarkIcon class="w-4 h-4" />
           </button>
         </div>
 
-        <!-- Body -->
-        <div class="px-6 py-5 space-y-5">
+        <!-- Body: 2 colonne -->
+        <div class="flex flex-1 overflow-hidden divide-x divide-gray-800/30">
 
-          <!-- Name -->
-          <div>
-            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nome sessione</label>
-            <input
-              v-model="form.name"
-              placeholder="es. Documenti, Progetti, Foto…"
-              class="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
-            />
+          <!-- Sinistra: tree -->
+          <div class="flex flex-col w-1/2 overflow-hidden">
+            <div class="px-6 pt-6 pb-3 shrink-0">
+              <div class="flex items-center justify-between mb-1">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Cartelle da includere</p>
+                <div class="flex items-center gap-3 text-[10px] text-gray-600">
+                  <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded border bg-indigo-500 border-indigo-400"></span> sorgente</span>
+                  <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded border bg-gray-900 border-red-600/60"></span> esclusa</span>
+                </div>
+              </div>
+              <p class="text-[11px] text-gray-600">Seleziona le cartelle. Espandi e deseleziona le sottocartelle da escludere.</p>
+            </div>
+            <div class="flex-1 min-h-0 px-6 pb-6 flex flex-col">
+              <SessionSourceTree class="flex-1 min-h-0"
+                @update:sources="form.sources = $event"
+                @update:excludePaths="form.excludePaths = $event"
+              />
+              <p v-if="form.sources.length" class="text-[11px] text-gray-500 mt-2">
+                {{ form.sources.length }} sorgente{{ form.sources.length !== 1 ? 'i' : '' }} selezionate
+                <span v-if="form.excludePaths.length" class="text-gray-600">
+                  · {{ form.excludePaths.length }} esclusi
+                </span>
+              </p>
+            </div>
           </div>
 
-          <!-- Sources -->
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Cartelle sorgente <span class="normal-case font-normal text-gray-600">(origine)</span></label>
-              <button @click="addSource" class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
-                <PlusIcon class="w-3.5 h-3.5" />
-                Aggiungi
-              </button>
+          <!-- Destra: nome + filtri + azioni -->
+          <div class="flex flex-col w-1/2 overflow-y-auto px-6 py-6 gap-5">
+
+            <!-- Nome -->
+            <div>
+              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nome sessione</label>
+              <input
+                v-model="form.name"
+                placeholder="es. Documenti, Progetti, Foto…"
+                class="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+              />
             </div>
-            <div class="space-y-2">
-              <div
-                v-for="(src, i) in form.sources"
-                :key="i"
-                class="flex items-center gap-2"
-              >
-                <input
-                  v-model="form.sources[i]"
-                  :placeholder="`es. C:\\Users\\leona\\${['Documents','Pictures','Music'][i] ?? 'Cartella'}`"
-                  class="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
-                />
-                <button @click="pickSource(i)" class="p-2 rounded-md bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-colors shrink-0">
-                  <FolderOpenIcon class="w-4 h-4" />
-                </button>
+
+            <!-- Pattern esclusioni -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Pattern esclusioni</label>
                 <button
-                  v-if="form.sources.length > 1"
-                  @click="removeSource(i)"
-                  class="p-2 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
+                  v-if="form.patterns.length"
+                  @click="form.patterns = []"
+                  title="Azzera tutti i pattern"
+                  class="p-1 rounded text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                 >
-                  <XMarkIcon class="w-4 h-4" />
+                  <ArrowPathIcon class="w-3 h-3" />
+                </button>
+              </div>
+              <p class="text-[11px] text-gray-600 mb-3">Applicati su nome file/cartella. Usa <span class="font-mono text-gray-500">*</span> come wildcard.</p>
+              <div class="flex flex-wrap gap-2 mb-3">
+                <div
+                  v-for="pat in form.patterns"
+                  :key="pat"
+                  class="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-800 border border-gray-700 text-xs font-mono text-gray-300"
+                >
+                  {{ pat }}
+                  <button @click="removePattern(pat)" class="ml-0.5 text-gray-600 hover:text-red-400 transition-colors">
+                    <XMarkIcon class="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <input
+                  v-model="newPattern"
+                  @keydown.enter.prevent="addPattern"
+                  placeholder="es. *.bak oppure .cache"
+                  class="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-xs font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+                <button
+                  @click="addPattern"
+                  :disabled="!newPattern.trim()"
+                  class="px-3 py-2 rounded-md text-xs font-medium text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <PlusIcon class="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
-          </div>
 
-          <!-- Store path -->
-          <div>
-            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Cartella store <span class="normal-case font-normal text-gray-600">(destinazione)</span></label>
-            <div class="flex items-center gap-2">
-              <input
-                v-model="form.store"
-                placeholder="es. D:\VornStore o /mnt/backup/vorn"
-                class="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-2.5 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
-              />
-              <button @click="pickStore" class="p-2.5 rounded-md bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-colors shrink-0">
-                <FolderOpenIcon class="w-4 h-4" />
+            <!-- Spacer -->
+            <div class="flex-1" />
+
+            <!-- Errore -->
+            <p v-if="error" class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">{{ error }}</p>
+
+            <!-- Azioni -->
+            <div class="flex gap-3">
+              <button @click="$emit('close')" class="flex-1 px-4 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors">
+                Annulla
+              </button>
+              <button
+                @click="submit"
+                :disabled="saving"
+                class="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+              >
+                <ArrowPathIcon v-if="saving" class="w-4 h-4 animate-spin" />
+                Crea sessione
               </button>
             </div>
-            <p class="text-[11px] text-gray-600 mt-1.5">La cartella dove verranno salvati i file .vorn</p>
+
           </div>
-
-          <!-- Error -->
-          <p v-if="error" class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">{{ error }}</p>
         </div>
 
-        <!-- Footer -->
-        <div class="px-6 py-4 border-t border-gray-800 flex justify-end gap-3">
-          <button
-            @click="$emit('close')"
-            class="px-4 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors"
-          >
-            Annulla
-          </button>
-          <button
-            @click="submit"
-            :disabled="saving"
-            class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors"
-          >
-            <ArrowPathIcon v-if="saving" class="w-4 h-4 animate-spin" />
-            Crea sessione
-          </button>
-        </div>
       </div>
     </div>
   </Teleport>
@@ -107,44 +132,47 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
-import { FolderPlusIcon, FolderOpenIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
-import { state, createSession } from '../stores/vorn.js'
+import { FolderPlusIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+import { createSession, state } from '../stores/vorn.js'
+import SessionSourceTree from './SessionSourceTree.vue'
 
 const emit = defineEmits(['close', 'created'])
 
-const form = reactive({
-  name: '',
-  store: state.activeStore ?? '',
-  sources: [''],
-})
-const saving = ref(false)
-const error  = ref('')
+const DEFAULT_PATTERNS = ['*.log', '*.tmp', '*.temp', 'node_modules', '.git', '__pycache__', 'Thumbs.db', '.DS_Store']
 
-function addSource() {
-  form.sources.push('')
+const form = reactive({
+  name:         '',
+  sources:      [],
+  excludePaths: [],
+  patterns:     [...DEFAULT_PATTERNS],
+})
+const saving     = ref(false)
+const error      = ref('')
+const newPattern = ref('')
+
+function addPattern() {
+  const p = newPattern.value.trim()
+  if (p && !form.patterns.includes(p)) form.patterns.push(p)
+  newPattern.value = ''
 }
-function removeSource(i) {
-  form.sources.splice(i, 1)
-}
-async function pickStore() {
-  const path = await window.vorn.pickFolder()
-  if (path) form.store = path
-}
-async function pickSource(i) {
-  const path = await window.vorn.pickFolder()
-  if (path) form.sources[i] = path
+function removePattern(pat) {
+  form.patterns = form.patterns.filter(p => p !== pat)
 }
 
 async function submit() {
   error.value = ''
-  if (!form.name.trim()) { error.value = 'Inserisci un nome per la sessione'; return }
-  if (!form.store.trim()) { error.value = 'Inserisci il percorso dello store'; return }
-  const sources = form.sources.map(s => s.trim()).filter(Boolean)
-  if (!sources.length) { error.value = 'Inserisci almeno una cartella sorgente'; return }
+  if (!form.name.trim())    { error.value = 'Inserisci un nome per la sessione'; return }
+  if (state.sessions.some(s => s.name === form.name.trim())) { error.value = 'Esiste già una sessione con questo nome'; return }
+  if (!form.sources.length) { error.value = 'Seleziona almeno una cartella sorgente'; return }
 
   saving.value = true
   try {
-    await createSession(form.name.trim(), form.store.trim(), sources)
+    await createSession({
+      name:     form.name.trim(),
+      sources:  [...form.sources],
+      excludes: { paths: [...form.excludePaths], patterns: [...form.patterns] },
+      ts:       new Date().toISOString(),
+    })
     emit('created')
     emit('close')
   } catch (e) {

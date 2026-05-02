@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="$emit('close')">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px]" @click.self="$emit('close')">
       <div class="w-full max-w-lg bg-gray-900 border border-gray-700 rounded-md shadow-2xl">
 
         <!-- Header -->

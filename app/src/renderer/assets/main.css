@@ -55,9 +55,11 @@ html.light .bg-gray-800\/50 { background-color: rgba(229,231,235,0.7)  !importan
 html.light .bg-gray-800\/60 { background-color: rgba(229,231,235,0.8)  !important; }
 
 /* ── Borders ── */
-html.light .border-gray-800     { border-color: #d1d5db !important; }
-html.light .border-gray-700     { border-color: #e5e7eb !important; }
-html.light .divide-gray-800\/60 > * + * { border-color: rgba(209,213,219,0.8) !important; }
+html.light .border-gray-800       { border-color: #d1d5db !important; }
+html.light .border-gray-700       { border-color: #c9cdd4 !important; }
+html.light .border-gray-800\/60   { border-color: rgba(203,213,225,0.5) !important; }
+html.light .divide-gray-800\/60 > * + * { border-color: rgba(203,213,225,0.5) !important; }
+html.light .divide-x              > * + * { border-color: #e5e7eb !important; }
 
 /* ── Text — neutral scale ── */
 html.light .text-white    { color: #111827 !important; }
@@ -90,7 +92,7 @@ html.light .bg-indigo-500 .text-white { color: #ffffff !important; }
 
 /* ── Badge indigo (bg semitrasparente) ── */
 html.light .bg-indigo-500\/5  { background-color: rgba(99,102,241,0.10) !important; }
-html.light .bg-indigo-500\/10 { background-color: rgba(99,102,241,0.14) !important; }
+html.light .bg-indigo-500\/10 { background-color: rgba(99,102,241,0.09) !important; }
 html.light .bg-indigo-500\/15 { background-color: rgba(99,102,241,0.18) !important; }
 html.light .bg-indigo-500\/20 { background-color: rgba(99,102,241,0.20) !important; }
 
@@ -98,8 +100,32 @@ html.light .bg-indigo-500\/20 { background-color: rgba(99,102,241,0.20) !importa
 html.light .bg-amber-950\/30   { background-color: rgba(254,243,199,0.8) !important; }
 html.light .border-amber-900\/40 { border-color: rgba(217,119,6,0.35)   !important; }
 html.light .bg-red-950\/20     { background-color: rgba(254,226,226,0.8) !important; }
+html.light .bg-red-950\/30     { background-color: rgba(254,226,226,0.9) !important; }
 html.light .border-red-900\/40 { border-color: rgba(220,38,38,0.35)     !important; }
+html.light .border-red-900\/50 { border-color: rgba(220,38,38,0.4)      !important; }
 html.light .bg-indigo-500\/5   { background-color: rgba(99,102,241,0.08) !important; }
+html.light .bg-indigo-950\/20  { background-color: rgba(99,102,241,0.08) !important; }
+html.light .bg-indigo-950\/10  { background-color: rgba(99,102,241,0.05) !important; }
+
+/* ── Hover rows ── */
+html.light .hover\:bg-gray-800\/20:hover { background-color: rgba(209,213,219,0.25) !important; }
+html.light .hover\:bg-gray-800\/40:hover { background-color: rgba(209,213,219,0.45) !important; }
+
+/* ── Hover states sui bottoni ── */
+html.light .hover\:bg-gray-800:hover   { background-color: #e5e7eb !important; }
+html.light .hover\:bg-gray-800\/60:hover { background-color: rgba(209,213,219,0.7) !important; }
+html.light .hover\:bg-red-500\/10:hover  { background-color: rgba(220,38,38,0.08)  !important; }
+html.light .hover\:bg-red-950\/40:hover  { background-color: rgba(254,226,226,0.9) !important; }
+html.light .hover\:bg-amber-500\/10:hover { background-color: rgba(217,119,6,0.08) !important; }
+html.light .hover\:bg-indigo-500\/10:hover { background-color: rgba(99,102,241,0.10) !important; }
+html.light .hover\:bg-indigo-500\/25:hover { background-color: rgba(99,102,241,0.16) !important; }
+html.light .hover\:bg-gray-800\/40:hover { background-color: rgba(209,213,219,0.6) !important; }
+html.light .hover\:bg-gray-800\/50:hover { background-color: rgba(209,213,219,0.7) !important; }
+
+html.light .hover\:text-gray-200:hover { color: #1f2937 !important; }
+html.light .hover\:text-gray-300:hover { color: #374151 !important; }
+html.light .hover\:text-red-400:hover  { color: #dc2626 !important; }
+html.light .hover\:text-white:hover    { color: #111827 !important; }
 
 /* ── Inputs ── */
 html.light input, html.light textarea {

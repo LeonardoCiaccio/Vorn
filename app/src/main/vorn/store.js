@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'fs'
 import { join, basename } from 'path'
-import { readVornMeta, readVorn, writeVornFromSource, upsertPath, contentStream } from './format.js'
+import { readVornMeta, readVorn, writeVornFromSource, contentStream } from './format.js'
 import { withFileLock } from './fileLock.js'
 
 function vornPath(storeDir, hashVorn) {
@@ -62,21 +62,13 @@ export function listStoreFiles(storeDir, offset = 0, limit = 20, matchHashes = n
 // Ritorna 'new' se il file è stato creato, 'dedup' se già esisteva.
 // Qualsiasi altro chiamante che arriva sullo stesso hash aspetta in coda.
 
-export async function createOrAddPath(storeDir, hashVorn, bytes, sourcePath, runTs, pathEntry, session, machine) {
+export async function storeBlob(storeDir, hashVorn, bytes, sourcePath) {
   ensureStore(storeDir)
   const p = vornPath(storeDir, hashVorn)
 
   return withFileLock(p, async () => {
-    if (existsSync(p)) {
-      await upsertPath(p, runTs, pathEntry, session, machine)
-      return 'dedup'
-    }
-    const meta = {
-      hash_vorn: hashVorn,
-      bytes,
-      records: [{ ts: runTs, session, machine, paths: [pathEntry] }],
-    }
-    await writeVornFromSource(p, meta, sourcePath)
+    if (existsSync(p)) return 'dedup'
+    await writeVornFromSource(p, { hash_vorn: hashVorn, bytes }, sourcePath)
     return 'new'
   })
 }

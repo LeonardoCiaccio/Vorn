@@ -1,10 +1,10 @@
 import { workerData, parentPort } from 'worker_threads'
 import { restore } from './engine.js'
 
-const { dbPath, sessionName, runTs, destDir, selectedFiles, cancelBuffer } = workerData
+const { storeDir, sessionName, runTs, destDir, selectedFiles, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
-restore(dbPath, sessionName, runTs, destDir, {
+restore(storeDir, sessionName, runTs, destDir, {
   selectedFiles,
   isCancelled: () => Atomics.load(cancelFlag, 0) === 1,
   onProgress:  (progress) => parentPort.postMessage({ type: 'progress', progress }),

@@ -1,25 +1,21 @@
 import { ipcMain, app, dialog } from 'electron'
 import { join } from 'path'
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, readdirSync } from 'fs'
+import { hostname } from 'os'
 import { Worker } from 'worker_threads'
-import {
-  listSessions, createSession, listRuns,
-  loadRun, saveRun, getPausedRun, getSession, deleteRun, deleteSession,
-  getLastUsedStore, fixOrphanedRuns, getSessionStats, updateSession, searchStoreHashes
-} from './vorn/manifest.js'
+import { listSessions, getSession, createSession, deleteSession, listRuns, loadRun, deleteRun } from './vorn/sessions.js'
 import { getEntry, listStoreFiles, countStoreFiles, deleteStoreEntry } from './vorn/store.js'
 import { extractByHash } from './vorn/engine.js'
-import { readVorn } from './vorn/format.js'
-import { existsSync } from 'fs'
-import { homedir } from 'os'
+import { loadSettings, saveSettings, addRecentStore } from './vorn/settings.js'
 import {
   createTask, setTaskCancelFn, updateTaskProgress,
   finishTask, failTask, cancelTask, listTasks, hasRunningTask
 } from './vorn/taskManager.js'
 
-const dbPath = join(homedir(), '.vorn', 'vorn.db')
-
-// taskId → { worker, cancelFlag } — per cleanup al quit
 const _activeWorkers = new Map()
+let _activeStore     = null
+
+// ── Worker spawn ──────────────────────────────────────────────────────────────
 
 function _spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) {
   const cancelBuffer = new SharedArrayBuffer(4)
@@ -50,18 +46,13 @@ function _spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) {
   })
 
   setTaskCancelFn(taskId, () => Atomics.store(cancelFlag, 0, 1))
-
   return cancelFlag
 }
 
 export function registerIpcHandlers(mainWindow) {
 
-  // Ripristina run orfane lasciate 'running' da un eventuale crash precedente
-  fixOrphanedRuns(dbPath)
-
-  // Graceful shutdown: segnala a tutti i worker attivi di fermarsi, poi aspetta
-  // (max 5s) prima di lasciare chiudere l'app
   app.once('before-quit', (e) => {
+    if (_activeStore) _releaseLock(_activeStore)
     if (_activeWorkers.size === 0) return
     e.preventDefault()
     const promises = []
@@ -75,208 +66,124 @@ export function registerIpcHandlers(mainWindow) {
     Promise.all(promises).then(() => app.quit())
   })
 
+  // ── Store ─────────────────────────────────────────────────────────────────
+
+  ipcMain.handle('vorn:open-store', async (_, { storeDir }) => {
+    if (!existsSync(storeDir)) throw new Error('Cartella non trovata')
+
+    const lockErr = _checkLock(storeDir)
+    if (lockErr) throw new Error(lockErr)
+
+    if (_activeStore && _activeStore !== storeDir) {
+      _releaseLock(_activeStore)
+    }
+
+    _acquireLock(storeDir)
+    _activeStore = storeDir
+    addRecentStore(storeDir)
+
+    return { ok: true }
+  })
+
+  ipcMain.handle('vorn:close-store', () => {
+    if (_activeStore) { _releaseLock(_activeStore); _activeStore = null }
+  })
+
+  ipcMain.handle('vorn:get-settings',  ()        => loadSettings())
+  ipcMain.handle('vorn:save-settings', (_, patch) => saveSettings(patch))
+
   // ── Sessions ──────────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:list-sessions', () => listSessions(dbPath))
-
-  ipcMain.handle('vorn:create-session', (_, { name, store, sources }) =>
-    createSession(dbPath, name, store, sources)
-  )
-
-  ipcMain.handle('vorn:get-session', (_, name) => getSession(dbPath, name))
+  ipcMain.handle('vorn:list-sessions',  ()           => listSessions(_activeStore))
+  ipcMain.handle('vorn:get-session',    (_, name)    => getSession(_activeStore, name))
+  ipcMain.handle('vorn:create-session', (_, session) => createSession(_activeStore, session))
+  ipcMain.handle('vorn:delete-session', (_, name) => {
+    if (hasRunningTask(name)) throw new Error(`Operazione in corso per "${name}"`)
+    deleteSession(_activeStore, name)
+  })
 
   // ── Runs ──────────────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:list-runs', (_, sessionName) => listRuns(dbPath, sessionName))
+  ipcMain.handle('vorn:list-runs',  (_, sessionName)            => listRuns(_activeStore, sessionName))
+  ipcMain.handle('vorn:load-run',   (_, { sessionName, runTs }) => loadRun(_activeStore, sessionName, runTs))
+  ipcMain.handle('vorn:delete-run', (_, { sessionName, runTs }) => deleteRun(_activeStore, sessionName, runTs))
 
-  ipcMain.handle('vorn:load-run', (_, { sessionName, runTs }) =>
-    loadRun(dbPath, sessionName, runTs)
-  )
+  // ── Backup ────────────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:get-paused-run', (_, sessionName) => getPausedRun(dbPath, sessionName))
-
-  ipcMain.handle('vorn:delete-run', (_, { sessionName, runTs }) =>
-    deleteRun(dbPath, sessionName, runTs)
-  )
-
-  ipcMain.handle('vorn:update-session', (_, { name, store, sources }) =>
-    updateSession(dbPath, name, { store, sources })
-  )
-
-  ipcMain.handle('vorn:delete-session', (_, name) => {
-    if (hasRunningTask(name)) throw new Error(`Impossibile eliminare: backup o restore in corso per la sessione "${name}"`)
-    deleteSession(dbPath, name)
-  })
-
-  // ── Tasks: Backup ─────────────────────────────────────────────────────────
-
-  ipcMain.handle('vorn:start-backup', (_, { sessionName, resumeTs = null, excludes = [], maxBytes = 0 }) => {
-    if (hasRunningTask(sessionName)) throw new Error(`Operazione già in corso per la sessione: ${sessionName}`)
+  ipcMain.handle('vorn:start-backup', (_, { sessionName, resumeTs = null }) => {
+    if (hasRunningTask(sessionName)) throw new Error(`Operazione già in corso: ${sessionName}`)
     const task = createTask('backup', sessionName)
-
-    // Aggiorna DB subito se resume: refreshSession nel renderer vedrà già 'running'
-    if (resumeTs) {
-      const run = loadRun(dbPath, sessionName, resumeTs)
-      if (run) { run.status = 'running'; saveRun(dbPath, sessionName, resumeTs, run) }
-    }
-
-    _spawnWorker('backupWorker.js', { dbPath, sessionName, opts: { resumeTs, excludes, maxBytes } }, task.id, mainWindow,
+    _spawnWorker('backupWorker.js', { storeDir: _activeStore, sessionName, resumeTs }, task.id, mainWindow,
       (result, error) => {
-        if (error) {
-          failTask(task.id, error)
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error })
-        } else {
-          finishTask(task.id, result)
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
-        }
+        if (error) { failTask(task.id, error); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error }) }
+        else        { finishTask(task.id, result); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result }) }
       }
     )
-
     return { taskId: task.id }
   })
 
-  // ── Tasks: Restore ────────────────────────────────────────────────────────
+  // ── Restore ───────────────────────────────────────────────────────────────
 
   ipcMain.handle('vorn:start-restore', (_, { sessionName, runTs, destDir, selectedFiles = null }) => {
-    if (hasRunningTask(sessionName)) throw new Error(`Operazione già in corso per la sessione: ${sessionName}`)
+    if (hasRunningTask(sessionName)) throw new Error(`Operazione già in corso: ${sessionName}`)
     const task = createTask('restore', sessionName)
-
-    _spawnWorker('restoreWorker.js', { dbPath, sessionName, runTs, destDir, selectedFiles }, task.id, mainWindow,
+    _spawnWorker('restoreWorker.js', { storeDir: _activeStore, sessionName, runTs, destDir, selectedFiles }, task.id, mainWindow,
       (result, error) => {
-        if (error) {
-          failTask(task.id, error)
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error })
-        } else {
-          finishTask(task.id, { ...result, status: 'done' })
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
-        }
+        if (error) { failTask(task.id, error); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error }) }
+        else        { finishTask(task.id, { ...result, status: 'done' }); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result }) }
       }
     )
-
     return { taskId: task.id }
   })
 
-  // ── Tasks: controllo ─────────────────────────────────────────────────────
+  // ── Task controls ─────────────────────────────────────────────────────────
 
   ipcMain.handle('vorn:task-cancel', (_, taskId) => cancelTask(taskId))
   ipcMain.handle('vorn:task-list',   ()           => listTasks())
 
-  // ── Reconstruct ───────────────────────────────────────────────────────────
+  // ── Integrity ─────────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:start-reconstruct', (_, { storeDir }) => {
-    const anyRunning = listTasks().some(t => t.status === 'running')
-    if (anyRunning) throw new Error('Impossibile ricostruire: operazioni in corso')
-    const task = createTask('reconstruct', null)
-
-    _spawnWorker('reconstructWorker.js', { dbPath, storeDir }, task.id, mainWindow,
-      (result, error) => {
-        if (error) {
-          failTask(task.id, error)
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error })
-        } else {
-          finishTask(task.id, result)
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
-        }
-      }
-    )
-
-    return { taskId: task.id }
-  })
-
-  // ── Tasks: Sanitize ──────────────────────────────────────────────────────
-
-  ipcMain.handle('vorn:start-sanitize', (_, { storeDir, cutoffTs }) => {
-    const task = createTask('sanitize', null)
-
-    _spawnWorker('sanitizeWorker.js', { storeDir, dbPath, cutoffTs }, task.id, mainWindow,
-      (result, error) => {
-        if (error) {
-          failTask(task.id, error)
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error })
-        } else {
-          finishTask(task.id, result)
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
-        }
-      }
-    )
-
-    return { taskId: task.id }
-  })
-
-  // ── Tasks: Integrity check ───────────────────────────────────────────────
-
-  ipcMain.handle('vorn:start-integrity', (_, { storeDir }) => {
+  ipcMain.handle('vorn:start-integrity', () => {
     const task = createTask('integrity', null)
-
-    _spawnWorker('integrityWorker.js', { storeDir }, task.id, mainWindow,
+    _spawnWorker('integrityWorker.js', { storeDir: _activeStore }, task.id, mainWindow,
       (result, error) => {
-        if (error) {
-          failTask(task.id, error)
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error })
-        } else {
-          finishTask(task.id, result)
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
-        }
+        if (error) { failTask(task.id, error); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error }) }
+        else        { finishTask(task.id, result); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result }) }
       }
     )
-
     return { taskId: task.id }
   })
 
-  // ── Store ─────────────────────────────────────────────────────────────────
+  // ── Clear store ───────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:inspect-hash', (_, { store, hashVorn }) => getEntry(store, hashVorn))
-
-  ipcMain.handle('vorn:inspect-file', (_, filePath) => {
-    if (!existsSync(filePath)) throw new Error(`File not found: ${filePath}`)
-    const { meta } = readVorn(filePath)
-    return meta
-  })
-
-  ipcMain.handle('vorn:extract-hash', async (_, { storeDir, hashVorn, destDir, filename }) =>
-    extractByHash(storeDir, hashVorn, destDir, filename)
-  )
-
-  ipcMain.handle('vorn:list-store-files', (_, { storeDir, offset, limit, query }) => {
-    const matchHashes = query?.trim() ? searchStoreHashes(dbPath, query.trim()) : null
-    return listStoreFiles(storeDir, offset, limit, matchHashes)
-  })
-
-  ipcMain.handle('vorn:count-store-files', (_, { storeDir }) =>
-    countStoreFiles(storeDir)
-  )
-
-  ipcMain.handle('vorn:delete-store-entry', (_, { storeDir, hashVorn }) => {
+  ipcMain.handle('vorn:start-clear-store', () => {
     if (listTasks().some(t => t.status === 'running'))
-      throw new Error('Impossibile eliminare: operazioni in corso')
-    deleteStoreEntry(storeDir, hashVorn)
-  })
-
-  ipcMain.handle('vorn:start-clear-store', (_, { storeDir }) => {
-    if (listTasks().some(t => t.status === 'running'))
-      throw new Error('Impossibile eliminare: operazioni in corso')
+      throw new Error('Impossibile svuotare: operazioni in corso')
     const task = createTask('clear', null)
-
-    _spawnWorker('clearWorker.js', { storeDir }, task.id, mainWindow,
+    _spawnWorker('clearWorker.js', { storeDir: _activeStore }, task.id, mainWindow,
       (result, error) => {
-        if (error) {
-          failTask(task.id, error)
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error })
-        } else {
-          finishTask(task.id, result)
-          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
-        }
+        if (error) { failTask(task.id, error); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error }) }
+        else        { finishTask(task.id, result); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result }) }
       }
     )
-
     return { taskId: task.id }
   })
 
-  // ── Session stats ─────────────────────────────────────────────────────────
+  // ── Store browser ─────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:get-session-stats', () => getSessionStats(dbPath))
+  ipcMain.handle('vorn:inspect-hash',       (_, { hashVorn })                    => getEntry(_activeStore, hashVorn))
+  ipcMain.handle('vorn:extract-hash',       async (_, { hashVorn, destDir, filename }) => extractByHash(_activeStore, hashVorn, destDir, filename))
+  ipcMain.handle('vorn:delete-store-entry', (_, { hashVorn }) => {
+    if (listTasks().some(t => t.status === 'running'))
+      throw new Error('Impossibile eliminare: operazioni in corso')
+    deleteStoreEntry(_activeStore, hashVorn)
+  })
+  ipcMain.handle('vorn:list-store-files',  (_, { offset, limit, query }) =>
+    listStoreFiles(_activeStore, offset, limit, query?.trim() ? _hashSetForQuery(_activeStore, query.trim()) : null)
+  )
+  ipcMain.handle('vorn:count-store-files', () => countStoreFiles(_activeStore))
 
-  // ── Folder picker ────────────────────────────────────────────────────────
+  // ── Folder picker ─────────────────────────────────────────────────────────
 
   ipcMain.handle('vorn:pick-folder', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
@@ -287,16 +194,62 @@ export function registerIpcHandlers(mainWindow) {
 
   // ── App info ──────────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:resolve-store', (_, { defaultStore }) => {
-    const last = getLastUsedStore(dbPath)
-    if (last && existsSync(last)) return { store: last, source: 'last' }
-    if (defaultStore && existsSync(defaultStore)) return { store: defaultStore, source: 'default' }
-    return { store: null, source: 'none' }
-  })
-
   ipcMain.handle('vorn:get-app-info', () => ({
-    dbPath,
     version:  app.getVersion(),
     platform: process.platform,
+    store:    _activeStore,
+    homedir:  require('os').homedir(),
   }))
+
+  ipcMain.handle('vorn:list-dir', (_, { dirPath }) => {
+    try {
+      return readdirSync(dirPath, { withFileTypes: true })
+        .filter(e => { try { return e.isDirectory() || e.isFile() } catch { return false } })
+        .map(e => ({ name: e.name, path: join(dirPath, e.name), type: e.isDirectory() ? 'dir' : 'file' }))
+        .sort((a, b) => {
+          if (a.type !== b.type) return a.type === 'dir' ? -1 : 1
+          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+        })
+    } catch { return [] }
+  })
+
+  ipcMain.handle('vorn:get-recent-stores', () => loadSettings().recentStores)
+}
+
+// ── Lock file ─────────────────────────────────────────────────────────────────
+
+function _lockPath(storeDir) { return join(storeDir, 'vorn', 'lock') }
+
+function _checkLock(storeDir) {
+  const lp = _lockPath(storeDir)
+  if (!existsSync(lp)) return null
+  try {
+    const lock = JSON.parse(readFileSync(lp, 'utf8'))
+    try { process.kill(lock.pid, 0); return `Store in uso (PID ${lock.pid}) su ${lock.machine}` }
+    catch { return null }
+  } catch { return null }
+}
+
+function _acquireLock(storeDir) {
+  mkdirSync(join(storeDir, 'vorn'), { recursive: true })
+  writeFileSync(_lockPath(storeDir), JSON.stringify({
+    pid:      process.pid,
+    machine:  hostname(),
+    openedAt: new Date().toISOString(),
+  }), 'utf8')
+}
+
+function _releaseLock(storeDir) {
+  try { unlinkSync(_lockPath(storeDir)) } catch (_) {}
+}
+
+// ── Hash search (senza DB: filtra per prefisso) ────────────────────────────────
+
+function _hashSetForQuery(storeDir, query) {
+  const q = query.toLowerCase()
+  return new Set(
+    readdirSync(storeDir)
+      .filter(f => f.endsWith('.vorn') && f.toLowerCase().includes(q))
+      .map(f => f.slice(0, -5))
+  )
 }

@@ -1,48 +1,11 @@
-import { reactive, watch } from 'vue'
+// Applica subito il tema da localStorage (evita flash al primo paint)
+const cached = localStorage.getItem('vorn-theme') ?? 'dark'
+document.documentElement.classList.add(cached)
 
-const STORAGE_KEY = 'vorn-settings'
-
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : {}
-  } catch { return {} }
+// Dopo il boot, sincronizza con settings.json e aggiorna se diverso
+export function syncThemeFromSettings(theme) {
+  if (!theme || theme === cached) return
+  document.documentElement.classList.remove('dark', 'light')
+  document.documentElement.classList.add(theme)
+  localStorage.setItem('vorn-theme', theme)
 }
-
-const saved = load()
-
-export const settings = reactive({
-  theme:            saved.theme            ?? 'dark',
-  startWithSystem:  saved.startWithSystem  ?? false,
-  startMinimized:   saved.startMinimized   ?? false,
-  defaultStore:     saved.defaultStore     ?? '',
-  excludes:         saved.excludes         ?? ['*.tmp', '*.log', 'node_modules/', '.git/', 'Thumbs.db'],
-  compress:         saved.compress         ?? false,
-  maxFileMB:        saved.maxFileMB        ?? 0,
-  autoBackup:       saved.autoBackup       ?? false,
-  autoBackupHours:  saved.autoBackupHours  ?? 6,
-  notifyDone:       saved.notifyDone       ?? true,
-  notifyErrors:     saved.notifyErrors     ?? true,
-  notifySound:      saved.notifySound      ?? false,
-  logLevel:         saved.logLevel         ?? 'info',
-  devTools:         saved.devTools         ?? false,
-})
-
-// Persist every change
-watch(settings, (val) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...val }))
-}, { deep: true })
-
-export function setTheme(theme) {
-  settings.theme = theme
-  applyTheme(theme)
-}
-
-export function applyTheme(theme) {
-  const html = document.documentElement
-  html.classList.remove('dark', 'light')
-  html.classList.add(theme)
-}
-
-// Apply on import
-applyTheme(settings.theme)
