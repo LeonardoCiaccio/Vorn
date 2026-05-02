@@ -4,7 +4,7 @@ import { Worker } from 'worker_threads'
 import {
   listSessions, createSession, listRuns,
   loadRun, saveRun, getPausedRun, getSession, deleteRun, deleteSession,
-  getLastUsedStore, fixOrphanedRuns
+  getLastUsedStore, fixOrphanedRuns, getSessionStats
 } from './vorn/manifest.js'
 import { getEntry, listStoreFiles } from './vorn/store.js'
 import { readVorn } from './vorn/format.js'
@@ -231,6 +231,10 @@ export function registerIpcHandlers(mainWindow) {
   ipcMain.handle('vorn:list-store-files', (_, { storeDir, offset, limit }) =>
     listStoreFiles(storeDir, offset, limit)
   )
+
+  // ── Session stats ─────────────────────────────────────────────────────────
+
+  ipcMain.handle('vorn:get-session-stats', () => getSessionStats(dbPath))
 
   // ── App info ──────────────────────────────────────────────────────────────
 

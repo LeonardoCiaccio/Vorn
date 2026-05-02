@@ -16,6 +16,7 @@ export const state = reactive({
   activeStore:      null, // percorso store attivo (ultimo usato → default → null)
   integrity:        { running: false, progress: null, report: null },
   sanitize:         { running: false, progress: null, report: null },
+  statsCache:       null,  // { data: {...}, calculatedAt: ISO string }
 })
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────

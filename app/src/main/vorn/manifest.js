@@ -196,3 +196,29 @@ export function fixOrphanedRuns(dbPath) {
   const db = openDb(dbPath)
   db.prepare(`UPDATE runs SET status = 'paused' WHERE status = 'running'`).run()
 }
+
+export function getSessionStats(dbPath) {
+  const db = openDb(dbPath)
+
+  // Per ogni hash_vorn distinto: conta quante volte appare in tutti i run_files.
+  // cnt = 1 → originale (mai deduplicato), cnt > 1 → deduplicato.
+  const row = db.prepare(`
+    SELECT
+      COUNT(*)                                       AS total_hashes,
+      SUM(CASE WHEN cnt = 1 THEN 1 ELSE 0 END)      AS originals,
+      SUM(CASE WHEN cnt > 1 THEN 1 ELSE 0 END)      AS deduped,
+      SUM(bytes)                                     AS bytes_total
+    FROM (
+      SELECT hash_vorn, COUNT(*) AS cnt, MAX(bytes) AS bytes
+      FROM run_files
+      GROUP BY hash_vorn
+    )
+  `).get()
+
+  return {
+    total_hashes: row?.total_hashes ?? 0,
+    originals:    row?.originals    ?? 0,
+    deduped:      row?.deduped      ?? 0,
+    bytes_total:  row?.bytes_total  ?? 0,
+  }
+}

@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('vorn', {
   listStoreFiles: (storeDir, offset, limit) => ipcRenderer.invoke('vorn:list-store-files', { storeDir, offset, limit }),
 
   resolveStore:   (defaultStore)            => ipcRenderer.invoke('vorn:resolve-store', { defaultStore }),
+  getSessionStats: ()                       => ipcRenderer.invoke('vorn:get-session-stats'),
 
   // App info
   getAppInfo:     ()                        => ipcRenderer.invoke('vorn:get-app-info'),

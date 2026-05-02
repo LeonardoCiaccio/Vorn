@@ -2,12 +2,36 @@
   <div class="flex flex-col h-full overflow-auto">
 
     <!-- Header -->
-    <div class="px-8 py-6 border-b border-gray-800 shrink-0">
-      <h1 class="text-xl font-semibold text-white">Dashboard</h1>
-      <p class="text-sm text-gray-500 mt-0.5">Panoramica generale — aggiornata {{ formatTs(now) }}</p>
+    <div class="px-8 py-6 border-b border-gray-800 shrink-0 flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-white">Dashboard</h1>
+        <p class="text-sm text-gray-500 mt-0.5">
+          <span v-if="statsCalculatedAt">Statistiche calcolate il {{ formatTs(statsCalculatedAt) }}</span>
+          <span v-else-if="computing">Calcolo in corso…</span>
+          <span v-else>Nessuna statistica disponibile</span>
+        </p>
+      </div>
+      <button
+        @click="computeStats"
+        :disabled="computing"
+        class="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium border border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <ArrowPathIcon :class="['w-3.5 h-3.5', computing && 'animate-spin']" />
+        Ricalcola
+      </button>
     </div>
 
     <div class="px-8 py-6 space-y-6">
+
+      <!-- Disclaimer -->
+      <div class="flex items-start gap-3 bg-amber-500/8 border border-amber-500/20 rounded-md px-4 py-3">
+        <InformationCircleIcon class="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+        <p class="text-xs text-amber-300/80 leading-relaxed">
+          Le statistiche sono basate sui manifest delle sessioni (tutti i run, tutte le sessioni).
+          Un hash visto più volte tra run diversi è considerato deduplicato.
+          Non riflettono l'uso effettivo dello store su disco.
+        </p>
+      </div>
 
       <!-- KPI cards -->
       <div class="grid grid-cols-4 gap-4">
@@ -177,10 +201,10 @@
           <!-- Dedup efficiency -->
           <div class="px-5 pb-5">
             <div class="bg-gray-800/50 border border-gray-700/50 rounded-md p-4 mt-1">
-              <p class="text-xs text-gray-500 mb-3">Efficienza deduplicazione</p>
+              <p class="text-xs text-gray-500 mb-3">Dedup cross-sessione</p>
               <div class="flex items-end gap-2 mb-2">
                 <p class="text-2xl font-bold text-white">{{ dedupPct }}%</p>
-                <p class="text-xs text-emerald-400 mb-1">file risparmiati</p>
+                <p class="text-xs text-emerald-400 mb-1">hash deduplicati</p>
               </div>
               <div class="w-full h-1.5 bg-gray-700 rounded-md overflow-hidden">
                 <div
@@ -188,6 +212,10 @@
                   :style="{ width: dedupPct + '%' }"
                 />
               </div>
+              <p class="text-[10px] text-gray-600 mt-2">
+                {{ sessionStats.deduped.toLocaleString('it-IT') }} dedup
+                su {{ sessionStats.total_hashes.toLocaleString('it-IT') }} hash distinti
+              </p>
             </div>
           </div>
         </div>
@@ -198,46 +226,66 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   RectangleStackIcon,
-  CircleStackIcon,
   DocumentDuplicateIcon,
   BoltIcon,
+  CircleStackIcon,
   CheckCircleIcon,
   PauseCircleIcon,
   ArrowPathIcon,
   ShieldCheckIcon,
   ClockIcon,
   ServerIcon,
+  InformationCircleIcon,
 } from '@heroicons/vue/24/outline'
 import { state, formatTs, formatBytes } from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
 
 const now = new Date().toISOString()
 
+const computing = ref(false)
+
+const sessionStats = computed(() =>
+  state.statsCache?.data ?? { total_hashes: 0, originals: 0, deduped: 0, bytes_total: 0 }
+)
+const statsCalculatedAt = computed(() => state.statsCache?.calculatedAt ?? null)
+
+async function computeStats() {
+  computing.value = true
+  try {
+    const data = await window.vorn.getSessionStats()
+    state.statsCache = { data, calculatedAt: new Date().toISOString() }
+  } finally {
+    computing.value = false
+  }
+}
+
+onMounted(() => {
+  if (!state.statsCache) computeStats()
+})
+
 // ── KPI ──────────────────────────────────────────────────────────────────────
 const kpis = computed(() => {
   const sessions = state.sessions
   const allRuns  = sessions.flatMap(s => s.runs)
-  const totalFiles = sessions.reduce((a, s) => a + (s.runs[0]?.files_total ?? s.runs[0]?.files_count ?? 0), 0)
-  const totalNew   = sessions.reduce((a, s) => a + (s.runs[0]?.files_new  ?? 0), 0)
-  const storeSize  = state.storeEntries.reduce((a, e) => a + e.bytes, 0)
+  const { total_hashes, originals, deduped, bytes_total } = sessionStats.value
 
   return [
     {
-      label: 'Sessioni attive', value: sessions.filter(s => s.runs.length).length,
-      sub: `${sessions.length} totali`, trend: 'neutral',
+      label: 'File totali (hash)', value: total_hashes.toLocaleString('it-IT'),
+      sub: `${sessions.filter(s => s.runs.length).length} sessioni con run`, trend: 'neutral',
       icon: RectangleStackIcon, iconBg: 'bg-indigo-500/15', iconColor: 'text-indigo-400', glow: 'bg-indigo-500',
     },
     {
-      label: 'File indicizzati', value: totalFiles.toLocaleString('it-IT'),
-      sub: `+${totalNew} nell'ultima run`, trend: 'up',
+      label: 'Originali', value: originals.toLocaleString('it-IT'),
+      sub: 'hash visti una sola volta', trend: 'neutral',
       icon: DocumentDuplicateIcon, iconBg: 'bg-violet-500/15', iconColor: 'text-violet-400', glow: 'bg-violet-500',
     },
     {
-      label: 'Dimensione store', value: state.storeLoaded ? formatBytes(storeSize) : '…',
-      sub: state.storeLoaded ? `${state.storeEntries.length} file .vorn` : 'da caricare', trend: 'neutral',
+      label: 'Deduplicati', value: deduped.toLocaleString('it-IT'),
+      sub: 'hash condivisi tra run/sessioni', trend: deduped > 0 ? 'up' : 'neutral',
       icon: CircleStackIcon, iconBg: 'bg-sky-500/15', iconColor: 'text-sky-400', glow: 'bg-sky-500',
     },
     {
@@ -330,9 +378,8 @@ const healthChecks = computed(() => {
 })
 
 const dedupPct = computed(() => {
-  const allRuns = state.sessions.flatMap(s => s.runs)
-  const total = allRuns.reduce((a, r) => a + (r.files_total ?? 0), 0)
-  const dedup = allRuns.reduce((a, r) => a + (r.files_dedup ?? 0), 0)
-  return total > 0 ? Math.round(dedup / total * 100) : 0
+  const { total_hashes, deduped } = sessionStats.value
+  if (!total_hashes) return 0
+  return Math.round((deduped / total_hashes) * 100)
 })
 </script>

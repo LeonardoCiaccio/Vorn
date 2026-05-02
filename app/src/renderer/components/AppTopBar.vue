@@ -2,7 +2,6 @@
   <header class="shrink-0 flex items-center gap-1 px-4 h-11 bg-gray-900 border-b border-gray-800">
 
     <!-- Brand -->
-    <img src="../assets/logo.png" class="w-6 h-6 rounded-md shadow-md shadow-indigo-500/20 mr-3" />
     <span class="text-xs font-bold tracking-widest text-white uppercase mr-4">Vorn</span>
 
     <!-- Nav -->
