@@ -29,7 +29,7 @@ export function clearStore(storeDir) {
   return files.length
 }
 
-export function listStoreFiles(storeDir, offset = 0, limit = 20) {
+export function listStoreFiles(storeDir, offset = 0, limit = 20, matchHashes = null) {
   if (!existsSync(storeDir)) return { files: [], total: 0 }
 
   if (!_listCache || _listCache.dir !== storeDir || offset === 0) {
@@ -39,7 +39,11 @@ export function listStoreFiles(storeDir, offset = 0, limit = 20) {
     _listCache = { dir: storeDir, files: allFiles }
   }
 
-  const slice = _listCache.files.slice(offset, offset + limit)
+  const pool = matchHashes
+    ? _listCache.files.filter(f => matchHashes.has(basename(f, '.vorn')))
+    : _listCache.files
+
+  const slice = pool.slice(offset, offset + limit)
   const files = slice.map(f => {
     const p = join(storeDir, f)
     const st = statSync(p)
@@ -51,7 +55,7 @@ export function listStoreFiles(storeDir, offset = 0, limit = 20) {
     }
   })
 
-  return { files, total: _listCache.files.length }
+  return { files, total: pool.length }
 }
 
 // ── Operazione atomica: check + create/upsert sotto lo stesso lock ────────────
@@ -75,6 +79,13 @@ export async function createOrAddPath(storeDir, hashVorn, bytes, sourcePath, run
     await writeVornFromSource(p, meta, sourcePath)
     return 'new'
   })
+}
+
+export function deleteStoreEntry(storeDir, hashVorn) {
+  const p = vornPath(storeDir, hashVorn)
+  if (!existsSync(p)) throw new Error(`Entry non trovata: ${hashVorn}`)
+  unlinkSync(p)
+  if (_listCache) _listCache.files = _listCache.files.filter(f => f !== hashVorn + '.vorn')
 }
 
 // ── Read-only (nessun lock necessario) ───────────────────────────────────────

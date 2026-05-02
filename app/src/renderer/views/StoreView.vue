@@ -14,6 +14,16 @@
           </p>
         </div>
         <div class="flex items-center gap-2">
+          <!-- Search -->
+          <div class="relative">
+            <MagnifyingGlassIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Cerca hash o percorso…"
+              class="pl-8 pr-3 py-2 rounded-md text-xs bg-gray-800/60 border border-gray-700 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500/60 w-56 transition-colors"
+            />
+          </div>
           <button @click="refreshStore" class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 transition-colors">
             <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': state.loading }" />
             Aggiorna
@@ -96,7 +106,7 @@
             </colgroup>
             <tbody class="divide-y divide-gray-800/60">
               <tr
-                v-for="entry in state.storeEntries"
+                v-for="entry in filteredEntries"
                 :key="entry.hash_vorn"
                 @click="onEntrySelect(entry)"
                 :class="[
@@ -438,10 +448,7 @@
 
           <!-- Header -->
           <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-gray-900/90 backdrop-blur-md z-10">
-            <div>
-              <p class="text-sm font-bold text-white">Metadati</p>
-              <p class="text-[10px] text-gray-500 font-mono mt-0.5 truncate max-w-60">{{ state.selectedStoreEntry.hash_vorn }}</p>
-            </div>
+            <p class="text-sm font-bold text-white">Metadati</p>
             <button @click="state.selectedStoreEntry = null" class="p-1 rounded-md text-gray-600 hover:text-white transition-colors">
               <XMarkIcon class="w-4 h-4" />
             </button>
@@ -453,7 +460,25 @@
             <p class="text-xs italic">Estrazione metadati in corso...</p>
           </div>
 
-          <div v-else class="flex-1 overflow-auto">
+          <!-- Extract result banner -->
+          <div v-if="extractResult" class="px-5 py-3 border-b border-gray-800 shrink-0">
+            <div v-if="extractResult.error" class="flex items-center gap-2 text-xs text-amber-400">
+              <ExclamationTriangleIcon class="w-4 h-4 shrink-0" />
+              {{ extractResult.error }}
+              <button @click="extractResult = null" class="ml-auto text-gray-600 hover:text-gray-400">
+                <XMarkIcon class="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div v-else class="flex items-center gap-2 text-xs text-emerald-400">
+              <CheckCircleIcon class="w-4 h-4 shrink-0" />
+              Estratto in: <span class="font-mono break-all">{{ extractResult.path }}</span>
+              <button @click="extractResult = null" class="ml-auto text-gray-600 hover:text-gray-400">
+                <XMarkIcon class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div v-if="!state.selectedStoreEntry.loading" class="flex-1 overflow-auto">
             <!-- Fingerprint -->
             <div class="px-5 py-4 border-b border-gray-800 bg-indigo-500/5">
               <p class="text-[10px] font-semibold text-indigo-400 uppercase tracking-widest mb-2">Fingerprint</p>
@@ -461,7 +486,7 @@
             </div>
 
             <!-- Stats -->
-            <div class="px-5 py-4 border-b border-gray-800 grid grid-cols-2 gap-4">
+            <div class="px-5 py-4 border-b border-gray-800 grid grid-cols-3 gap-4">
               <div>
                 <p class="text-[10px] text-gray-500 uppercase mb-1">Dati puri</p>
                 <p class="text-sm font-mono text-white">{{ formatBytes(state.selectedStoreEntry.bytes) }}</p>
@@ -469,6 +494,12 @@
               <div>
                 <p class="text-[10px] text-gray-500 uppercase mb-1">Records</p>
                 <p class="text-sm font-mono text-white">{{ state.selectedStoreEntry.records?.length ?? 0 }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] text-gray-500 uppercase mb-1">Dedup</p>
+                <p class="text-sm font-mono" :class="(new Set((state.selectedStoreEntry.records ?? []).flatMap(r => r.paths?.map(p => p.path) ?? [])).size - 1) > 0 ? 'text-emerald-400' : 'text-gray-600'">
+                  {{ Math.max(0, new Set((state.selectedStoreEntry.records ?? []).flatMap(r => r.paths?.map(p => p.path) ?? [])).size - 1) }}
+                </p>
               </div>
             </div>
 
@@ -486,12 +517,22 @@
                     <span class="text-[10px] text-gray-500 font-mono">{{ formatTs(rec.ts) }}</span>
                   </div>
                   <div class="space-y-2">
-                    <div v-for="(p, j) in rec.paths" :key="j">
+                    <div v-for="(p, j) in rec.paths" :key="j" class="group relative">
                       <div class="flex items-start gap-2">
                         <DocumentIcon class="w-3.5 h-3.5 text-gray-600 mt-0.5 shrink-0" />
                         <div class="min-w-0 flex-1">
                           <p class="text-xs text-gray-200 font-medium truncate">{{ p.name.split(/[\\/]/).pop() }}</p>
                           <p class="text-[9px] text-gray-500 font-mono truncate mt-0.5">{{ p.path }}</p>
+                        </div>
+                      </div>
+                      <!-- Tooltip -->
+                      <div class="absolute left-0 bottom-full mb-2 z-50 hidden group-hover:block pointer-events-none w-72">
+                        <div class="bg-gray-950 border border-gray-700 rounded-md px-3 py-2 text-[10px] font-mono text-gray-200 shadow-xl">
+                          <p class="text-gray-400 mb-1">Percorso completo</p>
+                          <p class="text-white break-all">{{ p.path }}</p>
+                          <p class="text-gray-500 mt-1 break-all">rel: {{ p.name }}</p>
+                          <p v-if="p.mtime" class="text-gray-500 mt-0.5">mtime: {{ new Date(p.mtime).toLocaleString('it-IT') }}</p>
+                          <p v-if="p.permissions" class="text-gray-500 mt-0.5">permissions: {{ p.permissions }}</p>
                         </div>
                       </div>
                     </div>
@@ -500,10 +541,46 @@
               </div>
             </div>
           </div>
+          <!-- Footer -->
+          <div class="px-5 py-4 border-t border-gray-800 bg-gray-950 shrink-0">
+            <!-- Conferma eliminazione -->
+            <div v-if="confirmingDelete" class="flex items-center gap-2">
+              <ExclamationTriangleIcon class="w-4 h-4 text-amber-400 shrink-0" />
+              <span class="text-xs text-gray-400 flex-1">Eliminare questo record?</span>
+              <button @click="confirmDeleteEntry" class="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+              <button @click="confirmingDelete = false" class="px-3 py-1.5 rounded-md text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Annulla</button>
+            </div>
+            <!-- Azioni normali -->
+            <div v-else class="flex gap-2">
+              <button
+                @click="confirmingDelete = true"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-md text-xs font-medium text-red-400 border border-red-900/50 hover:bg-red-950/40 transition-colors"
+              >
+                <TrashIcon class="w-3.5 h-3.5" />
+                Cancella
+              </button>
+              <button
+                @click="openExtractModal"
+                :disabled="!!extracting"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-md text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
+              >
+                <ArrowDownTrayIcon class="w-3.5 h-3.5" />
+                {{ extracting ? 'Estrazione…' : 'Estrai file' }}
+              </button>
+            </div>
+          </div>
 
         </div>
       </div>
     </transition>
+
+    <!-- Extract modal -->
+    <ExtractModal
+      :show="showExtractModal"
+      :filename="extractFilename"
+      @close="showExtractModal = false"
+      @confirm="confirmExtract"
+    />
 
   </div>
 </template>
@@ -520,10 +597,78 @@ import {
   CheckCircleIcon,
   SparklesIcon,
   TrashIcon,
+  MagnifyingGlassIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/vue/24/outline'
 import { state, fetchStorePage, handleSelectStoreEntry, startIntegrity, startSanitize, startClearStore, formatTs, formatBytes } from '../stores/vorn.js'
+import ExtractModal from '../components/ExtractModal.vue'
 
 const ITEMS_PER_PAGE = 20
+
+// Delete
+const confirmingDelete = ref(false)
+
+async function confirmDeleteEntry() {
+  const entry    = state.selectedStoreEntry
+  const storeDir = currentStorePath.value
+  confirmingDelete.value = false
+  state.selectedStoreEntry = null
+  await window.vorn.deleteStoreEntry(storeDir, entry.hash_vorn)
+  state.storeEntries = state.storeEntries.filter(e => e.hash_vorn !== entry.hash_vorn)
+  if (storeFileCount.value !== null) storeFileCount.value--
+}
+
+// Extract
+const showExtractModal = ref(false)
+const extracting       = ref(false)
+const extractResult    = ref(null)
+
+const extractFilename = computed(() => {
+  const entry = state.selectedStoreEntry
+  if (!entry) return ''
+  const firstName = entry.records?.[0]?.paths?.[0]?.name ?? ''
+  return firstName.split(/[\\/]/).pop() || entry.hash_vorn
+})
+
+function openExtractModal() {
+  showExtractModal.value = true
+}
+
+async function confirmExtract(destDir) {
+  showExtractModal.value = false
+  extracting.value = true
+  extractResult.value = null
+  try {
+    const entry    = state.selectedStoreEntry
+    const storeDir = currentStorePath.value
+    const result   = await window.vorn.extractHash(storeDir, entry.hash_vorn, destDir, extractFilename.value)
+    extractResult.value = result
+  } catch (e) {
+    extractResult.value = { error: e.message }
+  } finally {
+    extracting.value = false
+  }
+}
+
+watch(() => state.selectedStoreEntry, () => {
+  extractResult.value    = null
+  confirmingDelete.value = false
+})
+
+// Search
+const searchQuery = ref('')
+const filteredEntries = computed(() => state.storeEntries)
+
+let _searchDebounce = null
+watch(searchQuery, () => {
+  clearTimeout(_searchDebounce)
+  _searchDebounce = setTimeout(() => {
+    currentOffset = 0
+    hasMore = true
+    state.storeEntries = []
+    loadNextPage()
+  }, 300)
+})
 
 // Clear store
 const showClearModal    = ref(false)
@@ -599,7 +744,7 @@ async function loadNextPage() {
   const storeDir = currentStorePath.value
   if (!storeDir || storeDir === 'In attesa di sessioni...') return
 
-  const result = await fetchStorePage(storeDir, currentOffset, ITEMS_PER_PAGE)
+  const result = await fetchStorePage(storeDir, currentOffset, ITEMS_PER_PAGE, searchQuery.value.trim())
   currentOffset += result.files.length
   if (currentOffset >= result.total) hasMore = false
 }

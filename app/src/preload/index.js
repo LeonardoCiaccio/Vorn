@@ -53,8 +53,10 @@ contextBridge.exposeInMainWorld('vorn', {
   // Store / Inspect
   inspectHash:    (store, hashVorn)         => ipcRenderer.invoke('vorn:inspect-hash', { store, hashVorn }),
   inspectFile:    (filePath)                => ipcRenderer.invoke('vorn:inspect-file', filePath),
-  listStoreFiles:  (storeDir, offset, limit) => ipcRenderer.invoke('vorn:list-store-files', { storeDir, offset, limit }),
+  extractHash:     (storeDir, hashVorn, destDir, filename) => ipcRenderer.invoke('vorn:extract-hash', { storeDir, hashVorn, destDir, filename }),
+  listStoreFiles:  (storeDir, offset, limit, query) => ipcRenderer.invoke('vorn:list-store-files', { storeDir, offset, limit, query }),
   countStoreFiles: (storeDir)               => ipcRenderer.invoke('vorn:count-store-files', { storeDir }),
+  deleteStoreEntry: (storeDir, hashVorn)     => ipcRenderer.invoke('vorn:delete-store-entry', { storeDir, hashVorn }),
   startClearStore: (storeDir)               => ipcRenderer.invoke('vorn:start-clear-store', { storeDir }),
 
   pickFolder:     ()                         => ipcRenderer.invoke('vorn:pick-folder'),

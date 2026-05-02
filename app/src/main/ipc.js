@@ -4,9 +4,10 @@ import { Worker } from 'worker_threads'
 import {
   listSessions, createSession, listRuns,
   loadRun, saveRun, getPausedRun, getSession, deleteRun, deleteSession,
-  getLastUsedStore, fixOrphanedRuns, getSessionStats, updateSession
+  getLastUsedStore, fixOrphanedRuns, getSessionStats, updateSession, searchStoreHashes
 } from './vorn/manifest.js'
-import { getEntry, listStoreFiles, countStoreFiles } from './vorn/store.js'
+import { getEntry, listStoreFiles, countStoreFiles, deleteStoreEntry } from './vorn/store.js'
+import { extractByHash } from './vorn/engine.js'
 import { readVorn } from './vorn/format.js'
 import { existsSync } from 'fs'
 import { homedir } from 'os'
@@ -232,13 +233,24 @@ export function registerIpcHandlers(mainWindow) {
     return meta
   })
 
-  ipcMain.handle('vorn:list-store-files', (_, { storeDir, offset, limit }) =>
-    listStoreFiles(storeDir, offset, limit)
+  ipcMain.handle('vorn:extract-hash', async (_, { storeDir, hashVorn, destDir, filename }) =>
+    extractByHash(storeDir, hashVorn, destDir, filename)
   )
+
+  ipcMain.handle('vorn:list-store-files', (_, { storeDir, offset, limit, query }) => {
+    const matchHashes = query?.trim() ? searchStoreHashes(dbPath, query.trim()) : null
+    return listStoreFiles(storeDir, offset, limit, matchHashes)
+  })
 
   ipcMain.handle('vorn:count-store-files', (_, { storeDir }) =>
     countStoreFiles(storeDir)
   )
+
+  ipcMain.handle('vorn:delete-store-entry', (_, { storeDir, hashVorn }) => {
+    if (listTasks().some(t => t.status === 'running'))
+      throw new Error('Impossibile eliminare: operazioni in corso')
+    deleteStoreEntry(storeDir, hashVorn)
+  })
 
   ipcMain.handle('vorn:start-clear-store', (_, { storeDir }) => {
     if (listTasks().some(t => t.status === 'running'))

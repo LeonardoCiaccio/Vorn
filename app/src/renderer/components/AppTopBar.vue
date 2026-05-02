@@ -1,11 +1,14 @@
 <template>
-  <header class="shrink-0 flex items-center gap-1 px-4 h-11 bg-gray-900 border-b border-gray-800">
+  <header class="shrink-0 relative flex items-center px-4 h-11 bg-gray-900 border-b border-gray-800">
 
     <!-- Brand -->
-    <span class="text-xs font-bold tracking-widest text-white uppercase mr-4">Vorn</span>
+    <div class="flex items-baseline gap-1.5 mr-4">
+      <span class="text-xs font-bold tracking-widest text-white uppercase">Vorn</span>
+      <span class="text-[10px] text-gray-600">v{{ state.appInfo?.version ?? '…' }}</span>
+    </div>
 
-    <!-- Nav -->
-    <nav class="flex items-center gap-0.5">
+    <!-- Nav — centrata in assoluto -->
+    <nav class="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5">
       <button
         v-for="item in navItems"
         :key="item.id"
@@ -26,18 +29,7 @@
       </button>
     </nav>
 
-    <!-- Spacer -->
-    <div class="flex-1" />
 
-    <!-- Store attivo -->
-    <span
-      v-if="state.activeStore"
-      class="text-[10px] text-gray-600 font-mono truncate max-w-48"
-      :title="state.activeStore"
-    >{{ state.activeStore }}</span>
-
-    <!-- Versione -->
-    <span class="text-[10px] text-gray-700 ml-3">v{{ state.appInfo?.version ?? '…' }}</span>
 
   </header>
 </template>

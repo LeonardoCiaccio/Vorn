@@ -1,5 +1,5 @@
 import { statSync, readdirSync, mkdirSync, createWriteStream } from 'fs'
-import { join, relative } from 'path'
+import { join, relative, basename } from 'path'
 import { vornHash } from './hash.js'
 import { createOrAddPath, extractContent } from './store.js'
 import { openRun, saveRun, loadRun } from './manifest.js'
@@ -149,4 +149,21 @@ export async function restore(dbPath, sessionName, runTs, destDir, opts = {}) {
   }
 
   return { restored, total, errors }
+}
+
+// ── Extract by hash ───────────────────────────────────────────────────────────
+
+export async function extractByHash(storeDir, hashVorn, destDir, filename) {
+  const outName = filename || hashVorn
+  const outPath = join(destDir, basename(outName))
+  mkdirSync(destDir, { recursive: true })
+  const rs = extractContent(storeDir, hashVorn)
+  const ws = createWriteStream(outPath)
+  await new Promise((resolve, reject) => {
+    rs.pipe(ws)
+    ws.on('finish', resolve)
+    ws.on('error', reject)
+    rs.on('error', reject)
+  })
+  return { path: outPath }
 }

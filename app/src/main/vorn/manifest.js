@@ -205,6 +205,16 @@ export function fixOrphanedRuns(dbPath) {
   db.prepare(`UPDATE runs SET status = 'paused' WHERE status = 'running'`).run()
 }
 
+export function searchStoreHashes(dbPath, query) {
+  const db  = openDb(dbPath)
+  const q   = `%${query}%`
+  const rows = db.prepare(`
+    SELECT DISTINCT hash_vorn FROM run_files
+    WHERE hash_vorn LIKE ? OR rel_path LIKE ? OR source LIKE ?
+  `).all(q, q, q)
+  return new Set(rows.map(r => r.hash_vorn))
+}
+
 export function getSessionStats(dbPath) {
   const db = openDb(dbPath)
 
@@ -216,9 +226,12 @@ export function getSessionStats(dbPath) {
       COUNT(*)                                                           AS originals,
       (SELECT COUNT(DISTINCT source || '/' || rel_path) FROM run_files)
         - COUNT(*)                                                       AS deduped,
-      SUM(bytes)                                                         AS bytes_total
+      SUM(bytes)                                                         AS bytes_total,
+      SUM((path_count - 1) * bytes)                                      AS bytes_saved
     FROM (
-      SELECT hash_vorn, MAX(bytes) AS bytes
+      SELECT hash_vorn,
+             COUNT(DISTINCT source || '/' || rel_path) AS path_count,
+             MAX(bytes) AS bytes
       FROM run_files
       GROUP BY hash_vorn
     )
@@ -241,6 +254,7 @@ export function getSessionStats(dbPath) {
     originals:    row?.originals    ?? 0,
     deduped:      row?.deduped      ?? 0,
     bytes_total:  row?.bytes_total  ?? 0,
+    bytes_saved:  row?.bytes_saved  ?? 0,
     daily,
   }
 }

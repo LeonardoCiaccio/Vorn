@@ -254,10 +254,10 @@ export function getLastTask(sessionName, type) {
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
-export async function fetchStorePage(storeDir, offset = 0, limit = 20) {
+export async function fetchStorePage(storeDir, offset = 0, limit = 20, query = '') {
   state.loading = true
   try {
-    const result = await window.vorn.listStoreFiles(storeDir, offset, limit)
+    const result = await window.vorn.listStoreFiles(storeDir, offset, limit, query)
     if (offset === 0) state.storeEntries = result.files
     else state.storeEntries.push(...result.files)
     state.storeLoaded = true

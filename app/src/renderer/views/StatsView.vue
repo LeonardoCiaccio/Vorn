@@ -54,6 +54,15 @@
         </div>
       </div>
 
+      <!-- Dati puri -->
+      <div class="flex items-center gap-6 px-1 text-xs text-gray-500">
+        <span>Dimensione totale: <span class="text-gray-300 font-mono">{{ formatBytes(sessionStats.bytes_total ?? 0) }}</span></span>
+        <span class="text-gray-700">·</span>
+        <span>Spazio risparmiato (dedup): <span class="text-emerald-400 font-mono">{{ formatBytes(sessionStats.bytes_saved ?? 0) }}</span></span>
+        <span class="text-gray-700">·</span>
+        <span>Record indicizzati: <span class="text-gray-300 font-mono">{{ (sessionStats.total_files ?? 0).toLocaleString('it-IT') }}</span></span>
+      </div>
+
       <!-- Charts row -->
       <div class="grid grid-cols-1 gap-4">
 
@@ -190,7 +199,6 @@ import {
   BoltIcon,
   CircleStackIcon,
   ArrowPathIcon,
-  ShieldCheckIcon,
   ClockIcon,
   ServerIcon,
 } from '@heroicons/vue/24/outline'
@@ -202,7 +210,7 @@ const now = new Date().toISOString()
 const computing = ref(false)
 
 const sessionStats = computed(() =>
-  state.statsCache?.data ?? { total_files: 0, originals: 0, deduped: 0, bytes_total: 0, daily: [] }
+  state.statsCache?.data ?? { total_files: 0, originals: 0, deduped: 0, bytes_total: 0, bytes_saved: 0, daily: [] }
 )
 const statsCalculatedAt = computed(() => state.statsCache?.calculatedAt ?? null)
 
@@ -296,11 +304,6 @@ const healthChecks = computed(() => {
       label: 'Sessioni configurate',
       detail: `${sessions.length} sessioni · ${allRuns.length} run`,
       icon: RectangleStackIcon, bg: 'bg-indigo-500/15', color: 'text-indigo-400'
-    },
-    {
-      label: 'Integrità file',
-      detail: 'Non verificata',
-      icon: ShieldCheckIcon, bg: 'bg-amber-500/15', color: 'text-amber-400'
     },
     {
       label: 'Ultima run',
