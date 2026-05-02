@@ -8,11 +8,25 @@
       <div class="px-8 py-6 border-b border-gray-800 flex items-center justify-between shrink-0">
         <div>
           <h1 class="text-xl font-semibold text-white">Store</h1>
-          <p class="text-sm text-gray-500 mt-0.5 font-mono">{{ currentStorePath }}</p>
+          <p class="text-sm text-gray-500 mt-0.5 font-mono">
+            {{ currentStorePath }}
+            <span v-if="storeFileCount !== null" class="text-gray-600"> · {{ storeFileCount.toLocaleString('it-IT') }} vorn</span>
+          </p>
         </div>
         <div class="flex items-center gap-2">
-          <button @click="refreshStore" class="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
-            <ArrowPathIcon class="w-5 h-5" :class="{ 'animate-spin': state.loading }" />
+          <button @click="refreshStore" class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 transition-colors">
+            <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': state.loading }" />
+            Aggiorna
+          </button>
+          <button
+            @click="showClearModal = true"
+            :disabled="state.clear.running"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-red-600/50 hover:text-red-400 hover:bg-red-500/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ArrowPathIcon v-if="state.clear.running" class="w-4 h-4 animate-spin" />
+            <TrashIcon v-else class="w-4 h-4" />
+            <span v-if="state.clear.running">{{ state.clear.progress?.deleted ?? 0 }}/{{ state.clear.progress?.total ?? 0 }}</span>
+            <span v-else>Svuota store</span>
           </button>
           <button
             @click="showSanitizeModal = true"
@@ -37,16 +51,17 @@
         </div>
       </div>
 
-      <!-- Stats (Simplified) -->
-      <div class="px-8 py-4 grid grid-cols-2 gap-4 border-b border-gray-800 shrink-0">
-        <div class="bg-gray-900 border border-gray-800 rounded-md p-4">
-          <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">File .vorn rilevati</p>
-          <p class="text-2xl font-bold text-white">{{ totalFilesCount }}</p>
+      <!-- Clear progress bar -->
+      <div v-if="state.clear.running" class="px-8 py-3 bg-red-950/20 border-b border-red-900/30 shrink-0">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs text-red-400 font-medium">Eliminazione in corso…</span>
+          <span class="text-xs text-gray-500 font-mono">{{ state.clear.progress?.deleted ?? 0 }} / {{ state.clear.progress?.total ?? 0 }}</span>
         </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-md p-4">
-          <p class="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">Stato Store</p>
-          <p class="text-2xl font-bold text-emerald-500">Ottimizzato</p>
-          <p class="text-xs text-gray-600 mt-0.5">Lettura chirurgica attiva</p>
+        <div class="w-full h-1 bg-gray-800 rounded-md overflow-hidden">
+          <div
+            class="h-full bg-red-500 rounded-md transition-all duration-300"
+            :style="{ width: clearProgressPct + '%' }"
+          />
         </div>
       </div>
 
@@ -116,6 +131,61 @@
             <ArchiveBoxIcon class="w-8 h-8 text-gray-700 mb-3" />
             <p class="text-gray-500 text-sm">Nessun file nel cassetto</p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: svuota store -->
+    <div
+      v-if="showClearModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      @click.self="closeClearModal"
+    >
+      <div class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
+
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-md bg-red-500/15 border border-red-500/30 flex items-center justify-center">
+              <TrashIcon class="w-4 h-4 text-red-400" />
+            </div>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Svuota Store</h3>
+          </div>
+          <button @click="closeClearModal" class="text-gray-500 hover:text-white transition-colors">
+            <XMarkIcon class="w-5 h-5" />
+          </button>
+        </div>
+
+        <div class="p-6 space-y-4">
+          <div class="rounded-md bg-red-950/30 border border-red-900/40 px-4 py-3 space-y-2">
+            <p class="text-xs font-semibold text-red-300 uppercase tracking-wider">Operazione irreversibile</p>
+            <p class="text-xs text-gray-400">
+              Tutti i <span class="text-white font-semibold">{{ storeFileCount ?? '?' }} file .vorn</span> nello store verranno eliminati definitivamente.
+              I manifest delle sessioni non vengono toccati, ma i dati di backup saranno irrecuperabili.
+            </p>
+          </div>
+
+          <div>
+            <p class="text-xs text-gray-400 mb-2">Digita <span class="font-mono font-bold text-white">ELIMINA</span> per confermare</p>
+            <input
+              v-model="clearConfirmText"
+              type="text"
+              placeholder="ELIMINA"
+              class="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-500/50 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-800/30 flex items-center justify-end gap-3">
+          <button @click="closeClearModal" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
+            Annulla
+          </button>
+          <button
+            @click="confirmClearStore"
+            :disabled="clearConfirmText !== 'ELIMINA'"
+            class="px-5 py-2 rounded-md text-xs font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-lg shadow-red-500/20"
+          >
+            Elimina tutto
+          </button>
         </div>
       </div>
     </div>
@@ -235,6 +305,44 @@
         </div>
         <div class="px-6 py-4 flex justify-end">
           <button @click="state.sanitize.report = null" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
+            Chiudi
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: report clear store -->
+    <div
+      v-if="state.clear.report"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      @click.self="state.clear.report = null"
+    >
+      <div class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-md bg-red-500/15 border border-red-500/30 flex items-center justify-center">
+              <TrashIcon class="w-4 h-4 text-red-400" />
+            </div>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Store svuotato</h3>
+          </div>
+          <button @click="state.clear.report = null" class="text-gray-500 hover:text-white transition-colors">
+            <XMarkIcon class="w-5 h-5" />
+          </button>
+        </div>
+        <div class="px-6 py-5 grid grid-cols-2 gap-4 border-b border-gray-800">
+          <div class="text-center">
+            <p class="text-2xl font-bold text-white">{{ state.clear.report.deleted ?? 0 }}</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Eliminati</p>
+          </div>
+          <div class="text-center">
+            <p class="text-2xl font-bold" :class="(state.clear.report.failed ?? 0) > 0 ? 'text-red-400' : 'text-gray-500'">
+              {{ state.clear.report.failed ?? 0 }}
+            </p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Errori</p>
+          </div>
+        </div>
+        <div class="px-6 py-4 flex justify-end">
+          <button @click="state.clear.report = null" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
             Chiudi
           </button>
         </div>
@@ -401,7 +509,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   WrenchScrewdriverIcon,
   XMarkIcon,
@@ -413,9 +521,30 @@ import {
   SparklesIcon,
   TrashIcon,
 } from '@heroicons/vue/24/outline'
-import { state, fetchStorePage, handleSelectStoreEntry, startIntegrity, startSanitize, formatTs, formatBytes } from '../stores/vorn.js'
+import { state, fetchStorePage, handleSelectStoreEntry, startIntegrity, startSanitize, startClearStore, formatTs, formatBytes } from '../stores/vorn.js'
 
 const ITEMS_PER_PAGE = 20
+
+// Clear store
+const showClearModal    = ref(false)
+const clearConfirmText  = ref('')
+
+function closeClearModal() {
+  showClearModal.value   = false
+  clearConfirmText.value = ''
+}
+
+const clearProgressPct = computed(() => {
+  const p = state.clear.progress
+  if (!p || !p.total) return 0
+  return Math.round((p.current / p.total) * 100)
+})
+
+async function confirmClearStore() {
+  if (clearConfirmText.value !== 'ELIMINA') return
+  closeClearModal()
+  await startClearStore(currentStorePath.value)
+}
 
 // Sanitize
 const showSanitizeModal = ref(false)
@@ -454,7 +583,7 @@ async function runIntegrity() {
   await startIntegrity(storeDir)
 }
 
-const totalFilesCount = ref(0)
+const storeFileCount = ref(null)
 const sentinel = ref(null)
 let currentOffset = 0
 let hasMore = true
@@ -471,7 +600,6 @@ async function loadNextPage() {
   if (!storeDir || storeDir === 'In attesa di sessioni...') return
 
   const result = await fetchStorePage(storeDir, currentOffset, ITEMS_PER_PAGE)
-  totalFilesCount.value = result.total
   currentOffset += result.files.length
   if (currentOffset >= result.total) hasMore = false
 }
@@ -481,6 +609,9 @@ async function refreshStore() {
   hasMore = true
   state.storeEntries = []
   state.storeLoaded = false
+  const storeDir = currentStorePath.value
+  if (storeDir && storeDir !== 'In attesa di sessioni...')
+    window.vorn.countStoreFiles(storeDir).then(n => { storeFileCount.value = n })
   await loadNextPage()
 }
 
@@ -497,8 +628,21 @@ function setupObserver() {
   observer.observe(sentinel.value)
 }
 
+watch(() => state.clear.running, (running, wasRunning) => {
+  if (wasRunning && !running && !state.clear.report?.fatalError) {
+    storeFileCount.value = 0
+    state.storeEntries   = []
+    state.storeLoaded    = false
+    currentOffset        = 0
+    hasMore              = false
+  }
+})
+
 onMounted(async () => {
-  if (state.sessions.length > 0) await refreshStore()
+  const storeDir = currentStorePath.value
+  if (!storeDir || storeDir === 'In attesa di sessioni...') return
+  window.vorn.countStoreFiles(storeDir).then(n => { storeFileCount.value = n })
+  await refreshStore()
   setupObserver()
 })
 

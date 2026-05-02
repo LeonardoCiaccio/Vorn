@@ -16,6 +16,7 @@ export const state = reactive({
   activeStore:      null, // percorso store attivo (ultimo usato → default → null)
   integrity:        { running: false, progress: null, report: null },
   sanitize:         { running: false, progress: null, report: null },
+  clear:            { running: false, progress: null, report: null },
   statsCache:       null,  // { data: {...}, calculatedAt: ISO string }
 })
 
@@ -51,6 +52,9 @@ export async function init() {
     if (state.sanitize.running && state.tasks[taskId]?.type === 'sanitize') {
       state.sanitize.progress = progress
     }
+    if (state.clear.running && state.tasks[taskId]?.type === 'clear') {
+      state.clear.progress = progress
+    }
   })
 
   window.vorn.onTaskDone(async ({ taskId, result, error }) => {
@@ -69,6 +73,10 @@ export async function init() {
       state.sanitize.progress = null
       state.sanitize.report   = error ? { fatalError: error } : result
       await refreshAllSessions()
+    } else if (t.type === 'clear') {
+      state.clear.running  = false
+      state.clear.progress = null
+      state.clear.report   = error ? { fatalError: error } : result
     } else if (t.type === 'reconstruct') {
       await refreshAllSessions()
     } else {
@@ -127,6 +135,11 @@ export async function createSession(name, store, sources) {
   const session = await window.vorn.createSession(name, store, sources)
   state.sessions.unshift({ ...session, runs: [] })
   return session
+}
+
+export async function updateSession(sessionName, store, sources) {
+  await window.vorn.updateSession(sessionName, store, sources)
+  await refreshSession(sessionName)
 }
 
 export async function deleteSession(sessionName) {
@@ -198,6 +211,17 @@ export async function startIntegrity(storeDir) {
   const { taskId } = await window.vorn.startIntegrity(storeDir)
   state.tasks[taskId] = {
     id: taskId, type: 'integrity', sessionName: null,
+    status: 'running', progress: null, result: null, error: null,
+    createdAt: new Date().toISOString(),
+  }
+  return taskId
+}
+
+export async function startClearStore(storeDir) {
+  state.clear = { running: true, progress: { current: 0, total: 0, deleted: 0, failed: 0 }, report: null }
+  const { taskId } = await window.vorn.startClearStore(storeDir)
+  state.tasks[taskId] = {
+    id: taskId, type: 'clear', sessionName: null,
     status: 'running', progress: null, result: null, error: null,
     createdAt: new Date().toISOString(),
   }

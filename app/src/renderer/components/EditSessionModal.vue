@@ -7,9 +7,9 @@
         <div class="px-6 py-5 border-b border-gray-800 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
-              <FolderPlusIcon class="w-4 h-4 text-indigo-400" />
+              <PencilSquareIcon class="w-4 h-4 text-indigo-400" />
             </div>
-            <h2 class="text-base font-semibold text-white">Nuova sessione</h2>
+            <h2 class="text-base font-semibold text-white">Modifica sessione</h2>
           </div>
           <button @click="$emit('close')" class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors">
             <XMarkIcon class="w-4 h-4" />
@@ -19,13 +19,13 @@
         <!-- Body -->
         <div class="px-6 py-5 space-y-5">
 
-          <!-- Name -->
+          <!-- Name (immutabile) -->
           <div>
             <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nome sessione</label>
             <input
-              v-model="form.name"
-              placeholder="es. Documenti, Progetti, Foto…"
-              class="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
+              :value="session.name"
+              disabled
+              class="w-full bg-gray-800/40 border border-gray-700/50 rounded-md px-3 py-2.5 text-sm text-gray-500 cursor-not-allowed"
             />
           </div>
 
@@ -39,14 +39,10 @@
               </button>
             </div>
             <div class="space-y-2">
-              <div
-                v-for="(src, i) in form.sources"
-                :key="i"
-                class="flex items-center gap-2"
-              >
+              <div v-for="(src, i) in form.sources" :key="i" class="flex items-center gap-2">
                 <input
                   v-model="form.sources[i]"
-                  :placeholder="`es. C:\\Users\\leona\\${['Documents','Pictures','Music'][i] ?? 'Cartella'}`"
+                  placeholder="Percorso cartella sorgente"
                   class="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
                 />
                 <button @click="pickSource(i)" class="p-2 rounded-md bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-colors shrink-0">
@@ -97,7 +93,7 @@
             class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors"
           >
             <ArrowPathIcon v-if="saving" class="w-4 h-4 animate-spin" />
-            Crea sessione
+            Salva modifiche
           </button>
         </div>
       </div>
@@ -107,15 +103,17 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
-import { FolderPlusIcon, FolderOpenIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
-import { state, createSession } from '../stores/vorn.js'
+import { PencilSquareIcon, FolderOpenIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+import { updateSession } from '../stores/vorn.js'
 
-const emit = defineEmits(['close', 'created'])
+const props = defineProps({
+  session: { type: Object, required: true },
+})
+const emit = defineEmits(['close', 'saved'])
 
 const form = reactive({
-  name: '',
-  store: state.activeStore ?? '',
-  sources: [''],
+  store:   props.session.store ?? '',
+  sources: [...(props.session.sources ?? [''])],
 })
 const saving = ref(false)
 const error  = ref('')
@@ -124,7 +122,7 @@ function addSource() {
   form.sources.push('')
 }
 function removeSource(i) {
-  form.sources.splice(i, 1)
+  if (form.sources.length > 1) form.sources.splice(i, 1)
 }
 async function pickStore() {
   const path = await window.vorn.pickFolder()
@@ -137,18 +135,17 @@ async function pickSource(i) {
 
 async function submit() {
   error.value = ''
-  if (!form.name.trim()) { error.value = 'Inserisci un nome per la sessione'; return }
   if (!form.store.trim()) { error.value = 'Inserisci il percorso dello store'; return }
   const sources = form.sources.map(s => s.trim()).filter(Boolean)
   if (!sources.length) { error.value = 'Inserisci almeno una cartella sorgente'; return }
 
   saving.value = true
   try {
-    await createSession(form.name.trim(), form.store.trim(), sources)
-    emit('created')
+    await updateSession(props.session.name, form.store.trim(), sources)
+    emit('saved')
     emit('close')
   } catch (e) {
-    error.value = e.message ?? 'Errore nella creazione della sessione'
+    error.value = e.message ?? 'Errore nel salvataggio'
   } finally {
     saving.value = false
   }

@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('vorn', {
   loadRun:        (sessionName, runTs)      => ipcRenderer.invoke('vorn:load-run', { sessionName, runTs }),
   getPausedRun:   (sessionName)             => ipcRenderer.invoke('vorn:get-paused-run', sessionName),
   deleteRun:      (sessionName, runTs)      => ipcRenderer.invoke('vorn:delete-run', { sessionName, runTs }),
+  updateSession:  (name, store, sources)    => ipcRenderer.invoke('vorn:update-session', { name, store, sources }),
   deleteSession:  (name)                    => ipcRenderer.invoke('vorn:delete-session', name),
 
   // Tasks
@@ -52,8 +53,11 @@ contextBridge.exposeInMainWorld('vorn', {
   // Store / Inspect
   inspectHash:    (store, hashVorn)         => ipcRenderer.invoke('vorn:inspect-hash', { store, hashVorn }),
   inspectFile:    (filePath)                => ipcRenderer.invoke('vorn:inspect-file', filePath),
-  listStoreFiles: (storeDir, offset, limit) => ipcRenderer.invoke('vorn:list-store-files', { storeDir, offset, limit }),
+  listStoreFiles:  (storeDir, offset, limit) => ipcRenderer.invoke('vorn:list-store-files', { storeDir, offset, limit }),
+  countStoreFiles: (storeDir)               => ipcRenderer.invoke('vorn:count-store-files', { storeDir }),
+  startClearStore: (storeDir)               => ipcRenderer.invoke('vorn:start-clear-store', { storeDir }),
 
+  pickFolder:     ()                         => ipcRenderer.invoke('vorn:pick-folder'),
   resolveStore:   (defaultStore)            => ipcRenderer.invoke('vorn:resolve-store', { defaultStore }),
   getSessionStats: ()                       => ipcRenderer.invoke('vorn:get-session-stats'),
 

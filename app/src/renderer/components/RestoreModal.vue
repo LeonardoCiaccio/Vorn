@@ -43,12 +43,17 @@
             <div class="flex-1 min-w-0">
               <p class="text-sm font-semibold text-white">Destinazione Personalizzata</p>
               <div v-if="mode === 'custom'" class="mt-3 space-y-2">
-                <input 
-                  type="text" 
-                  v-model="customPath" 
-                  placeholder="C:\Percorso\Destinazione"
-                  class="w-full bg-gray-950 border border-gray-700 rounded-md px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-indigo-500 transition-colors"
-                />
+                <div class="flex items-center gap-2">
+                  <input
+                    type="text"
+                    v-model="customPath"
+                    placeholder="C:\Percorso\Destinazione"
+                    class="flex-1 bg-gray-950 border border-gray-700 rounded-md px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                  <button @click="pickDest" class="p-2 rounded-md bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-colors shrink-0">
+                    <FolderOpenIcon class="w-4 h-4" />
+                  </button>
+                </div>
                 <p class="text-[9px] text-amber-500/80">Nota: La struttura delle sottocartelle verrà ricreata qui.</p>
               </div>
             </div>
@@ -79,7 +84,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { XMarkIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon, FolderOpenIcon } from '@heroicons/vue/24/outline'
 import { formatTs } from '../stores/vorn.js'
 
 const props = defineProps({
@@ -93,6 +98,11 @@ const emit = defineEmits(['close', 'confirm'])
 
 const mode = ref('original')
 const customPath = ref('')
+
+async function pickDest() {
+  const path = await window.vorn.pickFolder()
+  if (path) customPath.value = path
+}
 
 function handleConfirm() {
   const finalPath = mode.value === 'original' ? props.originalPath : customPath.value

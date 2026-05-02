@@ -28,7 +28,7 @@
     </div>
 
     <!-- Stats strip -->
-    <div class="px-8 py-4 grid grid-cols-4 gap-4 border-b border-gray-800 shrink-0">
+    <div class="px-8 py-4 grid grid-cols-3 gap-4 border-b border-gray-800 shrink-0">
       <div v-for="stat in globalStats" :key="stat.label" class="bg-gray-900 rounded-md p-4 border border-gray-800">
         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">{{ stat.label }}</p>
         <p class="text-2xl font-bold text-white">{{ stat.value }}</p>
@@ -48,13 +48,12 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="text-left">
-            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider pr-6">Sessione</th>
-            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider pr-6">Store</th>
-            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider pr-6">Ultima run</th>
-            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider pr-6">Stato</th>
-            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider pr-6 text-right">Run</th>
-            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">File</th>
-            <th class="pb-3 w-10"></th>
+            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Sessione</th>
+            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Store</th>
+            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Ultima run</th>
+            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Stato</th>
+            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Run</th>
+            <th class="pb-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">File</th>
           </tr>
         </thead>
         <tbody>
@@ -66,7 +65,7 @@
               :class="activeTask(session.name) ? 'bg-indigo-950/20' : ''"
             >
               <!-- Name + sources -->
-              <td class="py-3.5 pr-6">
+              <td class="py-3.5 px-4">
                 <div class="flex items-center gap-3">
                   <div class="w-8 h-8 rounded-md bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0 group-hover:border-indigo-500/50 group-hover:bg-indigo-500/10 transition-colors"
                     :class="activeTask(session.name) ? 'border-indigo-500/40 bg-indigo-500/10' : ''"
@@ -82,18 +81,18 @@
               </td>
 
               <!-- Store -->
-              <td class="py-3.5 pr-6">
+              <td class="py-3.5 px-4">
                 <p class="text-gray-400 font-mono text-xs truncate max-w-45">{{ session.store }}</p>
               </td>
 
               <!-- Last run -->
-              <td class="py-3.5 pr-6">
+              <td class="py-3.5 px-4">
                 <span v-if="session.runs.length" class="text-gray-300">{{ formatTs(session.runs[0].ts) }}</span>
                 <span v-else class="text-gray-600 italic">Mai eseguita</span>
               </td>
 
               <!-- Status -->
-              <td class="py-3.5 pr-6">
+              <td class="py-3.5 px-4">
                 <template v-if="activeTask(session.name)">
                   <div class="flex items-center gap-2">
                     <StatusBadge status="running" />
@@ -107,53 +106,58 @@
               </td>
 
               <!-- Run count -->
-              <td class="py-3.5 pr-6 text-right">
+              <td class="py-3.5 px-4 text-right">
                 <span class="text-gray-300 font-mono font-medium">{{ session.runs.length }}</span>
               </td>
 
-              <!-- Files: live se in corso, altrimenti dall'ultima run -->
-              <td class="py-3.5 text-right">
-                <span class="text-gray-300 font-mono font-medium">
-                  <template v-if="activeTask(session.name) && activeTask(session.name).progress">
-                    {{ (activeTask(session.name).progress.current ?? 0).toLocaleString('it-IT') }}
-                    <span class="text-gray-600">/ {{ (activeTask(session.name).progress.total ?? 0).toLocaleString('it-IT') }}</span>
-                  </template>
-                  <template v-else>
-                    {{ session.runs.length ? (session.runs[0].files_total ?? session.runs[0].files_count ?? 0).toLocaleString('it-IT') : '—' }}
-                  </template>
-                </span>
-              </td>
-
-              <!-- Azioni -->
-              <td class="py-3.5 pl-3 text-right" @click.stop>
-                <!-- Conferma eliminazione -->
-                <div v-if="confirmName === session.name" class="flex items-center justify-end gap-1.5">
-                  <ExclamationTriangleIcon class="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <button
-                    @click="confirmDelete($event, session.name)"
-                    class="px-2 py-1 rounded text-[11px] font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors"
-                  >Elimina</button>
-                  <button
-                    @click="cancelDelete($event)"
-                    class="px-2 py-1 rounded text-[11px] text-gray-400 hover:text-white transition-colors"
-                  >Annulla</button>
+              <!-- Files + azioni -->
+              <td class="py-3.5 px-4 text-right" @click.stop>
+                <div class="flex items-center justify-end gap-2">
+                  <!-- Conferma eliminazione -->
+                  <div v-if="confirmName === session.name" class="flex items-center gap-1.5">
+                    <button
+                      @click="confirmDelete($event, session.name)"
+                      class="px-2 py-1 rounded text-[11px] font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors"
+                    >Elimina</button>
+                    <button
+                      @click="cancelDelete($event)"
+                      class="px-2 py-1 rounded text-[11px] text-gray-400 hover:text-white transition-colors"
+                    >Annulla</button>
+                  </div>
+                  <!-- Tasti azione (visibili su hover) -->
+                  <div v-else class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button
+                      @click.stop="editingSession = session"
+                      class="p-1.5 rounded-md text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+                      title="Modifica sessione"
+                    >
+                      <PencilSquareIcon class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      @click="askDelete($event, session.name)"
+                      :disabled="!!activeTask(session.name)"
+                      class="p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      title="Elimina sessione"
+                    >
+                      <TrashIcon class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <span class="text-gray-300 font-mono font-medium min-w-12 text-right">
+                    <template v-if="activeTask(session.name) && activeTask(session.name).progress">
+                      {{ (activeTask(session.name).progress.current ?? 0).toLocaleString('it-IT') }}
+                      <span class="text-gray-600">/ {{ (activeTask(session.name).progress.total ?? 0).toLocaleString('it-IT') }}</span>
+                    </template>
+                    <template v-else>
+                      {{ session.runs.length ? (session.runs[0].files_total ?? session.runs[0].files_count ?? 0).toLocaleString('it-IT') : '—' }}
+                    </template>
+                  </span>
                 </div>
-                <!-- Tasto cestino (visibile su hover, disabilitato se task attivo) -->
-                <button
-                  v-else
-                  @click="askDelete($event, session.name)"
-                  :disabled="!!activeTask(session.name)"
-                  class="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
-                  title="Elimina sessione"
-                >
-                  <TrashIcon class="w-3.5 h-3.5" />
-                </button>
               </td>
             </tr>
 
             <!-- Sub-row progresso — visibile solo quando il backup è in corso -->
             <tr v-if="activeTask(session.name)" @click="selectSession(session)" class="cursor-pointer bg-indigo-950/10 hover:bg-indigo-950/20 transition-colors">
-              <td colspan="7" class="px-6 pb-3 pt-0">
+              <td colspan="6" class="px-6 pb-3 pt-0">
                 <div class="pl-11">
                   <!-- Barra di avanzamento -->
                   <div class="w-full h-1 bg-gray-800 rounded-full overflow-hidden mb-2">
@@ -204,22 +208,25 @@
   </div>
 
   <NewSessionModal v-if="showModal" @close="showModal = false" @created="showModal = false" />
+  <EditSessionModal v-if="editingSession" :session="editingSession" @close="editingSession = null" @saved="editingSession = null" />
   <ReconstructModal v-if="showReconstructModal" @close="showReconstructModal = false" />
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, ExclamationTriangleIcon, CircleStackIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, CircleStackIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 import { state, selectSession, deleteSession, getActiveTask, formatTs, formatBytes } from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
+import EditSessionModal from '../components/EditSessionModal.vue'
 import ReconstructModal from '../components/ReconstructModal.vue'
 
 const showModal            = ref(false)
 const showReconstructModal = ref(false)
 const sessions             = computed(() => state.sessions)
 const anyTaskRunning       = computed(() => Object.values(state.tasks).some(t => t.status === 'running'))
-const confirmName = ref(null) // nome sessione in attesa di conferma eliminazione
+const confirmName   = ref(null)
+const editingSession = ref(null)
 
 function activeTask(sessionName) {
   return getActiveTask(sessionName)
@@ -249,14 +256,12 @@ async function confirmDelete(e, sessionName) {
 
 const globalStats = computed(() => {
   const totalRuns  = sessions.value.reduce((acc, s) => acc + s.runs.length, 0)
-  const totalFiles = sessions.value.reduce((acc, s) => acc + (s.runs[0]?.files_total ?? s.runs[0]?.files_count ?? 0), 0)
   const lastRun    = sessions.value.flatMap(s => s.runs).sort((a, b) => b.ts.localeCompare(a.ts))[0]
 
   return [
-    { label: 'Sessioni',        value: sessions.value.length },
-    { label: 'Run totali',      value: totalRuns },
-    { label: 'File indicizzati',value: totalFiles.toLocaleString('it-IT') },
-    { label: 'Ultimo backup',   value: lastRun ? formatTs(lastRun.ts).split(',')[0] : '—' },
+    { label: 'Sessioni',      value: sessions.value.length },
+    { label: 'Run totali',    value: totalRuns },
+    { label: 'Ultimo backup', value: lastRun ? formatTs(lastRun.ts).split(',')[0] : '—' },
   ]
 })
 </script>

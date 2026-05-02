@@ -23,18 +23,16 @@
 
     <div class="px-8 py-6 space-y-6">
 
-      <!-- Disclaimer -->
-      <div class="flex items-start gap-3 bg-amber-500/8 border border-amber-500/20 rounded-md px-4 py-3">
-        <InformationCircleIcon class="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-        <p class="text-xs text-amber-300/80 leading-relaxed">
-          Le statistiche sono basate sui manifest delle sessioni (tutti i run, tutte le sessioni).
-          Un hash visto più volte tra run diversi è considerato deduplicato.
-          Non riflettono l'uso effettivo dello store su disco.
-        </p>
-      </div>
-
       <!-- KPI cards -->
-      <div class="grid grid-cols-4 gap-4">
+      <div class="grid grid-cols-5 gap-4">
+
+        <!-- Card sessioni — in risalto -->
+        <div class="bg-indigo-500/10 border border-indigo-500/30 rounded-md p-5 relative overflow-hidden">
+          <p class="text-xs text-indigo-400 uppercase tracking-wider font-medium">Sessioni</p>
+          <p class="text-3xl font-bold text-white mt-2">{{ state.sessions.length }}</p>
+          <div class="absolute -bottom-4 -right-4 w-20 h-20 rounded-md opacity-20 blur-2xl bg-indigo-500" />
+        </div>
+
         <div
           v-for="kpi in kpis"
           :key="kpi.label"
@@ -57,18 +55,18 @@
       </div>
 
       <!-- Charts row -->
-      <div class="grid grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 gap-4">
 
         <!-- Activity bar chart -->
-        <div class="col-span-2 bg-gray-900 border border-gray-800 rounded-md p-5">
+        <div class="bg-gray-900 border border-gray-800 rounded-md p-5">
           <div class="flex items-center justify-between mb-5">
             <div>
               <p class="text-sm font-semibold text-gray-200">Attività backup</p>
               <p class="text-xs text-gray-500 mt-0.5">Run negli ultimi 14 giorni</p>
             </div>
             <div class="flex items-center gap-3 text-xs text-gray-500">
-              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-md bg-indigo-500 inline-block" />Run</span>
-              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-md bg-emerald-500/60 inline-block" />File nuovi</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-md bg-emerald-500 inline-block" />Nuovi</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-md bg-sky-500/70 inline-block" />Dedup</span>
             </div>
           </div>
           <div class="flex items-end gap-1.5 h-28">
@@ -80,56 +78,21 @@
               <div class="w-full flex flex-col items-center gap-0.5 relative">
                 <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5 text-[10px] text-gray-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
                   <p class="font-semibold">{{ day.label }}</p>
-                  <p class="text-gray-400">{{ day.runs }} run · {{ day.files }} file</p>
+                  <p class="text-gray-400">{{ day.runs }} run · <span class="text-emerald-400">+{{ day.filesNew }}</span> nuovi · <span class="text-sky-400">{{ day.filesDedup }}</span> dedup</p>
                 </div>
-                <div
-                  class="w-full rounded-t-md bg-emerald-500/25 transition-all"
-                  :style="{ height: barHeight(day.files, maxFiles, 80) + 'px' }"
-                />
-                <div
-                  class="w-full rounded-t-md absolute bottom-0 transition-all"
-                  :class="day.runs > 0 ? 'bg-indigo-500' : 'bg-gray-800'"
-                  :style="{ height: barHeight(day.runs, maxRuns, 80) + 'px' }"
-                />
+                <!-- barre affiancate: nuovi (verde) e dedup (sky) -->
+                <div class="w-full flex items-end gap-px" :style="{ height: '80px' }">
+                  <div
+                    class="flex-1 rounded-t-sm bg-emerald-500 transition-all"
+                    :style="{ height: barHeight(day.filesNew, maxFiles, 80) + 'px' }"
+                  />
+                  <div
+                    class="flex-1 rounded-t-sm bg-sky-500/70 transition-all"
+                    :style="{ height: barHeight(day.filesDedup, maxFiles, 80) + 'px' }"
+                  />
+                </div>
               </div>
               <p class="text-[9px] text-gray-600 mt-1">{{ day.shortLabel }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Donut chart -->
-        <div class="bg-gray-900 border border-gray-800 rounded-md p-5">
-          <p class="text-sm font-semibold text-gray-200 mb-1">File per sessione</p>
-          <p class="text-xs text-gray-500 mb-5">Distribuzione ultima run</p>
-
-          <div class="flex flex-col items-center">
-            <svg width="120" height="120" viewBox="0 0 120 120" class="-rotate-90">
-              <circle cx="60" cy="60" r="48" fill="none" stroke="#1f2937" stroke-width="14" />
-              <circle
-                v-for="(seg, i) in donutSegments"
-                :key="i"
-                cx="60" cy="60" r="48"
-                fill="none"
-                :stroke="seg.color"
-                stroke-width="14"
-                stroke-linecap="butt"
-                :stroke-dasharray="`${seg.dash} ${circumference - seg.dash}`"
-                :stroke-dashoffset="-seg.offset"
-              />
-            </svg>
-
-            <div class="mt-4 w-full space-y-2">
-              <div
-                v-for="seg in donutSegments"
-                :key="seg.label"
-                class="flex items-center justify-between text-xs"
-              >
-                <div class="flex items-center gap-2">
-                  <span class="w-2.5 h-2.5 rounded-md shrink-0" :style="{ background: seg.color }" />
-                  <span class="text-gray-400 truncate max-w-22">{{ seg.label }}</span>
-                </div>
-                <span class="text-gray-300 font-mono font-medium">{{ seg.pct }}%</span>
-              </div>
             </div>
           </div>
         </div>
@@ -137,44 +100,38 @@
       </div>
 
       <!-- Recent runs + health -->
-      <div class="grid grid-cols-3 gap-4">
+      <div class="grid grid-cols-3 gap-8">
 
         <!-- Recent runs feed -->
-        <div class="col-span-2 bg-gray-900 border border-gray-800 rounded-md overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-800">
-            <p class="text-sm font-semibold text-gray-200">Ultime run</p>
-          </div>
-          <div class="divide-y divide-gray-800/60">
-            <div
-              v-for="run in recentRuns"
-              :key="run.ts + run.session"
-              class="px-5 py-3 flex items-center gap-4 hover:bg-gray-800/40 transition-colors cursor-pointer"
-            >
-              <div class="w-8 h-8 rounded-md bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0">
-                <component :is="run.status === 'done' ? CheckCircleIcon : run.status === 'paused' ? PauseCircleIcon : ArrowPathIcon"
-                  :class="['w-4 h-4', run.status === 'done' ? 'text-emerald-400' : run.status === 'paused' ? 'text-amber-400' : 'text-sky-400']"
-                />
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                  <p class="text-sm font-semibold text-gray-200">{{ run.session }}</p>
-                  <StatusBadge :status="run.status" />
-                </div>
-                <p class="text-xs text-gray-500 mt-0.5 font-mono">{{ formatTs(run.ts) }}</p>
-              </div>
-              <div class="text-right shrink-0">
-                <p class="text-sm font-mono font-semibold text-gray-300">{{ (run.files_total ?? 0).toLocaleString('it-IT') }}</p>
-                <p class="text-xs text-gray-600">file</p>
-              </div>
-              <div class="text-right shrink-0">
-                <p class="text-sm font-mono font-semibold text-emerald-400">+{{ run.files_new ?? 0 }}</p>
-                <p class="text-xs text-gray-600">nuovi</p>
-              </div>
-            </div>
-            <div v-if="recentRuns.length === 0" class="px-5 py-8 text-center text-gray-600 text-sm">
-              Nessuna run ancora
-            </div>
-          </div>
+        <div class="col-span-2 min-w-0 overflow-x-auto">
+          <p class="text-sm font-semibold text-gray-200 mb-3">Ultime run</p>
+          <div v-if="recentRuns.length === 0" class="text-sm text-gray-600">Nessuna run ancora</div>
+          <table v-else class="w-full text-sm">
+            <thead>
+              <tr class="text-left">
+                <th class="pb-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Sessione</th>
+                <th class="pb-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Data / Ora</th>
+                <th class="pb-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Stato</th>
+                <th class="pb-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">File</th>
+                <th class="pb-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Nuovi</th>
+                <th class="pb-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Dedup</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="run in recentRuns"
+                :key="run.ts + run.session"
+                class="group border-t border-gray-800/60 hover:bg-gray-800/40 transition-colors"
+              >
+                <td class="py-3.5 px-4 text-gray-300 font-medium">{{ run.session }}</td>
+                <td class="py-3.5 px-4 text-gray-400 font-mono text-xs whitespace-nowrap">{{ formatTs(run.ts) }}</td>
+                <td class="py-3.5 px-4"><StatusBadge :status="run.status" /></td>
+                <td class="py-3.5 px-4 text-right font-mono font-medium text-gray-300">{{ (run.files_total ?? 0).toLocaleString('it-IT') }}</td>
+                <td class="py-3.5 px-4 text-right font-mono text-emerald-400 font-medium">+{{ run.files_new ?? 0 }}</td>
+                <td class="py-3.5 px-4 text-right font-mono text-gray-500">{{ (run.files_dedup ?? 0).toLocaleString('it-IT') }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <!-- Health panel -->
@@ -204,7 +161,7 @@
               <p class="text-xs text-gray-500 mb-3">Dedup cross-sessione</p>
               <div class="flex items-end gap-2 mb-2">
                 <p class="text-2xl font-bold text-white">{{ dedupPct }}%</p>
-                <p class="text-xs text-emerald-400 mb-1">hash deduplicati</p>
+                <p class="text-xs text-emerald-400 mb-1">file deduplicati</p>
               </div>
               <div class="w-full h-1.5 bg-gray-700 rounded-md overflow-hidden">
                 <div
@@ -214,7 +171,7 @@
               </div>
               <p class="text-[10px] text-gray-600 mt-2">
                 {{ sessionStats.deduped.toLocaleString('it-IT') }} dedup
-                su {{ sessionStats.total_hashes.toLocaleString('it-IT') }} hash distinti
+                su {{ sessionStats.total_files.toLocaleString('it-IT') }} file totali
               </p>
             </div>
           </div>
@@ -232,13 +189,10 @@ import {
   DocumentDuplicateIcon,
   BoltIcon,
   CircleStackIcon,
-  CheckCircleIcon,
-  PauseCircleIcon,
   ArrowPathIcon,
   ShieldCheckIcon,
   ClockIcon,
   ServerIcon,
-  InformationCircleIcon,
 } from '@heroicons/vue/24/outline'
 import { state, formatTs, formatBytes } from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
@@ -248,7 +202,7 @@ const now = new Date().toISOString()
 const computing = ref(false)
 
 const sessionStats = computed(() =>
-  state.statsCache?.data ?? { total_hashes: 0, originals: 0, deduped: 0, bytes_total: 0 }
+  state.statsCache?.data ?? { total_files: 0, originals: 0, deduped: 0, bytes_total: 0, daily: [] }
 )
 const statsCalculatedAt = computed(() => state.statsCache?.calculatedAt ?? null)
 
@@ -270,75 +224,59 @@ onMounted(() => {
 const kpis = computed(() => {
   const sessions = state.sessions
   const allRuns  = sessions.flatMap(s => s.runs)
-  const { total_hashes, originals, deduped, bytes_total } = sessionStats.value
+  const { total_files, originals, deduped, bytes_total } = sessionStats.value
 
   return [
     {
-      label: 'File totali (hash)', value: total_hashes.toLocaleString('it-IT'),
-      sub: `${sessions.filter(s => s.runs.length).length} sessioni con run`, trend: 'neutral',
+      label: 'Run totali', value: allRuns.length,
+      sub: null, trend: 'up',
+      icon: BoltIcon, iconBg: 'bg-emerald-500/15', iconColor: 'text-emerald-400', glow: 'bg-emerald-500',
+    },
+    {
+      label: 'File totali', value: total_files.toLocaleString('it-IT'),
+      sub: null, trend: 'neutral',
       icon: RectangleStackIcon, iconBg: 'bg-indigo-500/15', iconColor: 'text-indigo-400', glow: 'bg-indigo-500',
     },
     {
-      label: 'Originali', value: originals.toLocaleString('it-IT'),
-      sub: 'hash visti una sola volta', trend: 'neutral',
+      label: 'Contenuti unici', value: originals.toLocaleString('it-IT'),
+      sub: 'hash distinti', trend: 'neutral',
       icon: DocumentDuplicateIcon, iconBg: 'bg-violet-500/15', iconColor: 'text-violet-400', glow: 'bg-violet-500',
     },
     {
       label: 'Deduplicati', value: deduped.toLocaleString('it-IT'),
-      sub: 'hash condivisi tra run/sessioni', trend: deduped > 0 ? 'up' : 'neutral',
+      sub: 'hash condivisi', trend: deduped > 0 ? 'up' : 'neutral',
       icon: CircleStackIcon, iconBg: 'bg-sky-500/15', iconColor: 'text-sky-400', glow: 'bg-sky-500',
-    },
-    {
-      label: 'Run totali', value: allRuns.length,
-      sub: allRuns.filter(r => r.status === 'done').length + ' completate', trend: 'up',
-      icon: BoltIcon, iconBg: 'bg-emerald-500/15', iconColor: 'text-emerald-400', glow: 'bg-emerald-500',
     },
   ]
 })
 
 // ── Activity chart ────────────────────────────────────────────────────────────
 const activityData = computed(() => {
+  const daily = sessionStats.value.daily ?? []
+  const byDay = Object.fromEntries(daily.map(d => [d.day, d]))
   const days = []
-  const allRuns = state.sessions.flatMap(s => s.runs.map(r => ({ ...r })))
   for (let i = 13; i >= 0; i--) {
     const d = new Date()
     d.setDate(d.getDate() - i)
     const key = d.toISOString().slice(0, 10)
-    const dayRuns = allRuns.filter(r => r.ts.startsWith(key))
+    const entry = byDay[key]
     days.push({
       label: d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' }),
       shortLabel: i === 0 ? 'oggi' : d.toLocaleDateString('it-IT', { day: '2-digit' }),
-      runs: dayRuns.length,
-      files: dayRuns.reduce((a, r) => a + (r.files_new ?? 0), 0),
+      runs:       entry?.runs       ?? 0,
+      filesNew:   entry?.originals  ?? 0,
+      filesDedup: entry?.deduped    ?? 0,
     })
   }
   return days
 })
 
-const maxRuns  = computed(() => Math.max(...activityData.value.map(d => d.runs), 1))
-const maxFiles = computed(() => Math.max(...activityData.value.map(d => d.files), 1))
+const maxFiles = computed(() => Math.max(...activityData.value.flatMap(d => [d.filesNew, d.filesDedup]), 1))
 
 function barHeight(val, max, maxPx) {
   return Math.max(val > 0 ? 4 : 0, Math.round((val / max) * maxPx))
 }
 
-// ── Donut chart ───────────────────────────────────────────────────────────────
-const circumference = 2 * Math.PI * 48
-const donutColors   = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981']
-
-const donutSegments = computed(() => {
-  const sessions = state.sessions.filter(s => s.runs.length > 0)
-  const total = sessions.reduce((a, s) => a + (s.runs[0].files_total ?? s.runs[0].files_count ?? 0), 0)
-  let offset = 0
-  return sessions.map((s, i) => {
-    const count = s.runs[0].files_total ?? s.runs[0].files_count ?? 0
-    const pct  = total > 0 ? count / total : 0
-    const dash = pct * circumference
-    const seg  = { label: s.name, pct: Math.round(pct * 100), color: donutColors[i % donutColors.length], dash, offset }
-    offset += dash
-    return seg
-  })
-})
 
 // ── Recent runs ───────────────────────────────────────────────────────────────
 const recentRuns = computed(() =>
@@ -351,12 +289,12 @@ const recentRuns = computed(() =>
 // ── Health ────────────────────────────────────────────────────────────────────
 const healthChecks = computed(() => {
   const sessions = state.sessions
-  const withRuns = sessions.filter(s => s.runs.length)
-  const lastRun  = sessions.flatMap(s => s.runs).sort((a, b) => b.ts.localeCompare(a.ts))[0]
+  const allRuns  = sessions.flatMap(s => s.runs)
+  const lastRun  = allRuns.sort((a, b) => b.ts.localeCompare(a.ts))[0]
   return [
     {
       label: 'Sessioni configurate',
-      detail: `${sessions.length} sessioni, ${withRuns.length} con run`,
+      detail: `${sessions.length} sessioni · ${allRuns.length} run`,
       icon: RectangleStackIcon, bg: 'bg-indigo-500/15', color: 'text-indigo-400'
     },
     {
@@ -378,8 +316,8 @@ const healthChecks = computed(() => {
 })
 
 const dedupPct = computed(() => {
-  const { total_hashes, deduped } = sessionStats.value
-  if (!total_hashes) return 0
-  return Math.round((deduped / total_hashes) * 100)
+  const { total_files, deduped } = sessionStats.value
+  if (!total_files) return 0
+  return Math.round((deduped / total_files) * 100)
 })
 </script>

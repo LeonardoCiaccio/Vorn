@@ -186,6 +186,14 @@ export function getLastUsedStore(dbPath) {
   return row?.store ?? null
 }
 
+export function updateSession(dbPath, name, { store, sources }) {
+  const db = openDb(dbPath)
+  const result = db.prepare(
+    'UPDATE sessions SET store = ?, sources = ? WHERE name = ?'
+  ).run(store, JSON.stringify(sources), name)
+  if (result.changes === 0) throw new Error(`Session not found: ${name}`)
+}
+
 export function deleteSession(dbPath, name) {
   const db = openDb(dbPath)
   const result = db.prepare('DELETE FROM sessions WHERE name = ?').run(name)
@@ -200,25 +208,39 @@ export function fixOrphanedRuns(dbPath) {
 export function getSessionStats(dbPath) {
   const db = openDb(dbPath)
 
-  // Per ogni hash_vorn distinto: conta quante volte appare in tutti i run_files.
-  // cnt = 1 → originale (mai deduplicato), cnt > 1 → deduplicato.
+  // Per ogni hash_vorn conta le path DISTINTE (una path che appare in più run è comunque
+  // un solo file). originals = hash con 1 sola path, deduped = path extra oltre la prima.
   const row = db.prepare(`
     SELECT
-      COUNT(*)                                       AS total_hashes,
-      SUM(CASE WHEN cnt = 1 THEN 1 ELSE 0 END)      AS originals,
-      SUM(CASE WHEN cnt > 1 THEN 1 ELSE 0 END)      AS deduped,
-      SUM(bytes)                                     AS bytes_total
+      (SELECT COUNT(DISTINCT source || '/' || rel_path) FROM run_files) AS total_files,
+      COUNT(*)                                                           AS originals,
+      (SELECT COUNT(DISTINCT source || '/' || rel_path) FROM run_files)
+        - COUNT(*)                                                       AS deduped,
+      SUM(bytes)                                                         AS bytes_total
     FROM (
-      SELECT hash_vorn, COUNT(*) AS cnt, MAX(bytes) AS bytes
+      SELECT hash_vorn, MAX(bytes) AS bytes
       FROM run_files
       GROUP BY hash_vorn
     )
   `).get()
 
+  const daily = db.prepare(`
+    SELECT
+      substr(run_ts, 1, 10)                                                      AS day,
+      COUNT(DISTINCT source || '/' || rel_path)                                  AS total_files,
+      COUNT(DISTINCT hash_vorn)                                                  AS originals,
+      COUNT(DISTINCT source || '/' || rel_path) - COUNT(DISTINCT hash_vorn)     AS deduped,
+      COUNT(DISTINCT run_ts)                                                     AS runs
+    FROM run_files
+    GROUP BY substr(run_ts, 1, 10)
+    ORDER BY day
+  `).all()
+
   return {
-    total_hashes: row?.total_hashes ?? 0,
+    total_files:  row?.total_files  ?? 0,
     originals:    row?.originals    ?? 0,
     deduped:      row?.deduped      ?? 0,
     bytes_total:  row?.bytes_total  ?? 0,
+    daily,
   }
 }

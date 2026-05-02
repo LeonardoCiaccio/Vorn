@@ -15,6 +15,7 @@ export default defineConfig({
           reconstructWorker: resolve(__dirname, 'src/main/vorn/reconstructWorker.js'),
           integrityWorker:   resolve(__dirname, 'src/main/vorn/integrityWorker.js'),
           sanitizeWorker:    resolve(__dirname, 'src/main/vorn/sanitizeWorker.js'),
+          clearWorker:       resolve(__dirname, 'src/main/vorn/clearWorker.js'),
         }
       }
     }

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, statSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'fs'
 import { join, basename } from 'path'
 import { readVornMeta, readVorn, writeVornFromSource, upsertPath, contentStream } from './format.js'
 import { withFileLock } from './fileLock.js'
@@ -15,6 +15,19 @@ export function ensureStore(storeDir) {
 // offset=0 forza il rebuild (usato dal pulsante refresh).
 
 let _listCache = null // { dir: string, files: string[] }
+
+export function countStoreFiles(storeDir) {
+  if (!existsSync(storeDir)) return 0
+  return readdirSync(storeDir).filter(f => f.endsWith('.vorn')).length
+}
+
+export function clearStore(storeDir) {
+  if (!existsSync(storeDir)) return 0
+  const files = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+  for (const f of files) unlinkSync(join(storeDir, f))
+  _listCache = null
+  return files.length
+}
 
 export function listStoreFiles(storeDir, offset = 0, limit = 20) {
   if (!existsSync(storeDir)) return { files: [], total: 0 }

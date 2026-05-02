@@ -1,12 +1,12 @@
-import { ipcMain, app } from 'electron'
+import { ipcMain, app, dialog } from 'electron'
 import { join } from 'path'
 import { Worker } from 'worker_threads'
 import {
   listSessions, createSession, listRuns,
   loadRun, saveRun, getPausedRun, getSession, deleteRun, deleteSession,
-  getLastUsedStore, fixOrphanedRuns, getSessionStats
+  getLastUsedStore, fixOrphanedRuns, getSessionStats, updateSession
 } from './vorn/manifest.js'
-import { getEntry, listStoreFiles } from './vorn/store.js'
+import { getEntry, listStoreFiles, countStoreFiles } from './vorn/store.js'
 import { readVorn } from './vorn/format.js'
 import { existsSync } from 'fs'
 import { homedir } from 'os'
@@ -96,6 +96,10 @@ export function registerIpcHandlers(mainWindow) {
 
   ipcMain.handle('vorn:delete-run', (_, { sessionName, runTs }) =>
     deleteRun(dbPath, sessionName, runTs)
+  )
+
+  ipcMain.handle('vorn:update-session', (_, { name, store, sources }) =>
+    updateSession(dbPath, name, { store, sources })
   )
 
   ipcMain.handle('vorn:delete-session', (_, name) => {
@@ -232,9 +236,42 @@ export function registerIpcHandlers(mainWindow) {
     listStoreFiles(storeDir, offset, limit)
   )
 
+  ipcMain.handle('vorn:count-store-files', (_, { storeDir }) =>
+    countStoreFiles(storeDir)
+  )
+
+  ipcMain.handle('vorn:start-clear-store', (_, { storeDir }) => {
+    if (listTasks().some(t => t.status === 'running'))
+      throw new Error('Impossibile eliminare: operazioni in corso')
+    const task = createTask('clear', null)
+
+    _spawnWorker('clearWorker.js', { storeDir }, task.id, mainWindow,
+      (result, error) => {
+        if (error) {
+          failTask(task.id, error)
+          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error })
+        } else {
+          finishTask(task.id, result)
+          mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result })
+        }
+      }
+    )
+
+    return { taskId: task.id }
+  })
+
   // ── Session stats ─────────────────────────────────────────────────────────
 
   ipcMain.handle('vorn:get-session-stats', () => getSessionStats(dbPath))
+
+  // ── Folder picker ────────────────────────────────────────────────────────
+
+  ipcMain.handle('vorn:pick-folder', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory', 'createDirectory'],
+    })
+    return canceled ? null : filePaths[0]
+  })
 
   // ── App info ──────────────────────────────────────────────────────────────
 
