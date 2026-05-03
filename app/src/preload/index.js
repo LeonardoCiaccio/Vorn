@@ -72,7 +72,7 @@ contextBridge.exposeInMainWorld('vorn', {
   saveSettings: (patch)   => ipcRenderer.invoke('vorn:save-settings', patch),
 
   // Utils
-  pickFolder:  () => ipcRenderer.invoke('vorn:pick-folder'),
+  pickFolder:  (defaultPath) => ipcRenderer.invoke('vorn:pick-folder', { defaultPath }),
   getAppInfo:  () => ipcRenderer.invoke('vorn:get-app-info'),
   listDir:     (dirPath) => ipcRenderer.invoke('vorn:list-dir', { dirPath }),
 

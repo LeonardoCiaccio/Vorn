@@ -198,9 +198,10 @@ export function registerIpcHandlers(mainWindow) {
 
   // ── Folder picker ─────────────────────────────────────────────────────────
 
-  ipcMain.handle('vorn:pick-folder', async () => {
+  ipcMain.handle('vorn:pick-folder', async (_, { defaultPath } = {}) => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory', 'createDirectory'],
+      ...(defaultPath ? { defaultPath } : {}),
     })
     return canceled ? null : filePaths[0]
   })

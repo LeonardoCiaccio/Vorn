@@ -8,6 +8,59 @@
         <p class="text-sm text-gray-500 mt-0.5">{{ sessions.length }} sessioni · {{ totalRuns }} run</p>
       </div>
       <div class="flex items-center gap-2">
+        <!-- Modalità normale -->
+        <template v-if="!selectionMode">
+          <button
+            @click="enterSelection"
+            :disabled="!sessions.length"
+            class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 hover:bg-gray-800 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <CheckCircleIcon class="w-4 h-4" />
+            Seleziona
+          </button>
+          <button
+            @click="startAll"
+            :disabled="!sessions.length || anyRunning"
+            class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 hover:bg-gray-800 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <PlayIcon class="w-4 h-4" />
+            Avvia tutti
+          </button>
+          <button
+            @click="askDeleteAll"
+            :disabled="!sessions.length || anyRunning"
+            class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-300 hover:text-red-400 hover:border-red-600/50 hover:bg-red-500/5 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <TrashIcon class="w-4 h-4" />
+            Elimina tutti
+          </button>
+        </template>
+        <!-- Modalità selezione -->
+        <template v-else>
+          <button
+            @click="exitSelection"
+            class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800 text-sm font-medium transition-colors"
+          >
+            Annulla
+          </button>
+          <button
+            @click="startSelected"
+            :disabled="!selected.size || anyRunning"
+            class="flex items-center gap-2 px-4 py-2 rounded-md border border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <PlayIcon class="w-4 h-4" />
+            Avvia selezionati{{ selected.size ? ` (${selected.size})` : '' }}
+          </button>
+          <button
+            @click="askDeleteSelected"
+            :disabled="!selected.size || anyRunning"
+            class="flex items-center gap-2 px-4 py-2 rounded-md border border-red-600/40 text-red-400 hover:bg-red-500/10 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <TrashIcon class="w-4 h-4" />
+            Elimina selezionati{{ selected.size ? ` (${selected.size})` : '' }}
+          </button>
+        </template>
+        <div class="w-px h-5 bg-gray-700 mx-1" />
         <button
           @click="showModal = true"
           class="flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
@@ -31,6 +84,9 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="text-left">
+            <th v-if="selectionMode" class="pb-3 w-10 pl-4">
+              <input type="checkbox" :checked="allSelected" @change="toggleAll" class="accent-indigo-500 cursor-pointer" />
+            </th>
             <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Sessione</th>
             <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Ultima run</th>
             <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Stato</th>
@@ -46,6 +102,10 @@
               class="group cursor-pointer hover:bg-gray-800/40 transition-colors border-t border-gray-800/60"
               :class="activeTask(session.name) ? 'bg-indigo-950/20' : ''"
             >
+              <!-- Checkbox -->
+              <td v-if="selectionMode" class="py-3.5 pl-4 w-10" @click.stop>
+                <input type="checkbox" :checked="selected.has(session.name)" @change="toggleSelect(session.name)" class="accent-indigo-500 cursor-pointer" />
+              </td>
               <!-- Name + sources -->
               <td class="py-3.5 px-4">
                 <div class="flex items-center gap-3">
@@ -186,11 +246,39 @@
   </div>
 
   <NewSessionModal v-if="showModal" @close="showModal = false" @created="showModal = false" />
+
+  <!-- Modal conferma eliminazione -->
+  <Teleport to="body">
+    <div v-if="deleteConfirm.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4">
+      <div class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-md bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
+            <TrashIcon class="w-4 h-4 text-red-400" />
+          </div>
+          <h3 class="text-sm font-bold text-white">Conferma eliminazione</h3>
+        </div>
+        <div class="px-6 py-5">
+          <p class="text-sm text-gray-300">
+            Stai per eliminare
+            <span class="font-semibold text-white">{{ deleteConfirm.names.length }} sessione{{ deleteConfirm.names.length !== 1 ? 'i' : '' }}</span>.
+            Questa operazione non può essere annullata.
+          </p>
+          <ul class="mt-3 space-y-1 max-h-32 overflow-y-auto">
+            <li v-for="n in deleteConfirm.names" :key="n" class="text-xs text-gray-500 font-mono truncate">· {{ n }}</li>
+          </ul>
+        </div>
+        <div class="px-6 py-4 bg-gray-800/30 flex justify-end gap-3">
+          <button @click="deleteConfirm.show = false" class="px-4 py-2 rounded-md text-sm text-gray-400 hover:text-white transition-colors">Annulla</button>
+          <button @click="confirmDeleteBulk" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, CheckCircleIcon } from '@heroicons/vue/24/outline'
 import { state, selectSession, deleteSession, getActiveTask, startBackup, formatTs, formatBytes } from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
@@ -199,7 +287,56 @@ const showModal   = ref(false)
 const sessions    = computed(() => state.sessions)
 const confirmName = ref(null)
 
-const totalRuns = computed(() => sessions.value.reduce((acc, s) => acc + s.runs.length, 0))
+const totalRuns  = computed(() => sessions.value.reduce((acc, s) => acc + s.runs.length, 0))
+const anyRunning    = computed(() => sessions.value.some(s => !!getActiveTask(s.name)))
+const selectionMode = ref(false)
+const selected      = ref(new Set())
+const allSelected   = computed(() => sessions.value.length > 0 && sessions.value.every(s => selected.value.has(s.name)))
+
+function enterSelection() { selectionMode.value = true }
+function exitSelection()  { selectionMode.value = false; selected.value = new Set() }
+
+function toggleSelect(name) {
+  const s = new Set(selected.value)
+  s.has(name) ? s.delete(name) : s.add(name)
+  selected.value = s
+}
+
+function toggleAll() {
+  if (allSelected.value) selected.value = new Set()
+  else selected.value = new Set(sessions.value.map(s => s.name))
+}
+
+async function startAll() {
+  for (const s of sessions.value) {
+    if (!getActiveTask(s.name)) await startBackup(s.name)
+  }
+}
+
+async function startSelected() {
+  const targets = sessions.value.filter(s => selected.value.has(s.name))
+  for (const s of targets) {
+    if (!getActiveTask(s.name)) await startBackup(s.name)
+  }
+  exitSelection()
+}
+
+const deleteConfirm = ref({ show: false, names: [] })
+
+function askDeleteAll() {
+  deleteConfirm.value = { show: true, names: sessions.value.map(s => s.name) }
+}
+
+function askDeleteSelected() {
+  deleteConfirm.value = { show: true, names: [...selected.value] }
+}
+
+async function confirmDeleteBulk() {
+  const names = [...deleteConfirm.value.names]
+  deleteConfirm.value.show = false
+  for (const name of names) await deleteSession(name)
+  exitSelection()
+}
 
 function activeTask(sessionName) {
   return getActiveTask(sessionName)
