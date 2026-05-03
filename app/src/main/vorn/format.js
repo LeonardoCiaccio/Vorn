@@ -1,4 +1,4 @@
-import { openSync, readSync, writeSync, closeSync, truncateSync, createReadStream, createWriteStream, statSync, existsSync, readFileSync, unlinkSync } from 'fs'
+import { openSync, readSync, writeSync, closeSync, truncateSync, createReadStream, createWriteStream, statSync, existsSync, readFileSync, unlinkSync, renameSync } from 'fs'
 import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
 

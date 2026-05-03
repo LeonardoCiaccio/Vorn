@@ -45,6 +45,10 @@ export function ensureStore(storeDir) {
 
 let _listCache = null // { dir: string, files: string[] }
 
+export function getCachedFileList(storeDir) {
+  return _listCache?.dir === storeDir ? _listCache.files : null
+}
+
 export function countStoreFiles(storeDir) {
   if (!existsSync(storeDir)) return 0
   return readdirSync(storeDir).filter(f => f.endsWith('.vorn')).length

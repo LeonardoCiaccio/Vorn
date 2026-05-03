@@ -1,17 +1,13 @@
 import { ipcMain, app, dialog } from 'electron'
 import { join, normalize, resolve } from 'path'
 import { readdirSync }              from 'fs'
-import { getEntry, listStoreFiles, countStoreFiles, deleteStoreEntry } from '../vorn/store.js'
+import { getEntry, listStoreFiles, countStoreFiles, deleteStoreEntry, getCachedFileList } from '../vorn/store.js'
 import { listTasks }                from '../vorn/taskManager.js'
 import { ctx }                      from '../workerManager.js'
 
 function _hashSetForQuery(storeDir, query) {
   const q = query.toLowerCase()
-  // Ottimizzazione: usa la cache se già popolata per lo store attivo
-  const source = (ctx.activeStore === storeDir && listStoreFiles(storeDir)._rawCache) 
-    ? listStoreFiles(storeDir)._rawCache 
-    : readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
-
+  const source = getCachedFileList(storeDir) ?? readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
   return new Set(
     source
       .filter(f => f.toLowerCase().includes(q))

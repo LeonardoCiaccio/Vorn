@@ -15,6 +15,7 @@ const cfg = computed(() => {
     case 'done':    return { label: 'Completata', classes: 'bg-emerald-500/15 text-emerald-400', dot: 'bg-emerald-400' }
     case 'running': return { label: 'In corso',   classes: 'bg-sky-500/15 text-sky-400',         dot: 'bg-sky-400 animate-pulse' }
     case 'paused':  return { label: 'In pausa',   classes: 'bg-amber-500/15 text-amber-400',     dot: 'bg-amber-400' }
+    case 'crashed': return { label: 'Interrotta', classes: 'bg-red-500/15 text-red-400',         dot: 'bg-red-400' }
     default:        return { label: props.status, classes: 'bg-gray-800 text-gray-400',          dot: 'bg-gray-500' }
   }
 })
