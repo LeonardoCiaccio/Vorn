@@ -23,7 +23,8 @@ contextBridge.exposeInMainWorld('vorn', {
   deleteRun:  (sessionName, runTs)      => ipcRenderer.invoke('vorn:delete-run', { sessionName, runTs }),
 
   // Tasks
-  startBackup:  (sessionName, resumeTs = null)                      => ipcRenderer.invoke('vorn:start-backup', { sessionName, resumeTs }),
+  startBackup:        (sessionName, resumeTs = null)                      => ipcRenderer.invoke('vorn:start-backup', { sessionName, resumeTs }),
+  startExtractStore:  (destDir, sessionFilter = null)                     => ipcRenderer.invoke('vorn:start-extract-store', { destDir, sessionFilter }),
   startRestore: (sessionName, runTs, destDir, selectedFiles = null) => ipcRenderer.invoke('vorn:start-restore', { sessionName, runTs, destDir, selectedFiles }),
   cancelTask:   (taskId)                                            => ipcRenderer.invoke('vorn:task-cancel', taskId),
   listTasks:    ()                                                  => ipcRenderer.invoke('vorn:task-list'),

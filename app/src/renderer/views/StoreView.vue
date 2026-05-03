@@ -15,6 +15,10 @@
           <ArrowRightStartOnRectangleIcon class="w-4 h-4" />
           Cambia store
         </button>
+        <button @click="showExtractModal = true" class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-indigo-500/50 hover:text-indigo-300 hover:bg-indigo-500/5 transition-colors">
+          <ArchiveBoxArrowDownIcon class="w-4 h-4" />
+          Estrai files
+        </button>
         <button @click="refreshStore" class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 transition-colors">
           <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': state.loading }" />
           Aggiorna
@@ -298,6 +302,8 @@
     </div>
 
   </div>
+
+  <ExtractFromStoreModal v-if="showExtractModal" @close="showExtractModal = false" />
 </template>
 
 <script setup>
@@ -311,10 +317,14 @@ import {
   CheckCircleIcon,
   TrashIcon,
   ArrowRightStartOnRectangleIcon,
+  ArchiveBoxArrowDownIcon,
 } from '@heroicons/vue/24/outline'
 import { state, fetchStorePage, startIntegrity, startClearStore, cancelTask, formatTs, formatBytes, closeStore } from '../stores/vorn.js'
+import ExtractFromStoreModal from '../components/ExtractFromStoreModal.vue'
 
 const ITEMS_PER_PAGE = 20
+
+const showExtractModal = ref(false)
 
 // Clear store
 const showClearModal   = ref(false)

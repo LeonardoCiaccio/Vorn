@@ -13,7 +13,8 @@ export default defineConfig({
           backupWorker:    resolve(__dirname, 'src/main/vorn/backupWorker.js'),
           restoreWorker:   resolve(__dirname, 'src/main/vorn/restoreWorker.js'),
           integrityWorker: resolve(__dirname, 'src/main/vorn/integrityWorker.js'),
-          clearWorker:     resolve(__dirname, 'src/main/vorn/clearWorker.js'),
+          clearWorker:        resolve(__dirname, 'src/main/vorn/clearWorker.js'),
+          extractStoreWorker: resolve(__dirname, 'src/main/vorn/extractStoreWorker.js'),
         }
       }
     }

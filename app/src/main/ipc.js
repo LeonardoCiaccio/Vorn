@@ -169,6 +169,19 @@ export function registerIpcHandlers(mainWindow) {
     return { taskId: task.id }
   })
 
+  // ── Extract from store ────────────────────────────────────────────────────
+
+  ipcMain.handle('vorn:start-extract-store', (_, { destDir, sessionFilter = null }) => {
+    const task = createTask('extract-store', null)
+    _spawnWorker('extractStoreWorker.js', { storeDir: _activeStore, destDir, sessionFilter }, task.id, mainWindow,
+      (result, error) => {
+        if (error) { failTask(task.id, error); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error }) }
+        else        { finishTask(task.id, result); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result }) }
+      }
+    )
+    return { taskId: task.id }
+  })
+
   // ── Store browser ─────────────────────────────────────────────────────────
 
   ipcMain.handle('vorn:inspect-hash',       (_, { hashVorn })                    => getEntry(_activeStore, hashVorn))

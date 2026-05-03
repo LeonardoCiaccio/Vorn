@@ -1,7 +1,8 @@
-import { statSync, readdirSync, mkdirSync, createWriteStream } from 'fs'
-import { join, relative, basename } from 'path'
+import { statSync, readdirSync, mkdirSync, createWriteStream, existsSync } from 'fs'
+import { join, relative, basename, dirname } from 'path'
 import { vornHash } from './hash.js'
 import { storeBlob, extractContent } from './store.js'
+import { readVornMeta } from './format.js'
 import { getSession, saveRun, loadRun } from './sessions.js'
 
 // ── Walk ──────────────────────────────────────────────────────────────────────
@@ -99,7 +100,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
     bytesTotal += bytes
 
     try {
-      const outcome = await storeBlob(storeDir, hashVorn, bytes, filePath)
+      const outcome = await storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath)
       if (outcome === 'new') { filesNew++; bytesNew += bytes }
       else                   { filesDedup++ }
       run.files[relPath] = hashVorn
@@ -150,6 +151,11 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
 
     const [relPath, hashVorn] = fileEntries[i]
     try {
+      if (!existsSync(join(storeDir, hashVorn + '.vorn'))) {
+        errors.push({ path: relPath, hash: hashVorn, error: 'not_found' })
+        onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
+        continue
+      }
       const rs      = extractContent(storeDir, hashVorn)
       const outPath = join(destDir, relPath)
       mkdirSync(join(outPath, '..'), { recursive: true })
@@ -169,6 +175,65 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
   }
 
   return { restored, total, errors }
+}
+
+// ── Extract from store (disaster recovery) ───────────────────────────────────
+
+export async function extractFromStore(storeDir, destDir, sessionFilter, { onProgress, isCancelled } = {}) {
+  const allFiles = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+  const total      = allFiles.length
+  const sessionNames = new Set()
+  const noRecords  = []
+  const errors     = []
+  let extracted    = 0
+
+  for (let i = 0; i < allFiles.length; i++) {
+    if (isCancelled?.()) break
+
+    const hashVorn  = basename(allFiles[i], '.vorn')
+    const vornPath  = join(storeDir, allFiles[i])
+
+    let meta
+    try { meta = readVornMeta(vornPath).meta }
+    catch (e) { errors.push({ hash: hashVorn, error: e.message }); onProgress?.({ current: i + 1, total, extracted, errors: errors.length }); continue }
+
+    if (!meta.records?.length) {
+      noRecords.push(hashVorn)
+      onProgress?.({ current: i + 1, total, extracted, errors: errors.length })
+      continue
+    }
+
+    for (const rec of meta.records) sessionNames.add(rec.session)
+
+    const recsToExtract = sessionFilter
+      ? meta.records.filter(r => r.session === sessionFilter)
+      : meta.records
+
+    for (const rec of recsToExtract) {
+      for (const relPath of rec.paths) {
+        try {
+          const folderName = `${rec.session}-${rec.id}`
+          const outPath = join(destDir, folderName, relPath)
+          mkdirSync(dirname(outPath), { recursive: true })
+          const rs = extractContent(storeDir, hashVorn)
+          const ws = createWriteStream(outPath)
+          await new Promise((resolve, reject) => {
+            rs.pipe(ws)
+            ws.on('finish', resolve)
+            ws.on('error', reject)
+            rs.on('error', reject)
+          })
+          extracted++
+        } catch (e) {
+          errors.push({ hash: hashVorn, session: rec.session, path: relPath, error: e.message })
+        }
+      }
+    }
+
+    onProgress?.({ current: i + 1, total, extracted, errors: errors.length })
+  }
+
+  return { extracted, total, errors, sessions: [...sessionNames], noRecords }
 }
 
 // ── Extract by hash ───────────────────────────────────────────────────────────

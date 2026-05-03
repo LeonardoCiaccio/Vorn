@@ -1,36 +1,33 @@
 import { workerData, parentPort } from 'worker_threads'
-import { readdirSync, unlinkSync } from 'fs'
+import { readdirSync } from 'fs'
+import { unlink } from 'fs/promises'
 import { join } from 'path'
 
 const { storeDir, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
 const files = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
-const total = files.length
+const total   = files.length
+const BATCH   = 64
+
 let deleted = 0
 let failed  = 0
 
-const step = total > 200 ? 10 : 1
+async function run() {
+  for (let i = 0; i < files.length; i += BATCH) {
+    if (Atomics.load(cancelFlag, 0)) break
 
-for (let i = 0; i < files.length; i++) {
-  if (Atomics.load(cancelFlag, 0)) break
+    const batch   = files.slice(i, i + BATCH)
+    const results = await Promise.allSettled(batch.map(f => unlink(join(storeDir, f))))
+    for (const r of results) {
+      if (r.status === 'fulfilled') deleted++
+      else                          failed++
+    }
 
-  try {
-    unlinkSync(join(storeDir, files[i]))
-    deleted++
-  } catch {
-    failed++
+    parentPort.postMessage({ type: 'progress', progress: { current: i + BATCH, total, deleted, failed } })
   }
 
-  if (i % step === 0 || i === files.length - 1) {
-    parentPort.postMessage({
-      type: 'progress',
-      progress: { current: i + 1, total, deleted, failed }
-    })
-  }
+  parentPort.postMessage({ type: 'done', result: { total, deleted, failed } })
 }
 
-parentPort.postMessage({
-  type: 'done',
-  result: { total, deleted, failed }
-})
+run().catch(e => parentPort.postMessage({ type: 'error', error: e.message }))

@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, unlinkSync, rmSync } from 'fs'
 import { join } from 'path'
+import { randomUUID } from 'crypto'
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -35,10 +36,11 @@ export function getSession(storeDir, name) {
 }
 
 export function createSession(storeDir, session) {
-  const dir = sessionDir(storeDir, session.name)
+  const withId = { id: randomUUID(), ...session }
+  const dir = sessionDir(storeDir, withId.name)
   mkdirSync(join(dir, 'runs'), { recursive: true })
-  writeFileSync(sessionManifestPath(storeDir, session.name), JSON.stringify(session, null, 2), 'utf8')
-  return session
+  writeFileSync(sessionManifestPath(storeDir, withId.name), JSON.stringify(withId, null, 2), 'utf8')
+  return withId
 }
 
 export function deleteSession(storeDir, name) {

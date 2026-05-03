@@ -120,9 +120,10 @@
             <div class="flex gap-2">
               <span class="text-red-400 shrink-0">ERR</span>
               <span class="text-gray-400 truncate flex-1">{{ err.path }}</span>
-              <span class="text-red-300 shrink-0">{{ err.error }}</span>
+              <span v-if="err.error === 'not_found'" class="text-amber-400 shrink-0">file non trovato nello store</span>
+              <span v-else class="text-red-300 shrink-0">{{ err.error }}</span>
             </div>
-            <div v-if="err.hash" class="text-gray-600 pl-7">{{ err.hash }}</div>
+            <div v-if="err.hash" class="text-gray-600 pl-7">hash: {{ err.hash }}</div>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'fs'
 import { join, basename } from 'path'
-import { readVornMeta, readVorn, writeVornFromSource, contentStream } from './format.js'
+import { readVornMeta, readVorn, writeVornFromSource, updateVornMeta, contentStream } from './format.js'
 import { withFileLock } from './fileLock.js'
 
 function vornPath(storeDir, hashVorn) {
@@ -47,11 +47,14 @@ export function listStoreFiles(storeDir, offset = 0, limit = 20, matchHashes = n
   const files = slice.map(f => {
     const p = join(storeDir, f)
     const st = statSync(p)
+    let records = []
+    try { records = readVornMeta(p).meta?.records ?? [] } catch { /* skip unreadable */ }
     return {
       hash_vorn:  basename(f, '.vorn'),
       bytes_file: st.size,
       ctime:      st.birthtimeMs,
       mtime:      st.mtimeMs,
+      records,
     }
   })
 
@@ -62,14 +65,32 @@ export function listStoreFiles(storeDir, offset = 0, limit = 20, matchHashes = n
 // Ritorna 'new' se il file è stato creato, 'dedup' se già esisteva.
 // Qualsiasi altro chiamante che arriva sullo stesso hash aspetta in coda.
 
-export async function storeBlob(storeDir, hashVorn, bytes, sourcePath) {
+export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath) {
   ensureStore(storeDir)
   const p = vornPath(storeDir, hashVorn)
 
   return withFileLock(p, async () => {
-    if (existsSync(p)) return 'dedup'
-    await writeVornFromSource(p, { hash_vorn: hashVorn, bytes }, sourcePath)
-    return 'new'
+    if (!existsSync(p)) {
+      const meta = { hash_vorn: hashVorn, bytes, records: [{ id: sessionId, session: sessionName, paths: [relPath] }] }
+      await writeVornFromSource(p, meta, sourcePath)
+      return 'new'
+    }
+
+    const { meta } = readVornMeta(p)
+    if (!meta.records) meta.records = []
+
+    const rec = meta.records.find(r => r.id === sessionId)
+    if (rec) {
+      if (!rec.paths.includes(relPath)) {
+        rec.paths.push(relPath)
+        updateVornMeta(p, meta)
+      }
+      // relPath già presente: nessuna I/O
+    } else {
+      meta.records.push({ id: sessionId, session: sessionName, paths: [relPath] })
+      updateVornMeta(p, meta)
+    }
+    return 'dedup'
   })
 }
 

@@ -1,4 +1,4 @@
-import { openSync, readSync, closeSync, createReadStream, createWriteStream, statSync } from 'fs'
+import { openSync, readSync, writeSync, closeSync, truncateSync, createReadStream, createWriteStream, statSync } from 'fs'
 import { Readable } from 'stream'
 
 const MAGIC = Buffer.from('VORN')
@@ -94,6 +94,24 @@ export async function writeVornFromSource(destPath, meta, sourcePath) {
     ws.on('error', reject)
     rs.on('error', reject)
   })
+}
+
+// ── Surgical metadata update (truncate to separator, rewrite JSON) ───────────
+
+export function updateVornMeta(filePath, meta) {
+  const fd = openSync(filePath, 'r')
+  let contentLen
+  try { contentLen = _getContentInfo(fd) }
+  finally { closeSync(fd) }
+
+  // Keep: HEADER + content + SEPARATOR — discard old JSON
+  const truncateAt = HEADER_SIZE + Number(contentLen) + SEPARATOR.length
+  truncateSync(filePath, truncateAt)
+
+  const metaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
+  const fdw = openSync(filePath, 'a')
+  try { writeSync(fdw, metaBuf) }
+  finally { closeSync(fdw) }
 }
 
 // ── Content stream (used by restore) ─────────────────────────────────────────

@@ -24,8 +24,9 @@ export const state = reactive({
 
   // Tasks
   tasks:    {},
-  integrity: { running: false, progress: null, report: null },
-  clear:     { running: false, progress: null, report: null },
+  integrity:    { running: false, progress: null, report: null },
+  clear:        { running: false, progress: null, report: null },
+  extractStore: { running: false, progress: null, result: null },
 })
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
@@ -47,6 +48,8 @@ export async function boot() {
       state.integrity.progress = progress
     if (state.clear.running && state.tasks[taskId]?.type === 'clear')
       state.clear.progress = progress
+    if (state.extractStore.running && state.tasks[taskId]?.type === 'extract-store')
+      state.extractStore.progress = progress
   })
 
   window.vorn.onTaskDone(async ({ taskId, result, error }) => {
@@ -64,6 +67,10 @@ export async function boot() {
       state.clear.running  = false
       state.clear.progress = null
       state.clear.report   = error ? { fatalError: error } : result
+    } else if (t.type === 'extract-store') {
+      state.extractStore.running  = false
+      state.extractStore.progress = null
+      state.extractStore.result   = error ? { fatalError: error } : result
     } else {
       await refreshSession(t.sessionName)
     }
@@ -211,6 +218,17 @@ export async function startClearStore() {
   const { taskId } = await window.vorn.startClearStore()
   state.tasks[taskId] = {
     id: taskId, type: 'clear', sessionName: null,
+    status: 'running', progress: null, result: null, error: null,
+    createdAt: new Date().toISOString(),
+  }
+  return taskId
+}
+
+export async function startExtractStore(destDir, sessionFilter = null) {
+  state.extractStore = { running: true, progress: { current: 0, total: 0, extracted: 0, errors: 0 }, result: null }
+  const { taskId } = await window.vorn.startExtractStore(destDir, sessionFilter)
+  state.tasks[taskId] = {
+    id: taskId, type: 'extract-store', sessionName: null,
     status: 'running', progress: null, result: null, error: null,
     createdAt: new Date().toISOString(),
   }
