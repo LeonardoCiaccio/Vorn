@@ -56,6 +56,11 @@ export async function backup(storeDir, sessionName, opts = {}) {
   const errors   = [...(run.errors ?? [])]
   let current    = alreadyDone.size
 
+  let lastSaveCount = current
+  let lastSaveTime  = Date.now()
+  const SAVE_INTERVAL_FILES = 500
+  const SAVE_INTERVAL_MS    = 60_000
+
   for (let i = 0; i < allFiles.length; i++) {
     if (isCancelled?.()) break
 
@@ -97,6 +102,18 @@ export async function backup(storeDir, sessionName, opts = {}) {
       bytes_total: bytesTotal,
       bytes_new:   bytesNew,
     })
+
+    // Salvataggio intermedio periodico
+    if (current - lastSaveCount >= SAVE_INTERVAL_FILES || Date.now() - lastSaveTime >= SAVE_INTERVAL_MS) {
+      run.files_new    = filesNew
+      run.files_dedup  = filesDedup
+      run.bytes_total  = bytesTotal
+      run.bytes_new    = bytesNew
+      run.errors       = errors
+      saveRun(storeDir, sessionName, run)
+      lastSaveCount = current
+      lastSaveTime  = Date.now()
+    }
   }
 
   run.status       = isCancelled?.() ? 'paused' : 'done'

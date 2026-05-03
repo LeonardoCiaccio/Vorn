@@ -12,7 +12,10 @@ function _validateName(name) {
 export function registerSessionHandlers() {
   ipcMain.handle('vorn:list-sessions',  ()           => listSessions(ctx.activeStore))
   ipcMain.handle('vorn:get-session',    (_, name)    => { _validateName(name); return getSession(ctx.activeStore, name) })
-  ipcMain.handle('vorn:create-session', (_, session) => createSession(ctx.activeStore, session))
+  ipcMain.handle('vorn:create-session', (_, session) => {
+    _validateName(session.name)
+    return createSession(ctx.activeStore, session)
+  })
   ipcMain.handle('vorn:delete-session', (_, name) => {
     _validateName(name)
     if (hasRunningTask(name)) throw new Error(`Operazione in corso per "${name}"`)

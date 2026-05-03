@@ -89,17 +89,24 @@ export async function writeVornFromSource(destPath, meta, sourcePath) {
   header.writeBigUInt64BE(contentLen, 4)
 
   const metaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
+  const tmpPath = destPath + '.tmp'
 
-  await pipeline(
-    createReadStream(sourcePath),
-    async function* (source) {
-      yield header
-      for await (const chunk of source) yield chunk
-      yield SEPARATOR
-      yield metaBuf
-    },
-    createWriteStream(destPath)
-  )
+  try {
+    await pipeline(
+      createReadStream(sourcePath),
+      async function* (source) {
+        yield header
+        for await (const chunk of source) yield chunk
+        yield SEPARATOR
+        yield metaBuf
+      },
+      createWriteStream(tmpPath)
+    )
+    renameSync(tmpPath, destPath)
+  } catch (e) {
+    if (existsSync(tmpPath)) unlinkSync(tmpPath)
+    throw e
+  }
 }
 
 // ── Content stream (used by restore) ─────────────────────────────────────────

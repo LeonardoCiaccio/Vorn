@@ -87,7 +87,7 @@ export function listStoreFiles(storeDir, offset = 0, limit = 20, matchHashes = n
     }
   })
 
-  return { files, total: pool.length }
+  return { files, total: pool.length, _rawCache: _listCache.files }
 }
 
 // ── Operazione atomica: check + create/upsert sotto lo stesso lock ────────────

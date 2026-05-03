@@ -7,9 +7,14 @@ import { ctx }                      from '../workerManager.js'
 
 function _hashSetForQuery(storeDir, query) {
   const q = query.toLowerCase()
+  // Ottimizzazione: usa la cache se già popolata per lo store attivo
+  const source = (ctx.activeStore === storeDir && listStoreFiles(storeDir)._rawCache) 
+    ? listStoreFiles(storeDir)._rawCache 
+    : readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+
   return new Set(
-    readdirSync(storeDir)
-      .filter(f => f.endsWith('.vorn') && f.toLowerCase().includes(q))
+    source
+      .filter(f => f.toLowerCase().includes(q))
       .map(f => f.slice(0, -5))
   )
 }
