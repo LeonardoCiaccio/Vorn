@@ -20,10 +20,20 @@ parentPort.on('message', (msg) => {
   }
 })
 
+const STORE_REQUEST_TIMEOUT_MS = 30_000
+
 function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, relPath) {
   return new Promise((resolve, reject) => {
-    const id = ++_reqId
-    _pending.set(id, { resolve, reject })
+    const id    = ++_reqId
+    const timer = setTimeout(() => {
+      _pending.delete(id)
+      reject(new Error('Store request timeout'))
+    }, STORE_REQUEST_TIMEOUT_MS)
+
+    _pending.set(id, {
+      resolve: (outcome) => { clearTimeout(timer); resolve(outcome) },
+      reject:  (err)     => { clearTimeout(timer); reject(err) },
+    })
     parentPort.postMessage({ type: 'store-request', id, hashVorn, bytes, filePath, sessionId, sessionName, relPath })
   })
 }

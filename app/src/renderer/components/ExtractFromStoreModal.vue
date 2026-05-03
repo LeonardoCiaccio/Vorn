@@ -157,7 +157,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ArchiveBoxArrowDownIcon, FolderOpenIcon, XMarkIcon, ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
-import { startExtractStore, state } from '../stores/vorn.js'
+import { startExtractStore, extractState } from '../stores/vorn.js'
 
 const emit = defineEmits(['close'])
 
@@ -165,9 +165,9 @@ const sessionFilter = ref('')
 const destDir       = ref('')
 const submitError   = ref('')
 
-const running  = computed(() => state.extractStore.running)
-const progress = computed(() => state.extractStore.progress ?? {})
-const result   = computed(() => state.extractStore.result)
+const running  = computed(() => extractState.value.running)
+const progress = computed(() => extractState.value.progress ?? {})
+const result   = computed(() => extractState.value.result)
 
 const progressPct = computed(() => {
   const p = progress.value
@@ -191,8 +191,6 @@ async function start() {
 }
 
 function reset() {
-  state.extractStore.result   = null
-  state.extractStore.progress = null
   sessionFilter.value = ''
 }
 

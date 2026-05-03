@@ -25,29 +25,29 @@
         </button>
         <button
           @click="showClearModal = true"
-          :disabled="state.clear.running"
+          :disabled="clearState.running"
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-red-600/50 hover:text-red-400 hover:bg-red-500/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <ArrowPathIcon v-if="state.clear.running" class="w-4 h-4 animate-spin" />
+          <ArrowPathIcon v-if="clearState.running" class="w-4 h-4 animate-spin" />
           <TrashIcon v-else class="w-4 h-4" />
-          <span v-if="state.clear.running">{{ state.clear.progress?.deleted ?? 0 }}/{{ state.clear.progress?.total ?? 0 }}</span>
+          <span v-if="clearState.running">{{ clearState.progress?.deleted ?? 0 }}/{{ clearState.progress?.total ?? 0 }}</span>
           <span v-else>Svuota store</span>
         </button>
         <button
           @click="runIntegrity"
-          :disabled="state.integrity.running"
+          :disabled="integrityState.running"
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <ArrowPathIcon v-if="state.integrity.running" class="w-4 h-4 animate-spin" />
+          <ArrowPathIcon v-if="integrityState.running" class="w-4 h-4 animate-spin" />
           <WrenchScrewdriverIcon v-else class="w-4 h-4" />
-          <span v-if="state.integrity.running">{{ state.integrity.progress?.current ?? 0 }}/{{ state.integrity.progress?.total ?? 0 }}</span>
+          <span v-if="integrityState.running">{{ integrityState.progress?.current ?? 0 }}/{{ integrityState.progress?.total ?? 0 }}</span>
           <span v-else>Verifica integrità</span>
         </button>
       </div>
     </div>
 
     <!-- Modal bloccante: svuota in corso -->
-    <div v-if="state.clear.running" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-[2px]">
+    <div v-if="clearState.running" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-[2px]">
       <div class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-800 flex items-center gap-3">
           <div class="w-8 h-8 rounded-md bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
@@ -60,8 +60,8 @@
         </div>
         <div class="px-6 py-5 space-y-4">
           <div class="flex items-center justify-between text-xs font-mono mb-1">
-            <span class="text-red-400">{{ (state.clear.progress?.deleted ?? 0).toLocaleString('it-IT') }} eliminati</span>
-            <span class="text-gray-500">{{ (state.clear.progress?.total ?? 0).toLocaleString('it-IT') }} totali</span>
+            <span class="text-red-400">{{ (clearState.progress?.deleted ?? 0).toLocaleString('it-IT') }} eliminati</span>
+            <span class="text-gray-500">{{ (clearState.progress?.total ?? 0).toLocaleString('it-IT') }} totali</span>
           </div>
           <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
             <div
@@ -69,8 +69,8 @@
               :style="{ width: clearProgressPct + '%' }"
             />
           </div>
-          <p v-if="state.clear.progress?.failed" class="text-xs text-amber-400">
-            {{ state.clear.progress.failed }} errori
+          <p v-if="clearState.progress?.failed" class="text-xs text-amber-400">
+            {{ clearState.progress.failed }} errori
           </p>
         </div>
         <div class="px-6 py-4 bg-gray-800/30 flex justify-end">
@@ -196,9 +196,9 @@
 
     <!-- Modal: report clear store -->
     <div
-      v-if="state.clear.report"
+      v-if="showClearReport && clearState.report"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
-      @click.self="state.clear.report = null"
+      @click.self="showClearReport = false"
     >
       <div class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
@@ -208,24 +208,24 @@
             </div>
             <h3 class="text-sm font-bold text-white uppercase tracking-wider">Store svuotato</h3>
           </div>
-          <button @click="state.clear.report = null" class="text-gray-500 hover:text-white transition-colors">
+          <button @click="showClearReport = false" class="text-gray-500 hover:text-white transition-colors">
             <XMarkIcon class="w-5 h-5" />
           </button>
         </div>
         <div class="px-6 py-5 grid grid-cols-2 gap-4 border-b border-gray-800">
           <div class="text-center">
-            <p class="text-2xl font-bold text-white">{{ state.clear.report.deleted ?? 0 }}</p>
+            <p class="text-2xl font-bold text-white">{{ clearState.report.deleted ?? 0 }}</p>
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Eliminati</p>
           </div>
           <div class="text-center">
-            <p class="text-2xl font-bold" :class="(state.clear.report.failed ?? 0) > 0 ? 'text-red-400' : 'text-gray-500'">
-              {{ state.clear.report.failed ?? 0 }}
+            <p class="text-2xl font-bold" :class="(clearState.report.failed ?? 0) > 0 ? 'text-red-400' : 'text-gray-500'">
+              {{ clearState.report.failed ?? 0 }}
             </p>
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Errori</p>
           </div>
         </div>
         <div class="px-6 py-4 flex justify-end">
-          <button @click="state.clear.report = null" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
+          <button @click="showClearReport = false" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
             Chiudi
           </button>
         </div>
@@ -234,44 +234,44 @@
 
     <!-- Modal: report integrità -->
     <div
-      v-if="state.integrity.report"
+      v-if="showIntegrityReport && integrityState.report"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
-      @click.self="state.integrity.report = null"
+      @click.self="showIntegrityReport = false"
     >
       <div class="w-full max-w-xl bg-gray-900 border border-gray-800 rounded-lg shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between shrink-0">
           <div class="flex items-center gap-3">
             <div
-              :class="state.integrity.report.errors.length ? 'bg-red-500/15 border-red-500/30' : 'bg-emerald-500/15 border-emerald-500/30'"
+              :class="integrityState.report.errors.length ? 'bg-red-500/15 border-red-500/30' : 'bg-emerald-500/15 border-emerald-500/30'"
               class="w-8 h-8 rounded-md border flex items-center justify-center shrink-0"
             >
-              <ExclamationTriangleIcon v-if="state.integrity.report.errors.length" class="w-4 h-4 text-red-400" />
+              <ExclamationTriangleIcon v-if="integrityState.report.errors.length" class="w-4 h-4 text-red-400" />
               <CheckCircleIcon v-else class="w-4 h-4 text-emerald-400" />
             </div>
             <h3 class="text-sm font-bold text-white uppercase tracking-wider">Report Integrità</h3>
           </div>
-          <button @click="state.integrity.report = null" class="text-gray-500 hover:text-white transition-colors">
+          <button @click="showIntegrityReport = false" class="text-gray-500 hover:text-white transition-colors">
             <XMarkIcon class="w-5 h-5" />
           </button>
         </div>
         <div class="px-6 py-4 border-b border-gray-800 grid grid-cols-3 gap-4 shrink-0">
           <div class="text-center">
-            <p class="text-2xl font-bold text-white">{{ state.integrity.report.total }}</p>
+            <p class="text-2xl font-bold text-white">{{ integrityState.report.total }}</p>
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Controllati</p>
           </div>
           <div class="text-center">
-            <p class="text-2xl font-bold text-emerald-400">{{ state.integrity.report.ok }}</p>
+            <p class="text-2xl font-bold text-emerald-400">{{ integrityState.report.ok }}</p>
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Integri</p>
           </div>
           <div class="text-center">
-            <p class="text-2xl font-bold" :class="state.integrity.report.errors.length ? 'text-red-400' : 'text-gray-500'">
-              {{ state.integrity.report.errors.length }}
+            <p class="text-2xl font-bold" :class="integrityState.report.errors.length ? 'text-red-400' : 'text-gray-500'">
+              {{ integrityState.report.errors.length }}
             </p>
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Corrotti</p>
           </div>
         </div>
         <div class="flex-1 overflow-auto">
-          <div v-if="state.integrity.report.errors.length === 0" class="flex flex-col items-center justify-center py-12 text-center gap-3">
+          <div v-if="integrityState.report.errors.length === 0" class="flex flex-col items-center justify-center py-12 text-center gap-3">
             <CheckCircleIcon class="w-10 h-10 text-emerald-500" />
             <p class="text-sm text-gray-300 font-medium">Tutti i file sono integri</p>
             <p class="text-xs text-gray-500">Nessuna anomalia rilevata nello store.</p>
@@ -279,7 +279,7 @@
           <div v-else class="px-6 py-4 space-y-3">
             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">File corrotti</p>
             <div
-              v-for="(entry, i) in state.integrity.report.errors"
+              v-for="(entry, i) in integrityState.report.errors"
               :key="i"
               class="bg-red-950/20 border border-red-900/40 rounded-lg p-4"
             >
@@ -294,7 +294,7 @@
           </div>
         </div>
         <div class="px-6 py-4 bg-gray-800/30 flex justify-end shrink-0">
-          <button @click="state.integrity.report = null" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
+          <button @click="showIntegrityReport = false" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
             Chiudi
           </button>
         </div>
@@ -319,7 +319,7 @@ import {
   ArrowRightStartOnRectangleIcon,
   ArchiveBoxArrowDownIcon,
 } from '@heroicons/vue/24/outline'
-import { state, fetchStorePage, startIntegrity, startClearStore, cancelTask, formatTs, formatBytes, closeStore } from '../stores/vorn.js'
+import { state, clearState, integrityState, fetchStorePage, startIntegrity, startClearStore, cancelTask, formatTs, formatBytes, closeStore } from '../stores/vorn.js'
 import ExtractFromStoreModal from '../components/ExtractFromStoreModal.vue'
 
 const ITEMS_PER_PAGE = 20
@@ -336,10 +336,13 @@ function closeClearModal() {
 }
 
 const clearProgressPct = computed(() => {
-  const p = state.clear.progress
+  const p = clearState.value.progress
   if (!p?.total) return 0
   return Math.round((p.deleted / p.total) * 100)
 })
+
+const showClearReport     = ref(false)
+const showIntegrityReport = ref(false)
 
 async function confirmClearStore() {
   if (clearConfirmText.value !== 'ELIMINA') return
@@ -390,14 +393,21 @@ function setupObserver() {
   observer.observe(sentinel.value)
 }
 
-watch(() => state.clear.running, (running, wasRunning) => {
-  if (wasRunning && !running && !state.clear.report?.fatalError) {
-    storeFileCount.value = 0
-    state.storeEntries   = []
-    state.storeLoaded    = false
-    currentOffset        = 0
-    hasMore              = false
+watch(() => clearState.value.running, (running, wasRunning) => {
+  if (wasRunning && !running) {
+    showClearReport.value = true
+    if (!clearState.value.report?.fatalError) {
+      storeFileCount.value = 0
+      state.storeEntries   = []
+      state.storeLoaded    = false
+      currentOffset        = 0
+      hasMore              = false
+    }
   }
+})
+
+watch(() => integrityState.value.running, (running, wasRunning) => {
+  if (wasRunning && !running) showIntegrityReport.value = true
 })
 
 onMounted(async () => {
