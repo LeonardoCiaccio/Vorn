@@ -1,5 +1,12 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div
+    ref="dropZone"
+    class="flex flex-col h-full relative"
+    @dragenter.prevent="onDragEnter"
+    @dragover.prevent
+    @dragleave="onDragLeave"
+    @drop.prevent="onDrop"
+  >
 
     <!-- Header -->
     <div class="px-8 py-6 border-b border-gray-800 flex items-center justify-between shrink-0">
@@ -70,6 +77,36 @@
         </button>
       </div>
     </div>
+
+    <!-- Drop overlay -->
+    <Transition name="drop-fade">
+      <div
+        v-if="isDragging"
+        class="absolute inset-0 z-40 flex items-center justify-center bg-gray-950/85 backdrop-blur-[2px]"
+        @dragover.prevent
+        @dragleave="onDragLeave"
+        @drop.prevent="onDrop"
+      >
+        <div class="flex flex-col items-center gap-4 border-2 border-dashed border-indigo-500/60 rounded-xl px-16 py-12">
+          <div class="w-14 h-14 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center">
+            <ArrowDownTrayIcon class="w-7 h-7 text-indigo-400" />
+          </div>
+          <p class="text-sm font-semibold text-indigo-300">Rilascia per creare una sessione</p>
+          <p class="text-xs text-gray-500">Verranno usate le cartelle come sorgenti</p>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Drop error banner -->
+    <Transition name="drop-fade">
+      <div
+        v-if="dropError"
+        class="mx-8 mt-4 px-4 py-3 bg-red-950/40 border border-red-700/50 rounded-md flex items-center gap-2.5 shrink-0"
+      >
+        <ExclamationCircleIcon class="w-4 h-4 text-red-400 shrink-0" />
+        <p class="text-sm text-red-300">{{ dropError }}</p>
+      </div>
+    </Transition>
 
     <!-- Loading -->
     <div v-if="state.loading" class="flex-1 flex items-center justify-center">
@@ -245,7 +282,13 @@
 
   </div>
 
-  <NewSessionModal v-if="showModal" @close="showModal = false" @created="showModal = false" />
+  <NewSessionModal
+    v-if="showModal"
+    :initialRoot="dropSources?.initialRoot ?? ''"
+    :preSelected="dropSources?.preSelected ?? []"
+    @close="showModal = false; dropSources = null"
+    @created="showModal = false; dropSources = null"
+  />
 
   <!-- Modal conferma eliminazione -->
   <Teleport to="body">
@@ -278,10 +321,74 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, CheckCircleIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon } from '@heroicons/vue/24/outline'
 import { state, selectSession, deleteSession, getActiveTask, startBackup, formatTs, formatBytes } from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
+
+// ── Path utilities ────────────────────────────────────────────────────────────
+
+function pathSegments(p) {
+  return p.replace(/\\/g, '/').split('/').filter(Boolean)
+}
+
+function pathRoot(p) {
+  return pathSegments(p)[0]?.toLowerCase() ?? ''
+}
+
+function commonAncestor(paths) {
+  if (!paths.length) return ''
+  const segs = paths.map(pathSegments)
+  let common = [...segs[0]]
+  for (let i = 1; i < segs.length; i++) {
+    let j = 0
+    while (j < common.length && j < segs[i].length && common[j].toLowerCase() === segs[i][j].toLowerCase()) j++
+    common = common.slice(0, j)
+  }
+  if (!common.length) return ''
+  const isWin = /^[a-zA-Z]:$/.test(common[0])
+  if (isWin) return common.length === 1 ? common[0] + '\\' : common[0] + '\\' + common.slice(1).join('\\')
+  return '/' + common.join('/')
+}
+
+// ── Drag & drop ───────────────────────────────────────────────────────────────
+
+const dropZone    = ref(null)
+const isDragging  = ref(false)
+const dropError   = ref('')
+const dropSources = ref(null)
+let   dropErrorTimer = null
+
+function onDragEnter(e) {
+  if (!e.dataTransfer?.types.includes('Files')) return
+  isDragging.value = true
+}
+
+function onDragLeave(e) {
+  if (dropZone.value && dropZone.value.contains(e.relatedTarget)) return
+  isDragging.value = false
+}
+
+function onDrop(e) {
+  isDragging.value  = false
+  const paths = [...(e.dataTransfer?.files ?? [])].map(f => window.vorn.getPathForFile(f)).filter(Boolean)
+  if (!paths.length) return
+
+  const roots = [...new Set(paths.map(pathRoot))]
+  if (roots.length > 1) {
+    clearTimeout(dropErrorTimer)
+    dropError.value  = `Non puoi creare una sessione da unità diverse (${roots.map(r => r.toUpperCase()).join(', ')})`
+    dropErrorTimer   = setTimeout(() => { dropError.value = '' }, 5000)
+    return
+  }
+
+  dropError.value   = ''
+  const root        = commonAncestor(paths)
+  dropSources.value = { initialRoot: root, preSelected: paths }
+  showModal.value   = true
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
 
 const showModal   = ref(false)
 const sessions    = computed(() => state.sessions)
@@ -365,3 +472,8 @@ async function confirmDelete(e, sessionName) {
 }
 
 </script>
+
+<style scoped>
+.drop-fade-enter-active, .drop-fade-leave-active { transition: opacity 0.15s ease; }
+.drop-fade-enter-from, .drop-fade-leave-to       { opacity: 0; }
+</style>

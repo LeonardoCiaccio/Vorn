@@ -33,6 +33,8 @@
             </div>
             <div class="flex-1 min-h-0 px-6 pb-6 flex flex-col">
               <SessionSourceTree class="flex-1 min-h-0"
+                :initialRoot="props.initialRoot"
+                :preSelected="props.preSelected"
                 @update:sources="form.sources = $event"
                 @update:excludePaths="form.excludePaths = $event"
               />
@@ -135,6 +137,11 @@ import { reactive, ref } from 'vue'
 import { FolderPlusIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { createSession, state } from '../stores/vorn.js'
 import SessionSourceTree from './SessionSourceTree.vue'
+
+const props = defineProps({
+  initialRoot: { type: String, default: '' },
+  preSelected: { type: Array,  default: () => [] },
+})
 
 const emit = defineEmits(['close', 'created'])
 

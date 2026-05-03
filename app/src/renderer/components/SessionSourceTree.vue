@@ -40,6 +40,11 @@ import { ArrowPathIcon, FolderIcon, FolderOpenIcon, ExclamationCircleIcon } from
 import SessionSourceTreeNode from './SessionSourceTreeNode.vue'
 import { state } from '../stores/vorn.js'
 
+const props = defineProps({
+  initialRoot: { type: String, default: '' },
+  preSelected: { type: Array,  default: () => [] },
+})
+
 const emit = defineEmits(['update:sources', 'update:excludePaths'])
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -110,12 +115,13 @@ async function expandNode(node) {
 
 // ── Load root ─────────────────────────────────────────────────────────────────
 
-async function loadRoot(dir) {
+async function loadRoot(dir, preSelectPaths = []) {
   if (!dir) return
   rootPath.value    = dir
   loadingRoot.value = true
   sources.clear()
   excluded.clear()
+  for (const p of preSelectPaths) sources.add(p)
   emitChange()
   try {
     const dirs      = await window.vorn.listDir(dir)
@@ -135,6 +141,7 @@ async function pickRoot() {
   loadRoot(picked)
 }
 
+watch(() => props.initialRoot, (r) => { if (r) loadRoot(r, props.preSelected) }, { immediate: true })
 watch(() => state.appInfo?.homedir, (h) => { if (h && !rootPath.value) loadRoot(h) }, { immediate: true })
 
 // ── Emit ──────────────────────────────────────────────────────────────────────

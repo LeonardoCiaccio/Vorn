@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 let _onProgress = null
 let _onDone     = null
@@ -72,7 +72,8 @@ contextBridge.exposeInMainWorld('vorn', {
   saveSettings: (patch)   => ipcRenderer.invoke('vorn:save-settings', patch),
 
   // Utils
-  pickFolder:  (defaultPath) => ipcRenderer.invoke('vorn:pick-folder', { defaultPath }),
+  pickFolder:      (defaultPath) => ipcRenderer.invoke('vorn:pick-folder', { defaultPath }),
+  getPathForFile:  (file)        => webUtils.getPathForFile(file),
   getAppInfo:  () => ipcRenderer.invoke('vorn:get-app-info'),
   listDir:     (dirPath) => ipcRenderer.invoke('vorn:list-dir', { dirPath }),
 
