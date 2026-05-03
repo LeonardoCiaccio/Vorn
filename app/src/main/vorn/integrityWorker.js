@@ -34,7 +34,11 @@ function hashFromContent(fd, contentOffset, contentLen) {
 const { storeDir, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
-const files = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+let files = []
+try {
+  files = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+} catch { /* poller nel main process gestirà la disconnessione */ }
+
 const total  = files.length
 const errors = []
 let ok = 0
@@ -43,20 +47,18 @@ for (let i = 0; i < files.length; i++) {
   if (Atomics.load(cancelFlag, 0)) break
 
   const filename     = files[i]
-  const expectedHash = filename.slice(0, -5)  // remove .vorn
+  const expectedHash = filename.slice(0, -5)
   const filePath     = join(storeDir, filename)
   const issues       = []
 
   try {
     const { meta, contentLen } = readVornMeta(filePath)
 
-    // Verifica 1: bytes puri nel header vs metadati
     const storedBytes = meta.bytes ?? meta.content_length
     if (storedBytes !== undefined && Number(contentLen) !== storedBytes) {
       issues.push(`Dimensione non corrispondente: header=${Number(contentLen)} B, metadati=${storedBytes} B`)
     }
 
-    // Verifica 2: hash calcolato vs nome file
     const fd = openSync(filePath, 'r')
     try {
       const computedHash = hashFromContent(fd, HEADER_SIZE, contentLen)

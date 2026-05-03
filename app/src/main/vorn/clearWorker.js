@@ -1,5 +1,5 @@
 import { workerData, parentPort } from 'worker_threads'
-import { readdirSync } from 'fs'
+import { readdirSync, statSync } from 'fs'
 import { unlink } from 'fs/promises'
 import { join } from 'path'
 
@@ -21,7 +21,12 @@ async function run() {
     const results = await Promise.allSettled(batch.map(f => unlink(join(storeDir, f))))
     for (const r of results) {
       if (r.status === 'fulfilled') deleted++
-      else                          failed++
+      else {
+        try { statSync(storeDir) } catch {
+          parentPort.postMessage({ type: 'store-disconnected' }); return
+        }
+        failed++
+      }
     }
 
     parentPort.postMessage({ type: 'progress', progress: { current: i + BATCH, total, deleted, failed } })

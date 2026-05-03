@@ -29,7 +29,8 @@ function _matchPattern(name, pattern) {
 // ── Backup ────────────────────────────────────────────────────────────────────
 
 export async function backup(storeDir, sessionName, opts = {}) {
-  const { onProgress, isCancelled, resumeTs } = opts
+  const { onProgress, isCancelled, resumeTs, storeFn } = opts
+  const _storeBlob = storeFn ?? storeBlob
 
   const session = getSession(storeDir, sessionName)
   if (!session) throw new Error(`Sessione non trovata: ${sessionName}`)
@@ -50,6 +51,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
       }
     } catch (e) { /* sorgente non accessibile */ }
   }
+
   const total     = allFiles.length
   const startTime = Date.now()
 
@@ -68,6 +70,9 @@ export async function backup(storeDir, sessionName, opts = {}) {
     run.status = 'running'
   }
   saveRun(storeDir, sessionName, run)
+
+  // Durata accumulata nelle sessioni precedenti (prima delle pause)
+  const prevDurationSec = run.duration_sec ?? 0
 
   // Contatori: ripartono dai valori salvati nel run in pausa
   let filesNew   = run.files_new   ?? 0
@@ -100,7 +105,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
     bytesTotal += bytes
 
     try {
-      const outcome = await storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath)
+      const outcome = await _storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath)
       if (outcome === 'new') { filesNew++; bytesNew += bytes }
       else                   { filesDedup++ }
       run.files[relPath] = hashVorn
@@ -121,7 +126,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
   }
 
   run.status       = isCancelled?.() ? 'paused' : 'done'
-  run.duration_sec = Math.round((Date.now() - startTime) / 1000)
+  run.duration_sec = prevDurationSec + Math.round((Date.now() - startTime) / 1000)
   run.files_total  = total
   run.files_new    = filesNew
   run.files_dedup  = filesDedup
@@ -137,7 +142,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
 export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) {
   const { onProgress, isCancelled, selectedFiles } = opts
-  const run = loadRun(storeDir, sessionName, runTs) // imported below
+  const run = loadRun(storeDir, sessionName, runTs)
   const errors = []
   let restored = 0
 

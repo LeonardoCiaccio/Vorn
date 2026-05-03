@@ -52,7 +52,7 @@
           </button>
           <button
             @click="startSelected"
-            :disabled="!selected.size || anyRunning"
+            :disabled="!selected.size || anySelectedRunning"
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <PlayIcon class="w-4 h-4" />
@@ -60,7 +60,7 @@
           </button>
           <button
             @click="askDeleteSelected"
-            :disabled="!selected.size || anyRunning"
+            :disabled="!selected.size || anySelectedRunning"
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-red-600/40 text-red-400 hover:bg-red-500/10 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <TrashIcon class="w-4 h-4" />
@@ -141,7 +141,7 @@
             >
               <!-- Checkbox -->
               <td v-if="selectionMode" class="py-3.5 pl-4 w-10" @click.stop>
-                <input type="checkbox" :checked="selected.has(session.name)" @change="toggleSelect(session.name)" class="accent-indigo-500 cursor-pointer" />
+                <input type="checkbox" :checked="selected.has(session.name)" @change="toggleSelect(session.name)" :disabled="!!activeTask(session.name)" class="accent-indigo-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" />
               </td>
               <!-- Name + sources -->
               <td class="py-3.5 px-4">
@@ -395,7 +395,8 @@ const sessions    = computed(() => state.sessions)
 const confirmName = ref(null)
 
 const totalRuns  = computed(() => sessions.value.reduce((acc, s) => acc + s.runs.length, 0))
-const anyRunning    = computed(() => sessions.value.some(s => !!getActiveTask(s.name)))
+const anyRunning         = computed(() => sessions.value.some(s => !!getActiveTask(s.name)))
+const anySelectedRunning = computed(() => [...selected.value].some(name => !!getActiveTask(name)))
 const selectionMode = ref(false)
 const selected      = ref(new Set())
 const allSelected   = computed(() => sessions.value.length > 0 && sessions.value.every(s => selected.value.has(s.name)))

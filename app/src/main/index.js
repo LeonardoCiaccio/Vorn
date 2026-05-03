@@ -4,10 +4,10 @@ import { registerIpcHandlers } from './ipc.js'
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 1200,
-    minHeight: 800,
+    width: 1080,
+    height: 720,
+    minWidth: 1080,
+    minHeight: 720,
     show: false,
     autoHideMenuBar: true,
     icon: join(__dirname, '../../build/icon.png'),

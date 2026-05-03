@@ -13,16 +13,6 @@
         <div>
           <h1 class="text-lg font-bold text-white">{{ session.name }}</h1>
           <p class="text-xs text-gray-500">Creata il {{ formatTs(session.ts) }}</p>
-          <div class="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span
-              v-for="src in session.sources" :key="src"
-              class="flex items-center gap-1 text-[11px] font-mono text-gray-500"
-              :title="src"
-            >
-              <FolderIcon class="w-3 h-3 shrink-0" />
-              <span class="max-w-[100ch] truncate">{{ src }}</span>
-            </span>
-          </div>
         </div>
       </div>
       <!-- Actions -->
@@ -131,13 +121,18 @@
 
     <!-- Scroll area principale -->
     <div class="flex-1 overflow-auto">
+      <div class="flex items-start gap-6 px-8 py-6">
 
-        <!-- Runs table -->
-        <div class="px-8 py-6">
+        <!-- Runs — 2/3 -->
+        <div class="flex-1 min-w-0">
+
+          <!-- Empty state -->
           <div v-if="session.runs.length === 0" class="flex flex-col items-center justify-center h-32 text-gray-600 text-sm">
             Nessuna run ancora
           </div>
-          <table v-else class="w-full text-sm">
+
+          <!-- Vista tabella -->
+          <table v-else-if="runsView === 'table'" class="w-full text-sm">
             <thead>
               <tr class="text-left">
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Data / Ora</th>
@@ -182,8 +177,206 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- Vista timeline -->
+          <div v-else-if="runsView === 'timeline'" class="relative">
+            <!-- Linea verticale -->
+            <div class="absolute left-3.5 top-2 bottom-2 w-px bg-gray-800" />
+
+            <div class="space-y-4">
+              <div
+                v-for="run in session.runs"
+                :key="run.ts"
+                class="relative flex gap-4 group"
+              >
+                <!-- Dot -->
+                <div class="shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center z-10 transition-colors"
+                  :class="run.status === 'done'   ? 'bg-gray-900 border-emerald-500/70' :
+                          run.status === 'paused' ? 'bg-gray-900 border-amber-500/70'  :
+                          run.status === 'running' ? 'bg-gray-900 border-indigo-500'    :
+                                                     'bg-gray-900 border-gray-600'"
+                >
+                  <CheckCircleIcon     v-if="run.status === 'done'"    class="w-3 h-3 text-emerald-400" />
+                  <StopIcon            v-else-if="run.status === 'paused'"  class="w-3 h-3 text-amber-400" />
+                  <ArrowPathIcon       v-else-if="run.status === 'running'" class="w-3 h-3 text-indigo-400 animate-spin" />
+                  <ExclamationTriangleIcon v-else                           class="w-3 h-3 text-gray-500" />
+                </div>
+
+                <!-- Card -->
+                <div
+                  class="flex-1 mb-1 bg-gray-900 border rounded-lg overflow-hidden transition-colors cursor-pointer"
+                  :class="run.status !== 'running'
+                    ? 'border-gray-800 hover:border-gray-700'
+                    : 'border-indigo-500/30 bg-indigo-950/10'"
+                  @click="run.status !== 'running' && selectRun(run)"
+                >
+                  <!-- Card header -->
+                  <div class="px-4 py-3 flex items-center justify-between border-b border-gray-800/60">
+                    <div>
+                      <p class="text-xs font-mono text-gray-300 font-medium">{{ formatTs(run.ts) }}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <StatusBadge :status="run.status" />
+                      <button
+                        v-if="run.status !== 'running'"
+                        @click.stop="pendingDeleteRun = pendingDeleteRun?.ts === run.ts ? null : run"
+                        class="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                      >
+                        <TrashIcon class="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Conferma eliminazione inline -->
+                  <div v-if="pendingDeleteRun?.ts === run.ts" class="px-4 py-2.5 flex items-center gap-2 bg-red-950/20 border-b border-red-900/30">
+                    <span class="text-xs text-gray-400 flex-1">Eliminare questo run?</span>
+                    <button @click.stop="pendingDeleteRun = null" class="px-2 py-1 rounded text-xs text-gray-500 hover:text-gray-200 transition-colors">Annulla</button>
+                    <button @click.stop="confirmDeleteRun(run)" class="px-2 py-1 rounded text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+                  </div>
+
+                  <!-- Stats grid -->
+                  <div class="px-4 py-3 grid grid-cols-3 gap-x-4 gap-y-2.5">
+                    <div>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Totale</p>
+                      <p class="text-sm font-mono font-medium text-gray-300">{{ run.files_total?.toLocaleString('it-IT') ?? '—' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Nuovi</p>
+                      <p class="text-sm font-mono font-medium text-emerald-400">{{ run.files_new?.toLocaleString('it-IT') ?? '—' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Dedup</p>
+                      <p class="text-sm font-mono font-medium text-indigo-400">{{ run.files_dedup?.toLocaleString('it-IT') ?? '—' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Scritti</p>
+                      <p class="text-sm font-mono font-medium text-gray-300">{{ run.bytes_new != null ? formatBytes(run.bytes_new) : '—' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Totale</p>
+                      <p class="text-sm font-mono font-medium text-gray-500">{{ run.bytes_total != null ? formatBytes(run.bytes_total) : '—' }}</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Durata</p>
+                      <p class="text-sm font-mono font-medium text-gray-300">{{ run.duration_sec != null ? formatDuration(run.duration_sec) : '—' }}</p>
+                    </div>
+                  </div>
+
+                  <!-- Barra dedup/new -->
+                  <div v-if="run.files_total && (run.files_new != null || run.files_dedup != null)" class="px-4 pb-3">
+                    <div class="w-full h-1 bg-gray-800 rounded-full overflow-hidden flex">
+                      <div class="h-full bg-emerald-500 transition-all" :style="{ width: ((run.files_new ?? 0) / run.files_total * 100) + '%' }" />
+                      <div class="h-full bg-indigo-500/60 transition-all" :style="{ width: ((run.files_dedup ?? 0) / run.files_total * 100) + '%' }" />
+                    </div>
+                    <div class="flex items-center gap-3 mt-1.5 text-[10px] text-gray-600">
+                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> nuovi</span>
+                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-indigo-500/60 inline-block" /> dedup</span>
+                      <span v-if="run.errors_count" class="text-red-400 ml-auto">{{ run.errors_count }} errori</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
+        <!-- Pannello dettagli sessione — 1/3, sticky -->
+        <div class="w-72 shrink-0 sticky top-6 space-y-3">
+
+          <!-- Toggle vista -->
+          <div class="flex items-center gap-1 p-1 bg-gray-900 border border-gray-800 rounded-lg">
+            <button
+              @click="runsView = 'table'"
+              class="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+              :class="runsView === 'table' ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'"
+            >
+              <TableCellsIcon class="w-3.5 h-3.5" />
+              Lista
+            </button>
+            <button
+              @click="runsView = 'timeline'"
+              class="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+              :class="runsView === 'timeline' ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'"
+            >
+              <ClockIcon class="w-3.5 h-3.5" />
+              Timeline
+            </button>
+          </div>
+
+          <!-- Intestazione -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2.5">
+              <div class="w-7 h-7 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                <FolderOpenIcon class="w-3.5 h-3.5 text-indigo-400" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-bold text-white truncate">{{ session.name }}</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">{{ formatTs(session.ts) }}</p>
+              </div>
+            </div>
+            <div v-if="session.id" class="px-4 py-2.5 border-b border-gray-800/60 flex items-center gap-2">
+              <span class="text-[10px] text-gray-600 uppercase tracking-wider font-semibold w-8 shrink-0">ID</span>
+              <span class="text-[10px] font-mono text-gray-500 truncate">{{ session.id }}</span>
+            </div>
+            <div class="px-4 py-2.5 flex items-center gap-2">
+              <span class="text-[10px] text-gray-600 uppercase tracking-wider font-semibold shrink-0">Run</span>
+              <span class="text-[10px] font-mono text-gray-400 ml-auto">{{ session.runs.length }}</span>
+            </div>
+          </div>
+
+          <!-- Sorgenti -->
+          <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-gray-800/60">
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Sorgenti</p>
+            </div>
+            <div class="px-4 py-3 space-y-2">
+              <div
+                v-for="src in session.sources"
+                :key="src"
+                class="flex items-start gap-2"
+                :title="src"
+              >
+                <FolderIcon class="w-3.5 h-3.5 text-amber-400/70 shrink-0 mt-0.5" />
+                <span class="text-[11px] font-mono text-gray-400 break-all leading-relaxed">{{ src }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Percorsi esclusi -->
+          <div v-if="session.excludes?.paths?.length" class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-gray-800/60">
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Percorsi esclusi</p>
+            </div>
+            <div class="px-4 py-3 space-y-1.5">
+              <div
+                v-for="p in session.excludes.paths"
+                :key="p"
+                class="flex items-start gap-2"
+              >
+                <XMarkIcon class="w-3 h-3 text-red-500/60 shrink-0 mt-0.5" />
+                <span class="text-[11px] font-mono text-gray-500 break-all leading-relaxed">{{ p }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pattern esclusioni -->
+          <div v-if="session.excludes?.patterns?.length" class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-gray-800/60">
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Pattern esclusioni</p>
+            </div>
+            <div class="px-4 py-3 flex flex-wrap gap-1.5">
+              <span
+                v-for="pat in session.excludes.patterns"
+                :key="pat"
+                class="px-1.5 py-0.5 rounded text-[10px] font-mono text-gray-400 bg-gray-800 border border-gray-700"
+              >{{ pat }}</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
     </div>
 
     <!-- Sidebar dettaglio run — drawer modale a tutta altezza -->
@@ -309,6 +502,8 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   XMarkIcon,
+  TableCellsIcon,
+  ClockIcon,
 } from '@heroicons/vue/24/outline'
 import { computed, ref, watch } from 'vue'
 import {
@@ -316,6 +511,13 @@ import {
   startBackup, startRestore, cancelTask, getActiveTask, getLastTask,
   formatTs, formatBytes
 } from '../stores/vorn.js'
+
+function formatDuration(sec) {
+  if (sec == null) return '—'
+  if (sec < 60)  return `${sec}s`
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ${sec % 60}s`
+  return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`
+}
 import StatusBadge from '../components/StatusBadge.vue'
 import RestoreModal from '../components/RestoreModal.vue'
 import FileTree from '../components/FileTree.vue'
@@ -364,6 +566,7 @@ function clearRestoreResult() {
   if (t) t.result = null
 }
 
+const runsView         = ref('table')
 const showRestoreModal = ref(false)
 const confirmingDelete = ref(false)
 const selectedFiles    = ref([])

@@ -1,10 +1,10 @@
 import { ipcMain, app, dialog } from 'electron'
 import { join } from 'path'
-import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, readdirSync } from 'fs'
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, readdirSync, statSync } from 'fs'
 import { hostname } from 'os'
 import { Worker } from 'worker_threads'
 import { listSessions, getSession, createSession, deleteSession, listRuns, loadRun, deleteRun } from './vorn/sessions.js'
-import { getEntry, listStoreFiles, countStoreFiles, deleteStoreEntry } from './vorn/store.js'
+import { storeBlob, getEntry, listStoreFiles, countStoreFiles, deleteStoreEntry } from './vorn/store.js'
 import { extractByHash } from './vorn/engine.js'
 import { loadSettings, saveSettings, addRecentStore } from './vorn/settings.js'
 import {
@@ -14,6 +14,32 @@ import {
 
 const _activeWorkers = new Map()
 let _activeStore     = null
+let _storeWatcher    = null
+
+// ── Store health poller ───────────────────────────────────────────────────────
+
+function _startStoreWatch(mainWindow) {
+  _stopStoreWatch()
+  _storeWatcher = setInterval(() => {
+    if (!_activeStore) return _stopStoreWatch()
+    try { statSync(_activeStore) }
+    catch { _triggerDisconnect(mainWindow) }
+  }, 2000)
+}
+
+function _stopStoreWatch() {
+  if (_storeWatcher) { clearInterval(_storeWatcher); _storeWatcher = null }
+}
+
+function _triggerDisconnect(mainWindow) {
+  if (!_activeStore) return
+  _stopStoreWatch()
+  for (const { cancelFlag: cf } of _activeWorkers.values()) Atomics.store(cf, 0, 1)
+  _activeWorkers.clear()
+  _releaseLock(_activeStore)
+  _activeStore = null
+  mainWindow.webContents.send('vorn:store-disconnected')
+}
 
 // ── Worker spawn ──────────────────────────────────────────────────────────────
 
@@ -27,16 +53,25 @@ function _spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) {
 
   _activeWorkers.set(taskId, { worker, cancelFlag })
 
-  worker.on('message', ({ type, progress, result, error }) => {
-    if (type === 'progress') {
-      updateTaskProgress(taskId, progress)
-      mainWindow.webContents.send('vorn:task-progress', { taskId, ...progress })
+  worker.on('message', (msg) => {
+    const { type } = msg
+    if (type === 'store-request') {
+      const { id, hashVorn, bytes, filePath, sessionId, sessionName, relPath } = msg
+      storeBlob(_activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath)
+        .then(outcome => worker.postMessage({ type: 'store-result', id, outcome }))
+        .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message }))
+    } else if (type === 'progress') {
+      updateTaskProgress(taskId, msg.progress)
+      mainWindow.webContents.send('vorn:task-progress', { taskId, ...msg.progress })
     } else if (type === 'done') {
       _activeWorkers.delete(taskId)
-      onDone(result, null)
+      onDone(msg.result, null)
     } else if (type === 'error') {
       _activeWorkers.delete(taskId)
-      onDone(null, error)
+      onDone(null, msg.error)
+    } else if (type === 'store-disconnected') {
+      onDone(null, 'Store non raggiungibile')
+      _triggerDisconnect(mainWindow)
     }
   })
 
@@ -52,6 +87,7 @@ function _spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) {
 export function registerIpcHandlers(mainWindow) {
 
   app.once('before-quit', (e) => {
+    _stopStoreWatch()
     if (_activeStore) _releaseLock(_activeStore)
     if (_activeWorkers.size === 0) return
     e.preventDefault()
@@ -81,11 +117,13 @@ export function registerIpcHandlers(mainWindow) {
     _acquireLock(storeDir)
     _activeStore = storeDir
     addRecentStore(storeDir)
+    _startStoreWatch(mainWindow)
 
     return { ok: true }
   })
 
   ipcMain.handle('vorn:close-store', () => {
+    _stopStoreWatch()
     if (_activeStore) { _releaseLock(_activeStore); _activeStore = null }
   })
 
