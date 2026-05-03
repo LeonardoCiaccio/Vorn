@@ -7,26 +7,23 @@
       <span class="text-[10px] text-gray-600">v{{ state.appInfo?.version ?? '…' }}</span>
     </div>
 
-    <!-- Nav — centrata in assoluto -->
-    <nav class="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5">
+    <!-- Destra: nav + tema -->
+    <div class="ml-auto flex items-center gap-1">
       <button
         v-for="item in navItems"
         :key="item.id"
         @click="navigate(item.id)"
+        :title="item.label"
         :class="[
-          'relative flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-150',
+          'p-2 rounded-md transition-all duration-150',
           currentView === item.id
             ? 'bg-indigo-500/15 text-indigo-400'
-            : 'text-gray-400 hover:text-gray-100 hover:bg-gray-800/60'
+            : 'text-gray-500 hover:text-gray-200 hover:bg-gray-800'
         ]"
       >
-        <component :is="item.icon" class="w-4 h-4 shrink-0" />
-        {{ item.label }}
+        <component :is="item.icon" class="w-4.5 h-4.5" />
       </button>
-    </nav>
-
-    <!-- Destra: tema -->
-    <div class="ml-auto flex items-center gap-1">
+      <div class="w-px h-4 bg-gray-800 mx-1" />
       <button
         @click="toggleTheme"
         class="p-2 rounded-md text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
@@ -38,6 +35,7 @@
     </div>
 
   </header>
+
 </template>
 
 <script setup>
