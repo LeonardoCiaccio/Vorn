@@ -1,18 +1,20 @@
-// Mutex per path file — serializza operazioni sullo stesso .vorn
-// JS è single-threaded: l'assegnazione a _locks è atomica rispetto agli await.
-
-const _locks = new Map() // filePath → Promise (resolved quando il lock è libero)
+const _queue = new Map() // filePath → { tail: Promise, count: number }
 
 export async function withFileLock(filePath, fn) {
-  const prev = _locks.get(filePath) ?? Promise.resolve()
+  if (!_queue.has(filePath)) _queue.set(filePath, { tail: Promise.resolve(), count: 0 })
+  const q = _queue.get(filePath)
+  q.count++
 
+  const prev = q.tail
   let release
-  _locks.set(filePath, new Promise(r => (release = r)))
+  q.tail = new Promise(r => (release = r))
 
   try {
     await prev
     return await fn()
   } finally {
     release()
+    q.count--
+    if (q.count === 0) _queue.delete(filePath)
   }
 }

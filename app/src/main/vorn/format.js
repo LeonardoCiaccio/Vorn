@@ -1,5 +1,6 @@
-import { openSync, readSync, writeSync, closeSync, truncateSync, createReadStream, createWriteStream, statSync } from 'fs'
+import { openSync, readSync, writeSync, closeSync, truncateSync, createReadStream, createWriteStream, statSync, existsSync, readFileSync, unlinkSync, renameSync } from 'fs'
 import { Readable } from 'stream'
+import { pipeline } from 'stream/promises'
 
 const MAGIC = Buffer.from('VORN')
 const SEPARATOR = Buffer.from([0xFF, 0x00, 0xFF, 0x00])
@@ -23,31 +24,43 @@ function _getContentInfo(fd) {
 // ── Read metadata (from the tail) ─────────────────────────────────────────────
 
 export function readVornMeta(filePath) {
-  const fd = openSync(filePath, 'r')
+  let fd = openSync(filePath, 'r')
   try {
     const contentLen = _getContentInfo(fd)
     const metaOffset = BigInt(HEADER_SIZE) + contentLen
-    
-    // Check separator
+
     const sepBuf = Buffer.alloc(SEPARATOR.length)
     readSync(fd, sepBuf, 0, SEPARATOR.length, metaOffset)
     if (!sepBuf.equals(SEPARATOR)) throw new Error('Separator not found at expected position')
-    
-    // Read the rest as JSON
-    const stats = statSync(filePath)
-    const metaSize = stats.size - Number(metaOffset) - SEPARATOR.length
-    if (metaSize < 0) throw new Error('Invalid metadata size')
-    
-    const metaBuf = Buffer.alloc(metaSize)
-    readSync(fd, metaBuf, 0, metaSize, metaOffset + BigInt(SEPARATOR.length))
-    
-    return {
-      meta: JSON.parse(metaBuf.toString('utf8')),
-      contentOffset: HEADER_SIZE,
-      contentLen: contentLen
+
+    const fileSize = statSync(filePath).size
+    const metaSize = fileSize - Number(metaOffset) - SEPARATOR.length
+
+    let meta = null
+    if (metaSize > 0) {
+      const metaBuf = Buffer.alloc(metaSize)
+      readSync(fd, metaBuf, 0, metaSize, metaOffset + BigInt(SEPARATOR.length))
+      try { meta = JSON.parse(metaBuf.toString('utf8')) } catch { /* WAL recovery below */ }
     }
+
+    if (!meta) {
+      // Metadati assenti o corrotti: tenta recovery dal file WAL
+      const tmpPath = filePath + '.mtmp'
+      if (!existsSync(tmpPath)) throw new Error('Metadata corrupted and no recovery file found')
+      const recovered = JSON.parse(readFileSync(tmpPath, 'utf8'))
+      closeSync(fd); fd = null
+      const truncateAt = HEADER_SIZE + Number(contentLen) + SEPARATOR.length
+      truncateSync(filePath, truncateAt)
+      const recBuf = Buffer.from(JSON.stringify(recovered), 'utf8')
+      const fdw = openSync(filePath, 'a')
+      try { writeSync(fdw, recBuf) } finally { closeSync(fdw) }
+      try { unlinkSync(tmpPath) } catch { /* non-critico */ }
+      return readVornMeta(filePath)
+    }
+
+    return { meta, contentOffset: HEADER_SIZE, contentLen }
   } finally {
-    closeSync(fd)
+    if (fd !== null) try { closeSync(fd) } catch { /* già chiuso nel recovery */ }
   }
 }
 
@@ -68,50 +81,32 @@ export async function readVorn(filePath) {
 // ── Write .vorn from source (initial creation) ───────────────────────────────
 
 export async function writeVornFromSource(destPath, meta, sourcePath) {
-  const stats = statSync(sourcePath)
+  const stats      = statSync(sourcePath)
   const contentLen = BigInt(stats.size)
-  
+
   const header = Buffer.alloc(HEADER_SIZE)
   MAGIC.copy(header)
   header.writeBigUInt64BE(contentLen, 4)
-  
-  const metaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
-  
-  return new Promise((resolve, reject) => {
-    const ws = createWriteStream(destPath)
-    const rs = createReadStream(sourcePath)
-    
-    ws.write(header)
-    rs.pipe(ws, { end: false })
-    
-    rs.on('end', () => {
-      ws.write(SEPARATOR)
-      ws.write(metaBuf)
-      ws.end()
-    })
-    
-    ws.on('finish', resolve)
-    ws.on('error', reject)
-    rs.on('error', reject)
-  })
-}
-
-// ── Surgical metadata update (truncate to separator, rewrite JSON) ───────────
-
-export function updateVornMeta(filePath, meta) {
-  const fd = openSync(filePath, 'r')
-  let contentLen
-  try { contentLen = _getContentInfo(fd) }
-  finally { closeSync(fd) }
-
-  // Keep: HEADER + content + SEPARATOR — discard old JSON
-  const truncateAt = HEADER_SIZE + Number(contentLen) + SEPARATOR.length
-  truncateSync(filePath, truncateAt)
 
   const metaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
-  const fdw = openSync(filePath, 'a')
-  try { writeSync(fdw, metaBuf) }
-  finally { closeSync(fdw) }
+  const tmpPath = destPath + '.tmp'
+
+  try {
+    await pipeline(
+      createReadStream(sourcePath),
+      async function* (source) {
+        yield header
+        for await (const chunk of source) yield chunk
+        yield SEPARATOR
+        yield metaBuf
+      },
+      createWriteStream(tmpPath)
+    )
+    renameSync(tmpPath, destPath)
+  } catch (e) {
+    if (existsSync(tmpPath)) unlinkSync(tmpPath)
+    throw e
+  }
 }
 
 // ── Content stream (used by restore) ─────────────────────────────────────────

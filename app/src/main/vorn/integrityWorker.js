@@ -1,35 +1,10 @@
 import { workerData, parentPort } from 'worker_threads'
-import { readdirSync, openSync, readSync, closeSync } from 'fs'
+import { readdirSync, openSync, closeSync } from 'fs'
 import { join } from 'path'
-import { createHash } from 'crypto'
 import { readVornMeta } from './format.js'
+import { hashFromFd } from './hash.js'
 
-const SAMPLES     = 13
-const SAMPLE_SIZE = 8
-const SMALL_FILE  = SAMPLES * SAMPLE_SIZE  // 104 bytes
 const HEADER_SIZE = 12
-
-function hashFromContent(fd, contentOffset, contentLen) {
-  const size = Number(contentLen)
-  if (size === 0) return createHash('sha256').update(Buffer.alloc(0)).digest('hex')
-
-  if (size <= SMALL_FILE) {
-    const buf = Buffer.alloc(size)
-    readSync(fd, buf, 0, size, contentOffset)
-    return createHash('sha256').update(buf).digest('hex')
-  }
-
-  const step   = Math.max(1, Math.floor((size - SAMPLE_SIZE) / (SAMPLES - 1)))
-  const sample = Buffer.alloc(SAMPLE_SIZE)
-  const parts  = []
-  for (let i = 0; i < SAMPLES; i++) {
-    const offset = Math.min(i * step, size - SAMPLE_SIZE)
-    readSync(fd, sample, 0, SAMPLE_SIZE, contentOffset + offset)
-    parts.push(sample.toString('hex'))
-  }
-  const fingerprint = size.toString(16).padStart(16, '0') + ':' + parts.join(':')
-  return createHash('sha256').update(fingerprint).digest('hex')
-}
 
 const { storeDir, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
@@ -61,7 +36,7 @@ for (let i = 0; i < files.length; i++) {
 
     const fd = openSync(filePath, 'r')
     try {
-      const computedHash = hashFromContent(fd, HEADER_SIZE, contentLen)
+      const computedHash = hashFromFd(fd, HEADER_SIZE, contentLen)
       if (computedHash !== expectedHash) {
         issues.push(`Hash corrotto: atteso ${expectedHash.slice(0, 12)}…, calcolato ${computedHash.slice(0, 12)}…`)
       }

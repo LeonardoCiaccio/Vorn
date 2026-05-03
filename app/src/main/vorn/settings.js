@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
 
@@ -19,8 +19,11 @@ export function loadSettings() {
 
 export function saveSettings(patch) {
   const updated = { ...loadSettings(), ...patch }
-  mkdirSync(join(homedir(), '.vorn'), { recursive: true })
-  writeFileSync(_path, JSON.stringify(updated, null, 2), 'utf8')
+  const dir = join(homedir(), '.vorn')
+  mkdirSync(dir, { recursive: true })
+  const tmp = _path + '.tmp'
+  writeFileSync(tmp, JSON.stringify(updated, null, 2), 'utf8')
+  renameSync(tmp, _path)
   return updated
 }
 

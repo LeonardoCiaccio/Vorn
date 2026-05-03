@@ -1,4 +1,4 @@
-import { reactive } from 'vue'
+import { reactive, computed } from 'vue'
 import { syncThemeFromSettings } from './settings.js'
 
 export const state = reactive({
@@ -23,11 +23,25 @@ export const state = reactive({
   storeLoaded:  false,
 
   // Tasks
-  tasks:    {},
-  integrity:    { running: false, progress: null, report: null },
-  clear:        { running: false, progress: null, report: null },
-  extractStore: { running: false, progress: null, result: null },
+  tasks: {},
 })
+
+// Stato derivato dai task — single source of truth
+export const integrityState  = computed(() => _taskState('integrity',    'report'))
+export const clearState      = computed(() => _taskState('clear',        'report'))
+export const extractState    = computed(() => _taskState('extract-store','result'))
+
+function _taskState(type, resultKey) {
+  const tasks = Object.values(state.tasks)
+  const running = tasks.find(t => t.type === type && t.status === 'running')
+  const last    = tasks.filter(t => t.type === type && t.status !== 'running')
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+  return {
+    running:    !!running,
+    progress:   running?.progress ?? null,
+    [resultKey]: last ? (last.error ? { fatalError: last.error } : last.result) : null,
+  }
+}
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
@@ -44,12 +58,6 @@ export async function boot() {
 
   window.vorn.onTaskProgress(({ taskId, ...progress }) => {
     if (state.tasks[taskId]) state.tasks[taskId].progress = progress
-    if (state.integrity.running && state.tasks[taskId]?.type === 'integrity')
-      state.integrity.progress = progress
-    if (state.clear.running && state.tasks[taskId]?.type === 'clear')
-      state.clear.progress = progress
-    if (state.extractStore.running && state.tasks[taskId]?.type === 'extract-store')
-      state.extractStore.progress = progress
   })
 
   window.vorn.onTaskDone(async ({ taskId, result, error }) => {
@@ -59,19 +67,7 @@ export async function boot() {
     t.result   = result ?? null
     t.error    = error  ?? null
     t.progress = null
-    if (t.type === 'integrity') {
-      state.integrity.running  = false
-      state.integrity.progress = null
-      state.integrity.report   = error ? { total: 0, ok: 0, errors: [], fatalError: error } : result
-    } else if (t.type === 'clear') {
-      state.clear.running  = false
-      state.clear.progress = null
-      state.clear.report   = error ? { fatalError: error } : result
-    } else if (t.type === 'extract-store') {
-      state.extractStore.running  = false
-      state.extractStore.progress = null
-      state.extractStore.result   = error ? { fatalError: error } : result
-    } else {
+    if (t.type !== 'integrity' && t.type !== 'clear' && t.type !== 'extract-store') {
       await refreshSession(t.sessionName)
     }
   })
@@ -203,35 +199,26 @@ export async function startRestore(sessionName, runTs, destDir, selectedFiles = 
 }
 
 export async function startIntegrity() {
-  state.integrity = { running: true, progress: { current: 0, total: 0 }, report: null }
   const { taskId } = await window.vorn.startIntegrity()
-  state.tasks[taskId] = {
-    id: taskId, type: 'integrity', sessionName: null,
+  state.tasks[taskId] = { id: taskId, type: 'integrity', sessionName: null,
     status: 'running', progress: null, result: null, error: null,
-    createdAt: new Date().toISOString(),
-  }
+    createdAt: new Date().toISOString() }
   return taskId
 }
 
 export async function startClearStore() {
-  state.clear = { running: true, progress: { current: 0, total: 0, deleted: 0, failed: 0 }, report: null }
   const { taskId } = await window.vorn.startClearStore()
-  state.tasks[taskId] = {
-    id: taskId, type: 'clear', sessionName: null,
+  state.tasks[taskId] = { id: taskId, type: 'clear', sessionName: null,
     status: 'running', progress: null, result: null, error: null,
-    createdAt: new Date().toISOString(),
-  }
+    createdAt: new Date().toISOString() }
   return taskId
 }
 
 export async function startExtractStore(destDir, sessionFilter = null) {
-  state.extractStore = { running: true, progress: { current: 0, total: 0, extracted: 0, errors: 0 }, result: null }
   const { taskId } = await window.vorn.startExtractStore(destDir, sessionFilter)
-  state.tasks[taskId] = {
-    id: taskId, type: 'extract-store', sessionName: null,
+  state.tasks[taskId] = { id: taskId, type: 'extract-store', sessionName: null,
     status: 'running', progress: null, result: null, error: null,
-    createdAt: new Date().toISOString(),
-  }
+    createdAt: new Date().toISOString() }
   return taskId
 }
 

@@ -25,29 +25,29 @@
         </button>
         <button
           @click="showClearModal = true"
-          :disabled="state.clear.running"
+          :disabled="clearState.running"
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-red-600/50 hover:text-red-400 hover:bg-red-500/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <ArrowPathIcon v-if="state.clear.running" class="w-4 h-4 animate-spin" />
+          <ArrowPathIcon v-if="clearState.running" class="w-4 h-4 animate-spin" />
           <TrashIcon v-else class="w-4 h-4" />
-          <span v-if="state.clear.running">{{ state.clear.progress?.deleted ?? 0 }}/{{ state.clear.progress?.total ?? 0 }}</span>
+          <span v-if="clearState.running">{{ clearState.progress?.deleted ?? 0 }}/{{ clearState.progress?.total ?? 0 }}</span>
           <span v-else>Svuota store</span>
         </button>
         <button
           @click="runIntegrity"
-          :disabled="state.integrity.running"
+          :disabled="integrityState.running"
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <ArrowPathIcon v-if="state.integrity.running" class="w-4 h-4 animate-spin" />
+          <ArrowPathIcon v-if="integrityState.running" class="w-4 h-4 animate-spin" />
           <WrenchScrewdriverIcon v-else class="w-4 h-4" />
-          <span v-if="state.integrity.running">{{ state.integrity.progress?.current ?? 0 }}/{{ state.integrity.progress?.total ?? 0 }}</span>
+          <span v-if="integrityState.running">{{ integrityState.progress?.current ?? 0 }}/{{ integrityState.progress?.total ?? 0 }}</span>
           <span v-else>Verifica integrità</span>
         </button>
       </div>
     </div>
 
     <!-- Modal bloccante: svuota in corso -->
-    <div v-if="state.clear.running" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-[2px]">
+    <div v-if="clearState.running" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-[2px]">
       <div class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-800 flex items-center gap-3">
           <div class="w-8 h-8 rounded-md bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
@@ -60,8 +60,8 @@
         </div>
         <div class="px-6 py-5 space-y-4">
           <div class="flex items-center justify-between text-xs font-mono mb-1">
-            <span class="text-red-400">{{ (state.clear.progress?.deleted ?? 0).toLocaleString('it-IT') }} eliminati</span>
-            <span class="text-gray-500">{{ (state.clear.progress?.total ?? 0).toLocaleString('it-IT') }} totali</span>
+            <span class="text-red-400">{{ (clearState.progress?.deleted ?? 0).toLocaleString('it-IT') }} eliminati</span>
+            <span class="text-gray-500">{{ (clearState.progress?.total ?? 0).toLocaleString('it-IT') }} totali</span>
           </div>
           <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
             <div
@@ -69,8 +69,8 @@
               :style="{ width: clearProgressPct + '%' }"
             />
           </div>
-          <p v-if="state.clear.progress?.failed" class="text-xs text-amber-400">
-            {{ state.clear.progress.failed }} errori
+          <p v-if="clearState.progress?.failed" class="text-xs text-amber-400">
+            {{ clearState.progress.failed }} errori
           </p>
         </div>
         <div class="px-6 py-4 bg-gray-800/30 flex justify-end">
@@ -114,7 +114,16 @@
             <col style="width:22%" />
           </colgroup>
           <tbody>
-            <tr v-for="(entry, i) in state.storeEntries" :key="entry.hash_vorn" class="hover:bg-gray-800/20 transition-colors" :class="i > 0 ? 'border-t border-gray-800/60' : ''">
+            <tr
+              v-for="(entry, i) in state.storeEntries"
+              :key="entry.hash_vorn"
+              @click="toggleEntry(entry)"
+              class="cursor-pointer hover:bg-gray-800/20 transition-colors"
+              :class="[
+                i > 0 ? 'border-t border-gray-800/60' : '',
+                selectedEntry?.hash_vorn === entry.hash_vorn ? 'bg-indigo-500/10' : '',
+              ]"
+            >
               <td class="py-3 pr-5">
                 <span class="font-mono text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md break-all">
                   {{ entry.hash_vorn }}
@@ -142,6 +151,119 @@
         </div>
       </div>
     </div>
+
+    <!-- Drawer: dettaglio file -->
+    <transition name="slide">
+      <div v-if="selectedEntry" class="fixed inset-0 z-40 flex justify-end">
+        <div class="backdrop absolute inset-0 bg-black/30 backdrop-blur-[2px]" @click="selectedEntry = null" />
+        <div class="drawer-panel relative w-md h-full bg-gray-900 border-l border-gray-800 flex flex-col shadow-2xl overflow-hidden">
+
+          <!-- Header -->
+          <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-gray-900/90 backdrop-blur-md z-10">
+            <div>
+              <p class="text-sm font-bold text-white">Dettaglio file</p>
+              <p class="text-[10px] text-gray-500 font-mono mt-0.5">{{ selectedEntry.hash_vorn.slice(0, 16) }}…</p>
+            </div>
+            <button @click="selectedEntry = null" class="p-1 rounded-md text-gray-600 hover:text-white transition-colors">
+              <XMarkIcon class="w-4 h-4" />
+            </button>
+          </div>
+
+          <!-- Banner feedback ripristino -->
+          <transition name="fade">
+            <div
+              v-if="extractResult"
+              class="shrink-0 flex items-center gap-3 px-5 py-3 border-b text-xs"
+              :class="extractResult.ok
+                ? 'bg-emerald-950/40 border-emerald-900/50 text-emerald-300'
+                : 'bg-red-950/40 border-red-900/50 text-red-300'"
+            >
+              <CheckCircleIcon v-if="extractResult.ok" class="w-4 h-4 shrink-0" />
+              <ExclamationTriangleIcon v-else class="w-4 h-4 shrink-0" />
+              <span class="flex-1">{{ extractResult.message }}</span>
+              <button @click="extractResult = null" class="opacity-60 hover:opacity-100 transition-opacity">
+                <XMarkIcon class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </transition>
+
+          <!-- Corpo scrollabile -->
+          <div class="flex-1 overflow-auto px-5 py-5 space-y-5">
+
+            <!-- Hash -->
+            <div class="space-y-1.5">
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Hash</p>
+              <div class="flex items-start gap-2">
+                <p class="font-mono text-[11px] text-indigo-400 bg-indigo-500/10 px-2 py-1.5 rounded-md break-all flex-1 leading-relaxed">
+                  {{ selectedEntry.hash_vorn }}
+                </p>
+                <button
+                  @click="copyHash"
+                  :title="hashCopied ? 'Copiato!' : 'Copia hash'"
+                  class="p-1.5 rounded-md transition-colors shrink-0 mt-0.5"
+                  :class="hashCopied ? 'text-emerald-400 bg-emerald-500/10' : 'text-gray-500 hover:text-white hover:bg-gray-800'"
+                >
+                  <CheckCircleIcon v-if="hashCopied" class="w-3.5 h-3.5" />
+                  <DocumentDuplicateIcon v-else class="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Dimensione -->
+            <div class="space-y-1">
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Dimensione</p>
+              <p class="text-sm font-mono text-gray-300">{{ formatBytes(selectedEntry.bytes_file) }}</p>
+            </div>
+
+            <!-- Date -->
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Creato il</p>
+                <p class="text-xs text-gray-400">{{ formatTs(selectedEntry.ctime) }}</p>
+              </div>
+              <div class="space-y-1">
+                <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Modificato il</p>
+                <p class="text-xs text-gray-400">{{ formatTs(selectedEntry.mtime) }}</p>
+              </div>
+            </div>
+
+            <!-- Sessioni / Record -->
+            <div class="space-y-2">
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                Sessioni ({{ selectedEntry.records?.length ?? 0 }})
+              </p>
+              <p v-if="!selectedEntry.records?.length" class="text-xs text-gray-600">Nessuna sessione</p>
+              <div
+                v-for="record in selectedEntry.records"
+                :key="record.id"
+                class="group rounded-md bg-gray-800/40 border border-gray-800 p-3 space-y-2"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-xs font-semibold text-gray-300 truncate">{{ record.session }}</p>
+                  <button
+                    @click.stop="openExtractModal(record)"
+                    title="Ripristina file"
+                    class="opacity-0 group-hover:opacity-100 p-1 rounded-md text-gray-500 hover:text-indigo-300 hover:bg-indigo-500/10 transition-all shrink-0"
+                  >
+                    <ArrowDownTrayIcon class="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <ul class="space-y-1">
+                  <li
+                    v-for="(path, pi) in record.paths"
+                    :key="pi"
+                    class="font-mono text-[10px] text-gray-500 break-all leading-snug"
+                  >
+                    {{ path }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <!-- Modal: svuota store -->
     <div
@@ -196,9 +318,9 @@
 
     <!-- Modal: report clear store -->
     <div
-      v-if="state.clear.report"
+      v-if="showClearReport && clearState.report"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
-      @click.self="state.clear.report = null"
+      @click.self="showClearReport = false"
     >
       <div class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
@@ -208,24 +330,24 @@
             </div>
             <h3 class="text-sm font-bold text-white uppercase tracking-wider">Store svuotato</h3>
           </div>
-          <button @click="state.clear.report = null" class="text-gray-500 hover:text-white transition-colors">
+          <button @click="showClearReport = false" class="text-gray-500 hover:text-white transition-colors">
             <XMarkIcon class="w-5 h-5" />
           </button>
         </div>
         <div class="px-6 py-5 grid grid-cols-2 gap-4 border-b border-gray-800">
           <div class="text-center">
-            <p class="text-2xl font-bold text-white">{{ state.clear.report.deleted ?? 0 }}</p>
+            <p class="text-2xl font-bold text-white">{{ clearState.report.deleted ?? 0 }}</p>
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Eliminati</p>
           </div>
           <div class="text-center">
-            <p class="text-2xl font-bold" :class="(state.clear.report.failed ?? 0) > 0 ? 'text-red-400' : 'text-gray-500'">
-              {{ state.clear.report.failed ?? 0 }}
+            <p class="text-2xl font-bold" :class="(clearState.report.failed ?? 0) > 0 ? 'text-red-400' : 'text-gray-500'">
+              {{ clearState.report.failed ?? 0 }}
             </p>
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Errori</p>
           </div>
         </div>
         <div class="px-6 py-4 flex justify-end">
-          <button @click="state.clear.report = null" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
+          <button @click="showClearReport = false" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
             Chiudi
           </button>
         </div>
@@ -234,44 +356,44 @@
 
     <!-- Modal: report integrità -->
     <div
-      v-if="state.integrity.report"
+      v-if="showIntegrityReport && integrityState.report"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
-      @click.self="state.integrity.report = null"
+      @click.self="showIntegrityReport = false"
     >
       <div class="w-full max-w-xl bg-gray-900 border border-gray-800 rounded-lg shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between shrink-0">
           <div class="flex items-center gap-3">
             <div
-              :class="state.integrity.report.errors.length ? 'bg-red-500/15 border-red-500/30' : 'bg-emerald-500/15 border-emerald-500/30'"
+              :class="integrityState.report.errors.length ? 'bg-red-500/15 border-red-500/30' : 'bg-emerald-500/15 border-emerald-500/30'"
               class="w-8 h-8 rounded-md border flex items-center justify-center shrink-0"
             >
-              <ExclamationTriangleIcon v-if="state.integrity.report.errors.length" class="w-4 h-4 text-red-400" />
+              <ExclamationTriangleIcon v-if="integrityState.report.errors.length" class="w-4 h-4 text-red-400" />
               <CheckCircleIcon v-else class="w-4 h-4 text-emerald-400" />
             </div>
             <h3 class="text-sm font-bold text-white uppercase tracking-wider">Report Integrità</h3>
           </div>
-          <button @click="state.integrity.report = null" class="text-gray-500 hover:text-white transition-colors">
+          <button @click="showIntegrityReport = false" class="text-gray-500 hover:text-white transition-colors">
             <XMarkIcon class="w-5 h-5" />
           </button>
         </div>
         <div class="px-6 py-4 border-b border-gray-800 grid grid-cols-3 gap-4 shrink-0">
           <div class="text-center">
-            <p class="text-2xl font-bold text-white">{{ state.integrity.report.total }}</p>
+            <p class="text-2xl font-bold text-white">{{ integrityState.report.total }}</p>
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Controllati</p>
           </div>
           <div class="text-center">
-            <p class="text-2xl font-bold text-emerald-400">{{ state.integrity.report.ok }}</p>
+            <p class="text-2xl font-bold text-emerald-400">{{ integrityState.report.ok }}</p>
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Integri</p>
           </div>
           <div class="text-center">
-            <p class="text-2xl font-bold" :class="state.integrity.report.errors.length ? 'text-red-400' : 'text-gray-500'">
-              {{ state.integrity.report.errors.length }}
+            <p class="text-2xl font-bold" :class="integrityState.report.errors.length ? 'text-red-400' : 'text-gray-500'">
+              {{ integrityState.report.errors.length }}
             </p>
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Corrotti</p>
           </div>
         </div>
         <div class="flex-1 overflow-auto">
-          <div v-if="state.integrity.report.errors.length === 0" class="flex flex-col items-center justify-center py-12 text-center gap-3">
+          <div v-if="integrityState.report.errors.length === 0" class="flex flex-col items-center justify-center py-12 text-center gap-3">
             <CheckCircleIcon class="w-10 h-10 text-emerald-500" />
             <p class="text-sm text-gray-300 font-medium">Tutti i file sono integri</p>
             <p class="text-xs text-gray-500">Nessuna anomalia rilevata nello store.</p>
@@ -279,7 +401,7 @@
           <div v-else class="px-6 py-4 space-y-3">
             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">File corrotti</p>
             <div
-              v-for="(entry, i) in state.integrity.report.errors"
+              v-for="(entry, i) in integrityState.report.errors"
               :key="i"
               class="bg-red-950/20 border border-red-900/40 rounded-lg p-4"
             >
@@ -294,7 +416,7 @@
           </div>
         </div>
         <div class="px-6 py-4 bg-gray-800/30 flex justify-end shrink-0">
-          <button @click="state.integrity.report = null" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
+          <button @click="showIntegrityReport = false" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
             Chiudi
           </button>
         </div>
@@ -303,8 +425,118 @@
 
   </div>
 
+  <!-- Modal: ripristina file da store -->
+  <div
+    v-if="restoreRecord"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
+    @click.self="restoreRecord = null"
+  >
+    <div class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-md bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center">
+            <ArrowDownTrayIcon class="w-4 h-4 text-indigo-400" />
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Ripristina file</h3>
+            <p class="text-[10px] text-gray-500 font-mono mt-0.5">{{ selectedEntry?.hash_vorn.slice(0, 16) }}…</p>
+          </div>
+        </div>
+        <button @click="restoreRecord = null" class="text-gray-500 hover:text-white transition-colors">
+          <XMarkIcon class="w-5 h-5" />
+        </button>
+      </div>
+
+      <div class="p-6 space-y-3">
+        <p class="text-xs text-gray-400 mb-1">
+          Sessione: <span class="text-white font-semibold">{{ restoreRecord.session }}</span>
+        </p>
+
+        <!-- Opzione: percorso originale -->
+        <label
+          class="flex items-start gap-4 p-4 rounded-md border cursor-pointer transition-all"
+          :class="extractMode === 'original' ? 'bg-indigo-500/10 border-indigo-500/50' : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'"
+        >
+          <input type="radio" v-model="extractMode" value="original" class="mt-1 accent-indigo-500" :disabled="!extractOriginalInfo" />
+          <div class="min-w-0">
+            <p class="text-sm font-semibold" :class="extractOriginalInfo ? 'text-white' : 'text-gray-600'">Percorso Originale</p>
+            <p v-if="extractOriginalInfo" class="text-[10px] text-gray-500 break-all mt-1 font-mono leading-relaxed">{{ extractOriginalInfo.displayPath }}</p>
+            <p v-else class="text-[10px] text-amber-500/80 mt-1">Sessione non più disponibile</p>
+          </div>
+        </label>
+
+        <!-- Opzione: destinazione personalizzata -->
+        <label
+          class="flex items-start gap-4 p-4 rounded-md border cursor-pointer transition-all"
+          :class="extractMode === 'custom' ? 'bg-indigo-500/10 border-indigo-500/50' : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'"
+        >
+          <input type="radio" v-model="extractMode" value="custom" class="mt-1 accent-indigo-500" />
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-white">Destinazione Personalizzata</p>
+            <div v-if="extractMode === 'custom'" class="mt-3 space-y-2">
+              <div class="flex items-center gap-2">
+                <input
+                  type="text"
+                  v-model="extractCustomPath"
+                  placeholder="C:\Percorso\Destinazione"
+                  class="flex-1 bg-gray-950 border border-gray-700 rounded-md px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+                <button @click="pickExtractDest" class="p-2 rounded-md bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-colors shrink-0">
+                  <FolderOpenIcon class="w-4 h-4" />
+                </button>
+              </div>
+              <p class="text-[9px] text-amber-500/80">Il file verrà salvato direttamente in questa cartella.</p>
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <div class="px-6 py-4 bg-gray-800/30 flex items-center justify-end gap-3">
+        <button @click="restoreRecord = null" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
+          Annulla
+        </button>
+        <button
+          @click="confirmExtract"
+          :disabled="(extractMode === 'original' && !extractOriginalInfo) || (extractMode === 'custom' && !extractCustomPath)"
+          class="px-5 py-2 rounded-md text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-500/20"
+        >
+          Conferma Ripristino
+        </button>
+      </div>
+    </div>
+  </div>
+
   <ExtractFromStoreModal v-if="showExtractModal" @close="showExtractModal = false" />
 </template>
+
+<style scoped>
+.slide-enter-active .backdrop,
+.slide-leave-active .backdrop {
+  transition: opacity 0.25s ease;
+}
+.slide-enter-from .backdrop,
+.slide-leave-to   .backdrop {
+  opacity: 0;
+}
+
+.slide-enter-active .drawer-panel,
+.slide-leave-active .drawer-panel {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide-enter-from .drawer-panel,
+.slide-leave-to   .drawer-panel {
+  transform: translateX(100%);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
@@ -318,13 +550,93 @@ import {
   TrashIcon,
   ArrowRightStartOnRectangleIcon,
   ArchiveBoxArrowDownIcon,
+  DocumentDuplicateIcon,
+  ArrowDownTrayIcon,
+  FolderOpenIcon,
 } from '@heroicons/vue/24/outline'
-import { state, fetchStorePage, startIntegrity, startClearStore, cancelTask, formatTs, formatBytes, closeStore } from '../stores/vorn.js'
+import { state, clearState, integrityState, fetchStorePage, startIntegrity, startClearStore, cancelTask, formatTs, formatBytes, closeStore } from '../stores/vorn.js'
 import ExtractFromStoreModal from '../components/ExtractFromStoreModal.vue'
 
 const ITEMS_PER_PAGE = 20
 
 const showExtractModal = ref(false)
+
+// Entry selezionata — sidebar dettaglio
+const selectedEntry = ref(null)
+const hashCopied    = ref(false)
+let   _copyTimer    = null
+
+function toggleEntry(entry) {
+  selectedEntry.value = selectedEntry.value?.hash_vorn === entry.hash_vorn ? null : entry
+  hashCopied.value = false
+}
+
+function copyHash() {
+  if (!selectedEntry.value) return
+  navigator.clipboard.writeText(selectedEntry.value.hash_vorn)
+  hashCopied.value = true
+  clearTimeout(_copyTimer)
+  _copyTimer = setTimeout(() => { hashCopied.value = false }, 2000)
+}
+
+// Ripristino singolo file da hash
+const restoreRecord     = ref(null)
+const extractMode       = ref('original')
+const extractCustomPath = ref('')
+const extractResult     = ref(null)
+let   _extractTimer     = null
+
+const extractOriginalInfo = computed(() => {
+  if (!restoreRecord.value || !selectedEntry.value) return null
+  const session = state.sessions.find(s => s.name === restoreRecord.value.session)
+  if (!session?.sources?.length) return null
+  const relPath = restoreRecord.value.paths[0] ?? ''
+  const parts   = relPath.replace(/\\/g, '/').split('/').filter(Boolean)
+  const filename = parts.at(-1) ?? selectedEntry.value.hash_vorn
+  const relDir   = parts.slice(0, -1)
+  const sep      = session.sources[0].includes('\\') ? '\\' : '/'
+  const destDir  = relDir.length
+    ? session.sources[0] + sep + relDir.join(sep)
+    : session.sources[0]
+  return { destDir, filename, displayPath: session.sources[0] + sep + relPath.replace(/\//g, sep) }
+})
+
+function openExtractModal(record) {
+  restoreRecord.value     = record
+  // extractOriginalInfo dipende da restoreRecord — leggo dopo averlo settato
+  const hasOriginal       = !!state.sessions.find(s => s.name === record.session)?.sources?.length
+  extractMode.value       = hasOriginal ? 'original' : 'custom'
+  extractCustomPath.value = ''
+}
+
+async function pickExtractDest() {
+  const path = await window.vorn.pickFolder()
+  if (path) extractCustomPath.value = path
+}
+
+async function confirmExtract() {
+  if (!selectedEntry.value || !restoreRecord.value) return
+  const hashVorn = selectedEntry.value.hash_vorn
+  const relPath  = restoreRecord.value.paths[0] ?? hashVorn
+  const filename = relPath.replace(/\\/g, '/').split('/').at(-1) ?? hashVorn
+  const destDir  = extractMode.value === 'original'
+    ? extractOriginalInfo.value?.destDir
+    : extractCustomPath.value
+  if (!destDir) return
+  restoreRecord.value = null
+  try {
+    await window.vorn.extractHash(hashVorn, destDir, filename)
+    _showExtractResult(true, `File ripristinato: ${filename}`)
+  } catch (e) {
+    _showExtractResult(false, e?.message ?? 'Errore durante il ripristino')
+  }
+}
+
+function _showExtractResult(ok, message) {
+  extractResult.value = { ok, message }
+  clearTimeout(_extractTimer)
+  _extractTimer = setTimeout(() => { extractResult.value = null }, 4000)
+}
 
 // Clear store
 const showClearModal   = ref(false)
@@ -336,10 +648,13 @@ function closeClearModal() {
 }
 
 const clearProgressPct = computed(() => {
-  const p = state.clear.progress
+  const p = clearState.value.progress
   if (!p?.total) return 0
   return Math.round((p.deleted / p.total) * 100)
 })
+
+const showClearReport     = ref(false)
+const showIntegrityReport = ref(false)
 
 async function confirmClearStore() {
   if (clearConfirmText.value !== 'ELIMINA') return
@@ -390,14 +705,21 @@ function setupObserver() {
   observer.observe(sentinel.value)
 }
 
-watch(() => state.clear.running, (running, wasRunning) => {
-  if (wasRunning && !running && !state.clear.report?.fatalError) {
-    storeFileCount.value = 0
-    state.storeEntries   = []
-    state.storeLoaded    = false
-    currentOffset        = 0
-    hasMore              = false
+watch(() => clearState.value.running, (running, wasRunning) => {
+  if (wasRunning && !running) {
+    showClearReport.value = true
+    if (!clearState.value.report?.fatalError) {
+      storeFileCount.value = 0
+      state.storeEntries   = []
+      state.storeLoaded    = false
+      currentOffset        = 0
+      hasMore              = false
+    }
   }
+})
+
+watch(() => integrityState.value.running, (running, wasRunning) => {
+  if (wasRunning && !running) showIntegrityReport.value = true
 })
 
 onMounted(async () => {
