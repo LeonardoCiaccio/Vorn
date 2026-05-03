@@ -1,6 +1,6 @@
 import { ipcMain }                                                from 'electron'
 import { createTask, cancelTask, listTasks, finishTask, failTask } from '../vorn/taskManager.js'
-import { extractByHash }                                           from '../vorn/engine.js'
+import { extractByHash }                                           from '../vorn/restore.js'
 import { ctx, spawnWorker }                                        from '../workerManager.js'
 
 function _onDone(task, mainWindow) {

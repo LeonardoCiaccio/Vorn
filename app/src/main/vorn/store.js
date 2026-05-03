@@ -1,7 +1,36 @@
-import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, openSync, readSync, writeSync, closeSync, truncateSync, writeFileSync } from 'fs'
 import { join, basename } from 'path'
-import { readVornMeta, readVorn, writeVornFromSource, updateVornMeta, contentStream } from './format.js'
+import { readVornMeta, readVorn, writeVornFromSource, contentStream } from './format.js'
 import { withFileLock } from './fileLock.js'
+
+const _HEADER_SIZE  = 12
+const _SEPARATOR_LEN = 4
+
+function _readVornContentLen(fd) {
+  const buf = Buffer.alloc(_HEADER_SIZE)
+  readSync(fd, buf, 0, _HEADER_SIZE, 0)
+  return buf.readBigUInt64BE(4)
+}
+
+function _updateMeta(filePath, meta) {
+  const fd = openSync(filePath, 'r')
+  let contentLen
+  try { contentLen = _readVornContentLen(fd) }
+  finally { closeSync(fd) }
+
+  const metaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
+  const tmpPath = filePath + '.mtmp'
+
+  writeFileSync(tmpPath, metaBuf)
+
+  truncateSync(filePath, _HEADER_SIZE + Number(contentLen) + _SEPARATOR_LEN)
+
+  const fdw = openSync(filePath, 'a')
+  try { writeSync(fdw, metaBuf) }
+  finally { closeSync(fdw) }
+
+  try { unlinkSync(tmpPath) } catch { /* non-critico */ }
+}
 
 function vornPath(storeDir, hashVorn) {
   return join(storeDir, hashVorn + '.vorn')
@@ -83,12 +112,12 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
     if (rec) {
       if (!rec.paths.includes(relPath)) {
         rec.paths.push(relPath)
-        updateVornMeta(p, meta)
+        _updateMeta(p, meta)
       }
       // relPath già presente: nessuna I/O
     } else {
       meta.records.push({ id: sessionId, session: sessionName, paths: [relPath] })
-      updateVornMeta(p, meta)
+      _updateMeta(p, meta)
     }
     return 'dedup'
   })

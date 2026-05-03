@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, unlinkSync, rmSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, renameSync, unlinkSync, rmSync } from 'fs'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
 
@@ -39,7 +39,10 @@ export function createSession(storeDir, session) {
   const withId = { id: randomUUID(), ...session }
   const dir = sessionDir(storeDir, withId.name)
   mkdirSync(join(dir, 'runs'), { recursive: true })
-  writeFileSync(sessionManifestPath(storeDir, withId.name), JSON.stringify(withId, null, 2), 'utf8')
+  const dest = sessionManifestPath(storeDir, withId.name)
+  const tmp  = dest + '.tmp'
+  writeFileSync(tmp, JSON.stringify(withId, null, 2), 'utf8')
+  renameSync(tmp, dest)
   return withId
 }
 
@@ -83,9 +86,12 @@ export function loadRun(storeDir, sessionName, ts) {
 }
 
 export function saveRun(storeDir, sessionName, run) {
-  const dir = runsDir(storeDir, sessionName)
+  const dir  = runsDir(storeDir, sessionName)
   mkdirSync(dir, { recursive: true })
-  writeFileSync(runPath(storeDir, sessionName, run.ts), JSON.stringify(run, null, 2), 'utf8')
+  const dest = runPath(storeDir, sessionName, run.ts)
+  const tmp  = dest + '.tmp'
+  writeFileSync(tmp, JSON.stringify(run, null, 2), 'utf8')
+  renameSync(tmp, dest)
 }
 
 export function deleteRun(storeDir, sessionName, ts) {

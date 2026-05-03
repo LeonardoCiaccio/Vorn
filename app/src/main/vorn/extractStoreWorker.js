@@ -1,5 +1,5 @@
 import { workerData, parentPort } from 'worker_threads'
-import { extractFromStore } from './engine.js'
+import { extractFromStore } from './restore.js'
 
 const { storeDir, destDir, sessionFilter, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
