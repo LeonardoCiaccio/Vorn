@@ -1,6 +1,6 @@
 {
   "name": "vorn",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Vorn — backup content-addressable",
   "main": "out/main/index.js",
   "scripts": {
@@ -32,13 +32,16 @@
       "output": "release"
     },
     "win": {
-      "target": "nsis"
+      "target": "portable",
+      "icon": "build/icon.png"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "build/icon.png"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "build/icon.png"
     }
   }
 }

@@ -10,8 +10,16 @@ export function walk(dir, excludePaths = [], excludePatterns = [], _results = []
         const full = join(current, entry.name)
         if (excludePaths.some(p => full === p || full.startsWith(p + '\\') || full.startsWith(p + '/'))) continue
         if (excludePatterns.some(pat => matchPattern(entry.name, pat))) continue
-        if (entry.isDirectory()) queue.push(full)
-        else if (entry.isFile()) _results.push(full)
+        
+        if (entry.isDirectory()) {
+          queue.push(full)
+        } else if (entry.isFile()) {
+          _results.push(full)
+        } else if (entry.isSymbolicLink()) {
+          // I link simbolici vengono ignorati per ora per evitare loop o backup inconsistenti.
+          // In futuro si potrebbe implementare il salvataggio del target del link.
+          continue
+        }
       }
     } catch (_) { /* skip unreadable dirs */ }
   }
@@ -19,7 +27,14 @@ export function walk(dir, excludePaths = [], excludePatterns = [], _results = []
 }
 
 export function matchPattern(name, pattern) {
+  if (!pattern || pattern.length > 200) return false
   const pat = pattern.endsWith('/') ? pattern.slice(0, -1) : pattern
-  const re = new RegExp('^' + pat.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$', 'i')
+  const escaped = pat.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+  // Collassa wildcards consecutive prima della conversione per prevenire ReDoS (*** → .*)
+  const reStr = escaped
+    .replace(/\*/g, '\x00')
+    .replace(/\x00+/g, '.*')
+    .replace(/\?/g, '.')
+  const re = new RegExp('^' + reStr + '$', 'i')
   return re.test(name)
 }

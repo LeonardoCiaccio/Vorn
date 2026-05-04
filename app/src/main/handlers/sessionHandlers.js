@@ -6,7 +6,9 @@ import { ctx }                                                              from
 
 function _validateName(name) {
   if (!name || typeof name !== 'string') throw new Error('Nome sessione non valido')
-  if (/[/\\]/.test(name) || name.includes('..')) throw new Error(`Nome sessione non sicuro: "${name}"`)
+  if (name.length > 255) throw new Error('Nome sessione troppo lungo')
+  if (/[/\\]/.test(name) || name.includes('..') || name.includes('\x00'))
+    throw new Error(`Nome sessione non sicuro: "${name}"`)
 }
 
 // Cache in-memory dell'ultima run letta — evita di rileggere il JSON per ogni chunk di file

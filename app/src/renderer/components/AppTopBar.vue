@@ -25,6 +25,13 @@
       </button>
       <div class="w-px h-4 bg-gray-800 mx-1" />
       <button
+        @click="settingsOpen = true"
+        class="p-2 rounded-md text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
+        title="Impostazioni"
+      >
+        <Cog6ToothIcon class="w-4.5 h-4.5" />
+      </button>
+      <button
         @click="toggleTheme"
         class="p-2 rounded-md text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
         :title="isDark ? 'Passa al tema chiaro' : 'Passa al tema scuro'"
@@ -36,6 +43,8 @@
 
   </header>
 
+  <SettingsModal v-if="settingsOpen" @close="settingsOpen = false" />
+
 </template>
 
 <script setup>
@@ -45,8 +54,10 @@ import {
   CircleStackIcon,
   SunIcon,
   MoonIcon,
+  Cog6ToothIcon,
 } from '@heroicons/vue/24/outline'
 import { state, goBack, navigateTo } from '../stores/vorn.js'
+import SettingsModal from './SettingsModal.vue'
 
 const currentView = computed(() => state.currentView)
 
@@ -59,6 +70,8 @@ function navigate(id) {
   if (id === 'sessions') goBack()
   else navigateTo(id)
 }
+
+const settingsOpen = ref(false)
 
 // Tema
 const isDark = ref(document.documentElement.classList.contains('dark'))

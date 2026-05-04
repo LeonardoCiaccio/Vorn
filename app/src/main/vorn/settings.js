@@ -5,8 +5,9 @@ import { homedir } from 'os'
 const _path = join(homedir(), '.vorn', 'settings.json')
 
 const _defaults = {
-  recentStores: [],
-  theme:        'dark',
+  recentStores:  [],
+  theme:         'dark',
+  notifications: false,
 }
 
 export function loadSettings() {

@@ -19,12 +19,9 @@ export function listSessions(storeDir) {
   return readdirSync(dir, { withFileTypes: true })
     .filter(e => e.isDirectory())
     .map(e => {
-      const mp = sessionManifestPath(storeDir, e.name)
-      if (!existsSync(mp)) return null
-      try {
-        const s = JSON.parse(readFileSync(mp, 'utf8'))
-        return { ...s, runs: listRuns(storeDir, e.name) }
-      } catch { return null }
+      const s = getSession(storeDir, e.name)
+      if (!s) return null
+      return { ...s, runs: listRuns(storeDir, e.name) }
     })
     .filter(Boolean)
 }
@@ -32,17 +29,21 @@ export function listSessions(storeDir) {
 export function getSession(storeDir, name) {
   const mp = sessionManifestPath(storeDir, name)
   if (!existsSync(mp)) return null
-  return JSON.parse(readFileSync(mp, 'utf8'))
+  try { return JSON.parse(readFileSync(mp, 'utf8')) } catch { return null }
+}
+
+export function saveSession(storeDir, session) {
+  const dest = sessionManifestPath(storeDir, session.name)
+  const tmp  = dest + '.tmp'
+  writeFileSync(tmp, JSON.stringify(session, null, 2), 'utf8')
+  renameSync(tmp, dest)
 }
 
 export function createSession(storeDir, session) {
-  const withId = { id: randomUUID(), ...session }
+  const withId = { id: randomUUID(), ...session, runs_meta: [] }
   const dir = sessionDir(storeDir, withId.name)
   mkdirSync(join(dir, 'runs'), { recursive: true })
-  const dest = sessionManifestPath(storeDir, withId.name)
-  const tmp  = dest + '.tmp'
-  writeFileSync(tmp, JSON.stringify(withId, null, 2), 'utf8')
-  renameSync(tmp, dest)
+  saveSession(storeDir, withId)
   return withId
 }
 
@@ -54,29 +55,45 @@ export function deleteSession(storeDir, name) {
 // ── Runs ──────────────────────────────────────────────────────────────────────
 
 export function listRuns(storeDir, sessionName) {
+  const session = getSession(storeDir, sessionName)
+  if (!session) return []
+
+  // Se abbiamo il cache dei metadati nel manifest, lo usiamo (veloce)
+  if (session.runs_meta?.length) return session.runs_meta
+
+  // Altrimenti ricostruiamo la cache dai file (compatibilità o cache mancante)
   const dir = runsDir(storeDir, sessionName)
   if (!existsSync(dir)) return []
-  return readdirSync(dir)
+  const runs = readdirSync(dir)
     .filter(f => f.endsWith('.json'))
-    .sort()
-    .reverse()
+    .sort().reverse()
     .map(f => {
       try {
         const run = JSON.parse(readFileSync(join(dir, f), 'utf8'))
-        return {
-          ts:          run.ts,
-          status:      run.status ?? 'done',
-          files_total: run.files_total ?? Object.keys(run.files ?? {}).length,
-          files_new:   run.files_new   ?? null,
-          files_dedup: run.files_dedup ?? null,
-          bytes_total: run.bytes_total ?? null,
-          bytes_new:   run.bytes_new   ?? null,
-          duration_sec: run.duration_sec ?? null,
-          errors_count: run.errors?.length ?? null,
-        }
+        return _summarizeRun(run)
       } catch { return null }
     })
     .filter(Boolean)
+
+  if (runs.length > 0) {
+    session.runs_meta = runs.slice(0, 500)
+    saveSession(storeDir, session)
+  }
+  return runs
+}
+
+function _summarizeRun(run) {
+  return {
+    ts:          run.ts,
+    status:      run.status ?? 'done',
+    files_total: run.files_total ?? Object.keys(run.files ?? {}).length,
+    files_new:   run.files_new   ?? null,
+    files_dedup: run.files_dedup ?? null,
+    bytes_total: run.bytes_total ?? null,
+    bytes_new:   run.bytes_new   ?? null,
+    duration_sec: run.duration_sec ?? null,
+    errors_count: run.errors?.length ?? null,
+  }
 }
 
 export function loadRun(storeDir, sessionName, ts) {
@@ -88,13 +105,35 @@ export function loadRun(storeDir, sessionName, ts) {
 export function saveRun(storeDir, sessionName, run) {
   const dir  = runsDir(storeDir, sessionName)
   mkdirSync(dir, { recursive: true })
+  
+  // Scrittura atomica del file run (che può essere enorme)
   const dest = runPath(storeDir, sessionName, run.ts)
   const tmp  = dest + '.tmp'
   writeFileSync(tmp, JSON.stringify(run, null, 2), 'utf8')
   renameSync(tmp, dest)
+
+  // Aggiornamento cache metadati nel manifest della sessione (veloce)
+  const session = getSession(storeDir, sessionName)
+  if (session) {
+    if (!session.runs_meta) session.runs_meta = []
+    const summary = _summarizeRun(run)
+    const idx = session.runs_meta.findIndex(r => r.ts === run.ts)
+    if (idx >= 0) session.runs_meta[idx] = summary
+    else          session.runs_meta.unshift(summary)
+    session.runs_meta.sort((a, b) => b.ts.localeCompare(a.ts))
+    if (session.runs_meta.length > 500) session.runs_meta = session.runs_meta.slice(0, 500)
+    saveSession(storeDir, session)
+  }
 }
 
 export function deleteRun(storeDir, sessionName, ts) {
   const p = runPath(storeDir, sessionName, ts)
   if (existsSync(p)) unlinkSync(p)
+
+  const session = getSession(storeDir, sessionName)
+  if (session?.runs_meta) {
+    session.runs_meta = session.runs_meta.filter(r => r.ts !== ts)
+    saveSession(storeDir, session)
+  }
 }
+

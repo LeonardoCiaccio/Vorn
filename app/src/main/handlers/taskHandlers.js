@@ -1,17 +1,40 @@
-import { ipcMain }                                                from 'electron'
+import { ipcMain, Notification, nativeImage, app }                  from 'electron'
+import { join }                                                    from 'path'
 import { createTask, cancelTask, listTasks, finishTask, failTask } from '../vorn/taskManager.js'
 import { extractByHash }                                           from '../vorn/restore.js'
 import { ctx, spawnWorker }                                        from '../workerManager.js'
 import { loadRun, saveRun }                                        from '../vorn/sessions.js'
+import { loadSettings }                                            from '../vorn/settings.js'
+
+const _icon = nativeImage.createFromPath(join(__dirname, '../../build/icon.png'))
 
 function _send(mainWindow, payload) {
   if (!mainWindow.isDestroyed()) mainWindow.webContents.send('vorn:task-done', payload)
 }
 
+function _notifyRunDone(task, result, mainWindow) {
+  if (!loadSettings().notifications) return
+  if (!Notification.isSupported()) return
+  if (task.type !== 'backup' || result?.status !== 'done') return
+  const errors = result.errors?.length ?? 0
+  const body = errors > 0
+    ? `${result.files_total} file — ${errors} errori`
+    : `${result.files_total} file completati`
+  const notif = new Notification({ title: `Backup completato — ${task.sessionName}`, body, icon: _icon })
+  notif.on('click', () => {
+    if (mainWindow.isDestroyed()) return
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+    app.focus({ steal: true })
+  })
+  notif.show()
+}
+
 function _onDone(task, mainWindow) {
   return (result, error) => {
     if (error) { failTask(task.id, error);   _send(mainWindow, { taskId: task.id, error }) }
-    else        { finishTask(task.id, result); _send(mainWindow, { taskId: task.id, result }) }
+    else        { finishTask(task.id, result); _notifyRunDone(task, result, mainWindow); _send(mainWindow, { taskId: task.id, result }) }
   }
 }
 

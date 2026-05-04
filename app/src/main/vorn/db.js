@@ -43,14 +43,27 @@ export function dbUpsertFile(path, mtime, size, hash) {
 }
 
 // Rimuove dal DB le path che non esistono più sul filesystem.
-// Ritorna il numero di record eliminati.
+// Campiona 1000 record per rowid casuale (O(log n), nessuna full table scan)
+// e raggruppa i DELETE in una transaction per efficienza.
 export function dbPruneOrphans() {
-  const db   = getDb()
-  const rows = db.prepare('SELECT path FROM Files').all()
-  const del  = db.prepare('DELETE FROM Files WHERE path = ?')
-  let removed = 0
-  for (const { path } of rows) {
-    if (!existsSync(path)) { del.run(path); removed++ }
+  const db = getDb()
+  const { maxId } = db.prepare('SELECT MAX(rowid) AS maxId FROM Files').get()
+  if (!maxId) return 0
+
+  const start = Math.floor(Math.random() * maxId)
+  let rows = db.prepare('SELECT path FROM Files WHERE rowid >= ? LIMIT 1000').all(start)
+  // Se l'offset è vicino alla fine della tabella integra dall'inizio
+  if (rows.length < 1000) {
+    const extra = db.prepare('SELECT path FROM Files WHERE rowid < ? LIMIT ?').all(start, 1000 - rows.length)
+    rows = rows.concat(extra)
   }
+
+  const del = db.prepare('DELETE FROM Files WHERE path = ?')
+  let removed = 0
+  db.transaction(() => {
+    for (const { path } of rows) {
+      if (!existsSync(path)) { del.run(path); removed++ }
+    }
+  })()
   return removed
 }

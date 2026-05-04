@@ -55,6 +55,15 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
 
   ctx.activeWorkers.set(taskId, { worker, cancelFlag })
 
+  // Guard: onDone può scattare una sola volta per worker indipendentemente
+  // da quanti eventi (done + error, store-disconnected + error, ecc.) arrivino.
+  let _settled = false
+  function _settle(result, error) {
+    if (_settled) return
+    _settled = true
+    onDone(result, error)
+  }
+
   worker.on('message', (msg) => {
     const { type } = msg
     if (type === 'store-request') {
@@ -67,19 +76,19 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
       _send(mainWindow, 'vorn:task-progress', { taskId, ...msg.progress })
     } else if (type === 'done') {
       ctx.activeWorkers.delete(taskId)
-      onDone(msg.result, null)
+      _settle(msg.result, null)
     } else if (type === 'error') {
       ctx.activeWorkers.delete(taskId)
-      onDone(null, msg.error)
+      _settle(null, msg.error)
     } else if (type === 'store-disconnected') {
-      onDone(null, 'Store non raggiungibile')
+      _settle(null, 'Store non raggiungibile')
       triggerDisconnect(mainWindow)
     }
   })
 
   worker.on('error', (err) => {
     ctx.activeWorkers.delete(taskId)
-    onDone(null, err.message)
+    _settle(null, err.message)
   })
 
   setTaskCancelFn(taskId, () => Atomics.store(cancelFlag, 0, 1))
