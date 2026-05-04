@@ -4,10 +4,14 @@ import { extractByHash }                                           from '../vorn
 import { ctx, spawnWorker }                                        from '../workerManager.js'
 import { loadRun, saveRun }                                        from '../vorn/sessions.js'
 
+function _send(mainWindow, payload) {
+  if (!mainWindow.isDestroyed()) mainWindow.webContents.send('vorn:task-done', payload)
+}
+
 function _onDone(task, mainWindow) {
   return (result, error) => {
-    if (error) { failTask(task.id, error);   mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error }) }
-    else        { finishTask(task.id, result); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result }) }
+    if (error) { failTask(task.id, error);   _send(mainWindow, { taskId: task.id, error }) }
+    else        { finishTask(task.id, result); _send(mainWindow, { taskId: task.id, result }) }
   }
 }
 
@@ -37,8 +41,8 @@ export function registerTaskHandlers(mainWindow) {
     const task = createTask('restore', sessionName)
     spawnWorker('restoreWorker.js', { storeDir: ctx.activeStore, sessionName, runTs, destDir, selectedFiles }, task.id, mainWindow,
       (result, error) => {
-        if (error) { failTask(task.id, error);   mainWindow.webContents.send('vorn:task-done', { taskId: task.id, error }) }
-        else        { finishTask(task.id, { ...result, status: 'done' }); mainWindow.webContents.send('vorn:task-done', { taskId: task.id, result }) }
+        if (error) { failTask(task.id, error);   _send(mainWindow, { taskId: task.id, error }) }
+        else        { finishTask(task.id, { ...result, status: 'done' }); _send(mainWindow, { taskId: task.id, result }) }
       }
     )
     return { taskId: task.id }

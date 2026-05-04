@@ -11,6 +11,10 @@ export const ctx = {
   storeWatcher:  null,
 }
 
+function _send(mainWindow, channel, payload) {
+  if (!mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload)
+}
+
 // ── Store health poller ───────────────────────────────────────────────────────
 
 export function startStoreWatch(mainWindow) {
@@ -33,7 +37,7 @@ export function triggerDisconnect(mainWindow) {
   ctx.activeWorkers.clear()
   releaseLock(ctx.activeStore)
   ctx.activeStore = null
-  mainWindow.webContents.send('vorn:store-disconnected')
+  _send(mainWindow, 'vorn:store-disconnected', undefined)
 }
 
 // ── Worker spawn ──────────────────────────────────────────────────────────────
@@ -57,7 +61,7 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
         .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message }))
     } else if (type === 'progress') {
       updateTaskProgress(taskId, msg.progress)
-      mainWindow.webContents.send('vorn:task-progress', { taskId, ...msg.progress })
+      _send(mainWindow, 'vorn:task-progress', { taskId, ...msg.progress })
     } else if (type === 'done') {
       ctx.activeWorkers.delete(taskId)
       onDone(msg.result, null)

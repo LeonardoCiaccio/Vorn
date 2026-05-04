@@ -201,9 +201,17 @@
                   <!-- Tasti azione (visibili su hover) -->
                   <div v-else class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <button
+                      v-if="activeTask(session.name)"
+                      @click.stop="cancelTask(activeTask(session.name).id)"
+                      class="p-1.5 rounded-md text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+                      title="Sospendi backup"
+                    >
+                      <PauseIcon class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      v-else
                       @click.stop="startBackup(session.name, _resumeTs(session))"
-                      :disabled="!!activeTask(session.name)"
-                      class="p-1.5 rounded-md text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      class="p-1.5 rounded-md text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
                       :title="_resumeTs(session) ? 'Riprendi backup' : 'Avvia backup'"
                     >
                       <PlayIcon class="w-3.5 h-3.5" />
@@ -321,8 +329,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon } from '@heroicons/vue/24/outline'
-import { state, selectSession, deleteSession, getActiveTask, startBackup, formatTs, formatBytes } from '../stores/vorn.js'
+import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, PauseIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon } from '@heroicons/vue/24/outline'
+import { state, selectSession, deleteSession, getActiveTask, startBackup, cancelTask, formatTs, formatBytes } from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
 
@@ -399,7 +407,8 @@ const anyRunning         = computed(() => sessions.value.some(s => !!getActiveTa
 const anySelectedRunning = computed(() => [...selected.value].some(name => !!getActiveTask(name)))
 const selectionMode = ref(false)
 const selected      = ref(new Set())
-const allSelected   = computed(() => sessions.value.length > 0 && sessions.value.every(s => selected.value.has(s.name)))
+const selectableSessions = computed(() => sessions.value.filter(s => !getActiveTask(s.name)))
+const allSelected        = computed(() => selectableSessions.value.length > 0 && selectableSessions.value.every(s => selected.value.has(s.name)))
 
 function enterSelection() { selectionMode.value = true }
 function exitSelection()  { selectionMode.value = false; selected.value = new Set() }
@@ -412,7 +421,7 @@ function toggleSelect(name) {
 
 function toggleAll() {
   if (allSelected.value) selected.value = new Set()
-  else selected.value = new Set(sessions.value.map(s => s.name))
+  else selected.value = new Set(selectableSessions.value.map(s => s.name))
 }
 
 function _resumeTs(session) {
