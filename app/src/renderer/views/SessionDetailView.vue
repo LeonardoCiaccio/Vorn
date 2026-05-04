@@ -170,7 +170,6 @@
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Nuovi</th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Scritti</th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Errori</th>
-                <th class="pb-3 w-14"></th>
               </tr>
             </thead>
             <tbody>
@@ -178,7 +177,7 @@
                 v-for="run in session.runs"
                 :key="run.ts"
                 @click="handleRunRowClick(run)"
-                class="group border-t border-gray-800/60 transition-colors"
+                class="group relative border-t border-gray-800/60 transition-colors"
                 :class="[
                   run.status === 'running' ? 'cursor-default' : 'cursor-pointer',
                   selectedRun?.ts === run.ts
@@ -223,18 +222,24 @@
                   <span v-else-if="run.errors_count" class="text-red-400">{{ run.errors_count }}</span>
                   <span v-else class="text-gray-700">—</span>
                 </td>
-                <td class="py-3.5 px-4 text-right" @click.stop>
-                  <div v-if="pendingDeleteRun?.ts === run.ts" class="flex items-center justify-end gap-1.5">
-                    <button @click="pendingDeleteRun = null" class="px-2 py-1 rounded text-xs text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors">Annulla</button>
-                    <button @click="confirmDeleteRun(run)" class="px-2 py-1 rounded text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
-                  </div>
-                  <button
-                    v-else-if="run.status !== 'running'"
-                    @click="pendingDeleteRun = run"
-                    class="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                <!-- Overlay azioni: assoluto sul <tr>, gradient + sfondo solido -->
+                <td v-if="run.status !== 'running'" class="w-0 p-0 overflow-visible" @click.stop>
+                  <div
+                    class="absolute right-0 inset-y-0 z-10 flex items-center transition-opacity"
+                    :class="pendingDeleteRun?.ts === run.ts ? 'opacity-100' : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'"
+                    @click.stop
                   >
-                    <TrashIcon class="w-3.5 h-3.5" />
-                  </button>
+                    <div class="w-16 h-full" style="background: linear-gradient(to right, transparent, var(--bg-base))" />
+                    <div class="flex items-center gap-1.5 px-3 h-full" style="background-color: var(--bg-base)">
+                      <template v-if="pendingDeleteRun?.ts === run.ts">
+                        <button @click.stop="pendingDeleteRun = null" class="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Annulla</button>
+                        <button @click.stop="confirmDeleteRun(run)" class="px-2 py-1 rounded text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+                      </template>
+                      <button v-else @click.stop="pendingDeleteRun = run" class="p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                        <TrashIcon class="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                 </td>
               </tr>
             </tbody>
