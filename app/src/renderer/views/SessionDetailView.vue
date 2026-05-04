@@ -17,6 +17,32 @@
       </div>
       <!-- Actions -->
       <div class="flex items-center gap-2">
+        <!-- Modalità selezione run -->
+        <template v-if="runSelectionMode">
+          <button
+            @click="exitRunSelection"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-400 border border-gray-700 hover:text-white hover:bg-gray-800 transition-colors"
+          >Annulla</button>
+          <button
+            @click="askDeleteSelectedRuns"
+            :disabled="!selectedRuns.size"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-red-400 border border-red-600/40 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <TrashIcon class="w-4 h-4" />
+            Elimina selezionati{{ selectedRuns.size ? ` (${selectedRuns.size})` : '' }}
+          </button>
+        </template>
+        <template v-else>
+          <button
+            @click="enterRunSelection"
+            :disabled="!session.runs.length"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-400 border border-gray-700 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <CheckCircleIcon class="w-4 h-4" />
+            Seleziona
+          </button>
+        </template>
+        <!-- Backup / Sospendi -->
         <button
           v-if="isRunning"
           @click="handleCancel"
@@ -135,6 +161,9 @@
           <table v-else-if="runsView === 'table'" class="w-full text-sm">
             <thead>
               <tr class="text-left">
+                <th v-if="runSelectionMode" class="pb-3 w-10 pl-4">
+                  <input type="checkbox" :checked="allRunsSelected" @change="toggleAllRuns" class="accent-indigo-500 cursor-pointer" />
+                </th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Data / Ora</th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Stato</th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">File</th>
@@ -146,7 +175,7 @@
               <tr
                 v-for="run in session.runs"
                 :key="run.ts"
-                @click="run.status !== 'running' && selectRun(run)"
+                @click="handleRunRowClick(run)"
                 class="group border-t border-gray-800/60 transition-colors"
                 :class="[
                   run.status === 'running' ? 'cursor-default' : 'cursor-pointer',
@@ -155,6 +184,15 @@
                     : run.status !== 'running' ? 'hover:bg-gray-800/40' : ''
                 ]"
               >
+                <td v-if="runSelectionMode" class="py-3.5 pl-4 w-10" @click.stop>
+                  <input
+                    type="checkbox"
+                    :checked="selectedRuns.has(run.ts)"
+                    @change="toggleSelectRun(run.ts)"
+                    :disabled="run.status === 'running'"
+                    class="accent-indigo-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  />
+                </td>
                 <td class="py-3.5 px-4 text-gray-300 font-mono text-xs">{{ formatTs(run.ts) }}</td>
                 <td class="py-3.5 px-4"><StatusBadge :status="run.status" /></td>
                 <td class="py-3.5 px-4 text-right font-mono font-medium text-gray-300">
@@ -216,11 +254,20 @@
                   :class="run.status !== 'running'
                     ? 'border-gray-800 hover:border-gray-700'
                     : 'border-indigo-500/30 bg-indigo-950/10'"
-                  @click="run.status !== 'running' && selectRun(run)"
+                  @click="handleRunRowClick(run)"
                 >
                   <!-- Card header -->
                   <div class="px-4 py-3 flex items-center justify-between border-b border-gray-800/60">
-                    <div>
+                    <div class="flex items-center gap-2.5">
+                      <input
+                        v-if="runSelectionMode"
+                        type="checkbox"
+                        :checked="selectedRuns.has(run.ts)"
+                        @change="toggleSelectRun(run.ts)"
+                        :disabled="run.status === 'running'"
+                        class="accent-indigo-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        @click.stop
+                      />
                       <p class="text-xs font-mono text-gray-300 font-medium">{{ formatTs(run.ts) }}</p>
                     </div>
                     <div class="flex items-center gap-2">
@@ -528,6 +575,31 @@
       @close="showRestoreModal = false"
       @confirm="onRestoreConfirm"
     />
+
+    <!-- Modal conferma eliminazione bulk runs -->
+    <Teleport to="body">
+      <div v-if="runDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4">
+        <div class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-800 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-md bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
+              <TrashIcon class="w-4 h-4 text-red-400" />
+            </div>
+            <h3 class="text-sm font-bold text-white">Conferma eliminazione</h3>
+          </div>
+          <div class="px-6 py-5">
+            <p class="text-sm text-gray-300">
+              Stai per eliminare
+              <span class="font-semibold text-white">{{ selectedRuns.size }} run</span>.
+              Questa operazione non può essere annullata.
+            </p>
+          </div>
+          <div class="px-6 py-4 bg-gray-800/30 flex justify-end gap-3">
+            <button @click="runDeleteConfirm = false" class="px-4 py-2 rounded-md text-sm text-gray-400 hover:text-white transition-colors">Annulla</button>
+            <button @click="confirmDeleteSelectedRuns" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -637,6 +709,45 @@ const selectedFiles    = ref([])
 const inSelectionMode  = ref(false)
 const pendingDeleteRun = ref(null)
 const errorsExpanded   = ref(false)
+
+// ── Selezione bulk runs ───────────────────────────────────────────────────────
+const runSelectionMode = ref(false)
+const selectedRuns     = ref(new Set())
+const runDeleteConfirm = ref(false)
+
+const selectableRuns  = computed(() => (session.value?.runs ?? []).filter(r => r.status !== 'running'))
+const allRunsSelected = computed(() => selectableRuns.value.length > 0 && selectableRuns.value.every(r => selectedRuns.value.has(r.ts)))
+
+function enterRunSelection() { runSelectionMode.value = true }
+function exitRunSelection()  { runSelectionMode.value = false; selectedRuns.value = new Set() }
+
+function toggleSelectRun(ts) {
+  const s = new Set(selectedRuns.value)
+  s.has(ts) ? s.delete(ts) : s.add(ts)
+  selectedRuns.value = s
+}
+
+function toggleAllRuns() {
+  if (allRunsSelected.value) selectedRuns.value = new Set()
+  else selectedRuns.value = new Set(selectableRuns.value.map(r => r.ts))
+}
+
+function askDeleteSelectedRuns() { runDeleteConfirm.value = true }
+
+async function confirmDeleteSelectedRuns() {
+  const tsList = [...selectedRuns.value]
+  runDeleteConfirm.value = false
+  exitRunSelection()
+  for (const ts of tsList) await deleteRun(session.value.name, ts)
+}
+
+function handleRunRowClick(run) {
+  if (runSelectionMode.value) {
+    if (run.status !== 'running') toggleSelectRun(run.ts)
+  } else {
+    if (run.status !== 'running') selectRun(run)
+  }
+}
 
 function closeRunDetail() {
   state.selectedRun      = null
