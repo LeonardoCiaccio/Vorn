@@ -22,16 +22,22 @@ export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:start-backup', (_, { sessionName, resumeTs = null }) => {
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
       throw new Error(`Operazione già in corso: ${sessionName}`)
-    // Aggiorna subito il run su disco a 'running' così refreshSession legge lo stato corretto
+    // Scrivi il run su disco prima di avviare il worker — il watcher potrebbe
+    // fare refreshSession prima che il worker abbia avuto tempo di crearlo.
+    let runTs
     if (resumeTs) {
+      runTs = resumeTs
       try {
         const run = loadRun(ctx.activeStore, sessionName, resumeTs)
         run.status = 'running'
         saveRun(ctx.activeStore, sessionName, run)
       } catch { /* run non trovato: il worker lo creerà */ }
+    } else {
+      runTs = new Date().toISOString()
+      saveRun(ctx.activeStore, sessionName, { ts: runTs, status: 'running', files: {} })
     }
     const task = createTask('backup', sessionName)
-    spawnWorker('backupWorker.js', { storeDir: ctx.activeStore, sessionName, resumeTs }, task.id, mainWindow, _onDone(task, mainWindow))
+    spawnWorker('backupWorker.js', { storeDir: ctx.activeStore, sessionName, resumeTs, runTs }, task.id, mainWindow, _onDone(task, mainWindow))
     return { taskId: task.id }
   })
 

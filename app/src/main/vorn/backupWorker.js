@@ -1,7 +1,7 @@
 import { workerData, parentPort } from 'worker_threads'
 import { backup } from './backup.js'
 
-const { storeDir, sessionName, cancelBuffer, resumeTs } = workerData
+const { storeDir, sessionName, cancelBuffer, resumeTs, runTs } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
 // Tutte le store-write passano per il main process (single-threaded),
@@ -42,6 +42,7 @@ backup(storeDir, sessionName, {
   isCancelled: () => Atomics.load(cancelFlag, 0) === 1,
   onProgress:  (progress) => parentPort.postMessage({ type: 'progress', progress }),
   resumeTs,
+  runTs,
   storeFn,
 })
   .then(result => parentPort.postMessage({ type: 'done', result }))

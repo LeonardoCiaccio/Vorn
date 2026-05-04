@@ -167,6 +167,8 @@
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Data / Ora</th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Stato</th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">File</th>
+                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Nuovi</th>
+                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Scritti</th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Errori</th>
                 <th class="pb-3 w-14"></th>
               </tr>
@@ -199,6 +201,20 @@
                   {{ run.status === 'running' && backupProgress
                       ? backupProgress.total?.toLocaleString('it-IT') ?? '…'
                       : run.files_total?.toLocaleString('it-IT') ?? '—' }}
+                </td>
+                <td class="py-3.5 px-4 text-right font-mono text-xs">
+                  <span v-if="run.status === 'running' && backupProgress" class="text-emerald-400">
+                    {{ (backupProgress.files_new ?? 0).toLocaleString('it-IT') }}
+                  </span>
+                  <span v-else-if="run.files_new != null" class="text-emerald-400">{{ run.files_new.toLocaleString('it-IT') }}</span>
+                  <span v-else class="text-gray-700">—</span>
+                </td>
+                <td class="py-3.5 px-4 text-right font-mono text-xs">
+                  <span v-if="run.status === 'running' && backupProgress" class="text-gray-300">
+                    {{ formatBytes(backupProgress.bytes_new ?? 0) }}
+                  </span>
+                  <span v-else-if="run.bytes_new != null" class="text-gray-300">{{ formatBytes(run.bytes_new) }}</span>
+                  <span v-else class="text-gray-700">—</span>
                 </td>
                 <td class="py-3.5 px-4 text-right font-mono text-xs">
                   <span v-if="run.status === 'running' && backupProgress?.errors" class="text-red-400">

@@ -7,7 +7,7 @@ import { walk, matchPattern } from './scanner.js'
 import { dbGetFile, dbUpsertFile } from './db.js'
 
 export async function backup(storeDir, sessionName, opts = {}) {
-  const { onProgress, isCancelled, resumeTs, storeFn } = opts
+  const { onProgress, isCancelled, resumeTs, runTs, storeFn } = opts
   const _storeBlob = storeFn ?? storeBlob
 
   const session = getSession(storeDir, sessionName)
@@ -43,7 +43,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
     } catch { /* run non trovato: parte da zero */ }
   }
   if (!run) {
-    run = { ts: new Date().toISOString(), status: 'running', files: {} }
+    run = { ts: runTs ?? new Date().toISOString(), status: 'running', files: {} }
   } else {
     run.status = 'running'
   }
