@@ -1,4 +1,4 @@
-# Vorn — Architettura v2
+﻿# Vorn — Architettura v2
 
 ## Store
 

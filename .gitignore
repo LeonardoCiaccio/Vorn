@@ -1,21 +1,6 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-.eggs/
-
 # Vorn store — dati di backup, mai nel repo
 vorn_data/
 *.vorn
-
-# Ambienti virtuali
-.venv/
-venv/
-env/
-.env
 
 # IDE
 .vscode/
@@ -28,19 +13,13 @@ env/
 Thumbs.db
 desktop.ini
 
-# PyInstaller
-build/
-dist/
-*.spec
-!dist/vorn.exe
-
 # Temp e log
 *.tmp
 *.log
 *.bak
 
-# Electron app — dipendenze e build artifacts
-app/node_modules/
-app/out/
-app/release/
-app/package-lock.json
+# Electron — dipendenze e build artifacts
+node_modules/
+out/
+release/
+package-lock.json
