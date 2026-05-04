@@ -1,9 +1,10 @@
-import { statSync } from 'fs'
-import { basename, relative } from 'path'
+import { statSync, existsSync } from 'fs'
+import { basename, relative, join } from 'path'
 import { vornHash } from './hash.js'
 import { storeBlob } from './store.js'
 import { getSession, saveRun, loadRun } from './sessions.js'
 import { walk, matchPattern } from './scanner.js'
+import { dbGetFile, dbUpsertFile } from './db.js'
 
 export async function backup(storeDir, sessionName, opts = {}) {
   const { onProgress, isCancelled, resumeTs, storeFn } = opts
@@ -77,11 +78,38 @@ export async function backup(storeDir, sessionName, opts = {}) {
     try { stat = statSync(filePath) }
     catch (e) { errors.push({ path: filePath, error: e.code ?? e.message, phase: 'stat' }); continue }
 
-    let hashVorn
-    try { hashVorn = vornHash(filePath) }
-    catch (e) { errors.push({ path: filePath, error: e.code ?? e.message, phase: 'hash' }); continue }
-
     const bytes = stat.size
+    const mtime = stat.mtimeMs
+
+    // Controllo DB: se mtime e size coincidono, conosciamo già l'hash
+    let hashVorn
+    const dbRecord = dbGetFile(filePath)
+    if (dbRecord && dbRecord.mtime === mtime && dbRecord.size === bytes) {
+      // File invariato — verifica che il .vorn esista ancora nello store
+      const vornPath = join(storeDir, dbRecord.hash + '.vorn')
+      if (existsSync(vornPath)) {
+        // Dedup completo: nessun hashing, nessuna lettura del file
+        filesDedup++
+        bytesTotal += bytes
+        run.files[relPath] = dbRecord.hash
+        onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew })
+        if (current - lastSaveCount >= SAVE_INTERVAL_FILES || Date.now() - lastSaveTime >= SAVE_INTERVAL_MS) {
+          run.files_new = filesNew; run.files_dedup = filesDedup; run.bytes_total = bytesTotal; run.bytes_new = bytesNew; run.errors = errors
+          saveRun(storeDir, sessionName, run)
+          lastSaveCount = current; lastSaveTime = Date.now()
+        }
+        continue
+      }
+      // .vorn mancante: usiamo l'hash già noto, saltiamo solo l'hashing
+      hashVorn = dbRecord.hash
+    }
+
+    // Hash necessario: file nuovo, modificato, o .vorn mancante con hash sconosciuto
+    if (!hashVorn) {
+      try { hashVorn = vornHash(filePath) }
+      catch (e) { errors.push({ path: filePath, error: e.code ?? e.message, phase: 'hash' }); continue }
+    }
+
     bytesTotal += bytes
 
     try {
@@ -89,6 +117,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
       if (outcome === 'new') { filesNew++; bytesNew += bytes }
       else                   { filesDedup++ }
       run.files[relPath] = hashVorn
+      dbUpsertFile(filePath, mtime, bytes, hashVorn)
     } catch (e) {
       errors.push({ path: filePath, error: e.code ?? e.message, phase: 'store' })
     }
