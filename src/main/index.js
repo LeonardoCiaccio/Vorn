@@ -2,11 +2,6 @@ import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
 import { registerIpcHandlers } from './ipc.js'
 
-// Registra l'AUMID solo nel build packaged — in dev lascerebbe electron.exe
-// registrato nel registry di Windows, causando click sulle notifiche che
-// lanciano il dev electron invece dell'app produzione.
-if (process.platform === 'win32' && app.isPackaged) app.setAppUserModelId('com.vorn.app')
-
 // Singola istanza: se una seconda viene lanciata (es. click su toast Windows)
 // focalizza quella già aperta e termina la nuova
 const gotLock = app.requestSingleInstanceLock()
@@ -47,6 +42,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // AUMID solo nel build packaged — in dev resterebbe registrato su electron.exe
+  if (process.platform === 'win32' && app.isPackaged) app.setAppUserModelId('com.vorn.app')
+
   const win = createWindow()
   registerIpcHandlers(win)
 

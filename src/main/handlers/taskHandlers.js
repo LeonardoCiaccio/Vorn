@@ -6,7 +6,11 @@ import { ctx, spawnWorker }                                        from '../work
 import { loadRun, saveRun }                                        from '../vorn/sessions.js'
 import { loadSettings }                                            from '../vorn/settings.js'
 
-const _icon = nativeImage.createFromPath(join(__dirname, '../../build/icon.png'))
+let _icon = null
+function _getIcon() {
+  if (!_icon) _icon = nativeImage.createFromPath(join(__dirname, '../../build/icon.png'))
+  return _icon
+}
 
 function _send(mainWindow, payload) {
   if (!mainWindow.isDestroyed()) mainWindow.webContents.send('vorn:task-done', payload)
@@ -20,7 +24,7 @@ function _notifyRunDone(task, result, mainWindow) {
   const body = errors > 0
     ? `${result.files_total} file — ${errors} errori`
     : `${result.files_total} file completati`
-  const notif = new Notification({ title: `Backup completato — ${task.sessionName}`, body, icon: _icon })
+  const notif = new Notification({ title: `Backup completato — ${task.sessionName}`, body, icon: _getIcon() })
   notif.on('click', () => {
     if (mainWindow.isDestroyed()) return
     if (mainWindow.isMinimized()) mainWindow.restore()
