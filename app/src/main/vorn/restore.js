@@ -1,5 +1,5 @@
 import { mkdirSync, createWriteStream, existsSync, readdirSync } from 'fs'
-import { join, basename, dirname } from 'path'
+import { join, basename, dirname, resolve } from 'path'
 import { pipeline } from 'stream/promises'
 import { extractContent } from './store.js'
 import { readVornMeta } from './format.js'
@@ -8,6 +8,7 @@ import { loadRun } from './sessions.js'
 const EXTRACT_MAX_BYTES = 500 * 1024 * 1024 // 500 MB
 
 export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) {
+  destDir = resolve(destDir)
   const { onProgress, isCancelled, selectedFiles } = opts
   const run = loadRun(storeDir, sessionName, runTs)
   const errors = []
@@ -43,6 +44,7 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
 }
 
 export async function extractFromStore(storeDir, destDir, sessionFilter, { onProgress, isCancelled } = {}) {
+  destDir = resolve(destDir)
   const allFiles = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
   const total      = allFiles.length
   const sessionNames = new Set()
@@ -93,6 +95,7 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
 }
 
 export async function extractByHash(storeDir, hashVorn, destDir, filename) {
+  destDir = resolve(destDir)
   const vornFilePath = join(storeDir, hashVorn + '.vorn')
   const { contentLen } = readVornMeta(vornFilePath)
   if (Number(contentLen) > EXTRACT_MAX_BYTES) {

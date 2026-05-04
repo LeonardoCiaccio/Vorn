@@ -138,6 +138,7 @@
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Data / Ora</th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Stato</th>
                 <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">File</th>
+                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Errori</th>
                 <th class="pb-3 w-14"></th>
               </tr>
             </thead>
@@ -160,6 +161,13 @@
                   {{ run.status === 'running' && backupProgress
                       ? backupProgress.total?.toLocaleString('it-IT') ?? '…'
                       : run.files_total?.toLocaleString('it-IT') ?? '—' }}
+                </td>
+                <td class="py-3.5 px-4 text-right font-mono text-xs">
+                  <span v-if="run.status === 'running' && backupProgress?.errors" class="text-red-400">
+                    {{ backupProgress.errors }}
+                  </span>
+                  <span v-else-if="run.errors_count" class="text-red-400">{{ run.errors_count }}</span>
+                  <span v-else class="text-gray-700">—</span>
                 </td>
                 <td class="py-3.5 px-4 text-right" @click.stop>
                   <div v-if="pendingDeleteRun?.ts === run.ts" class="flex items-center justify-end gap-1.5">
@@ -397,6 +405,61 @@
 
           <div class="flex-1 overflow-auto">
 
+            <!-- Barra caricamento file progressivo -->
+            <div
+              v-if="state.selectedRunFull?._filesLoading"
+              class="mx-3 mt-3 px-3 py-2 rounded-md bg-gray-800/60 border border-gray-700/50 flex items-center gap-2"
+            >
+              <ArrowPathIcon class="w-3 h-3 text-indigo-400 animate-spin shrink-0" />
+              <span class="text-[10px] text-gray-500">
+                Caricamento file…
+                {{ state.selectedRunFull._filesLoaded.toLocaleString('it-IT') }}
+                / {{ state.selectedRunFull._filesTotal.toLocaleString('it-IT') }}
+              </span>
+            </div>
+
+            <!-- Errori del run -->
+            <div
+              v-if="state.selectedRunFull?.errors?.length"
+              class="mx-3 mt-3 rounded-md border border-red-900/40 overflow-hidden"
+            >
+              <button
+                class="w-full px-3 py-2 flex items-center gap-2 bg-red-950/30 text-left"
+                @click="errorsExpanded = !errorsExpanded"
+              >
+                <ExclamationTriangleIcon class="w-3.5 h-3.5 text-red-400 shrink-0" />
+                <span class="text-[11px] font-semibold text-red-400 flex-1">
+                  {{ state.selectedRunFull.errors.length }} errori registrati
+                </span>
+                <ChevronDownIcon
+                  class="w-3.5 h-3.5 text-gray-500 transition-transform"
+                  :class="errorsExpanded ? 'rotate-180' : ''"
+                />
+              </button>
+              <div v-if="errorsExpanded" class="max-h-48 overflow-auto divide-y divide-gray-800/60">
+                <div
+                  v-for="(err, i) in state.selectedRunFull.errors"
+                  :key="i"
+                  class="px-3 py-2 flex items-start gap-2"
+                >
+                  <span
+                    class="text-[9px] font-mono px-1 py-0.5 rounded shrink-0 mt-0.5 uppercase tracking-wider"
+                    :class="{
+                      'bg-orange-900/50 text-orange-400':  err.phase === 'scan',
+                      'bg-yellow-900/50 text-yellow-400':  err.phase === 'stat',
+                      'bg-purple-900/50 text-purple-400':  err.phase === 'hash',
+                      'bg-red-900/50   text-red-400':      err.phase === 'store',
+                      'bg-gray-800     text-gray-500':     !err.phase,
+                    }"
+                  >{{ err.phase ?? '?' }}</span>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-[10px] font-mono text-gray-400 break-all leading-relaxed">{{ err.path }}</p>
+                    <p class="text-[10px] text-red-400/80 mt-0.5">{{ err.error }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- File explorer -->
             <div class="px-3 py-3">
               <FileTree
@@ -504,6 +567,7 @@ import {
   XMarkIcon,
   TableCellsIcon,
   ClockIcon,
+  ChevronDownIcon,
 } from '@heroicons/vue/24/outline'
 import { computed, ref, watch } from 'vue'
 import {
@@ -572,6 +636,7 @@ const confirmingDelete = ref(false)
 const selectedFiles    = ref([])
 const inSelectionMode  = ref(false)
 const pendingDeleteRun = ref(null)
+const errorsExpanded   = ref(false)
 
 function closeRunDetail() {
   state.selectedRun      = null
@@ -579,6 +644,7 @@ function closeRunDetail() {
   confirmingDelete.value = false
   selectedFiles.value    = []
   inSelectionMode.value  = false
+  errorsExpanded.value   = false
 }
 
 const cancelling = ref(false)

@@ -201,10 +201,10 @@
                   <!-- Tasti azione (visibili su hover) -->
                   <div v-else class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <button
-                      @click.stop="startBackup(session.name)"
+                      @click.stop="startBackup(session.name, _resumeTs(session))"
                       :disabled="!!activeTask(session.name)"
                       class="p-1.5 rounded-md text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-                      title="Avvia backup"
+                      :title="_resumeTs(session) ? 'Riprendi backup' : 'Avvia backup'"
                     >
                       <PlayIcon class="w-3.5 h-3.5" />
                     </button>
@@ -415,16 +415,20 @@ function toggleAll() {
   else selected.value = new Set(sessions.value.map(s => s.name))
 }
 
+function _resumeTs(session) {
+  return session.runs.find(r => r.status === 'paused')?.ts ?? null
+}
+
 async function startAll() {
   for (const s of sessions.value) {
-    if (!getActiveTask(s.name)) await startBackup(s.name)
+    if (!getActiveTask(s.name)) await startBackup(s.name, _resumeTs(s))
   }
 }
 
 async function startSelected() {
   const targets = sessions.value.filter(s => selected.value.has(s.name))
   for (const s of targets) {
-    if (!getActiveTask(s.name)) await startBackup(s.name)
+    if (!getActiveTask(s.name)) await startBackup(s.name, _resumeTs(s))
   }
   exitSelection()
 }

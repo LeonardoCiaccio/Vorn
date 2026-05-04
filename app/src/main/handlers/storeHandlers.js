@@ -8,10 +8,11 @@ import { listSessions, listRuns, loadRun, saveRun }   from '../vorn/sessions.js'
 function _cleanCrashedRuns(storeDir) {
   for (const session of listSessions(storeDir)) {
     for (const run of listRuns(storeDir, session.name)) {
-      if (run.status !== 'running') continue
+      if (run.status !== 'running' && run.status !== 'paused') continue
+      const newStatus = run.status === 'running' ? 'crashed' : 'aborted'
       try {
         const full = loadRun(storeDir, session.name, run.ts)
-        full.status = 'crashed'
+        full.status = newStatus
         saveRun(storeDir, session.name, full)
       } catch { /* run corrotto, ignorato */ }
     }

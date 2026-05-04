@@ -16,7 +16,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
   const excPaths = session.excludes?.paths    ?? []
   const excPats  = session.excludes?.patterns ?? []
 
-  const allFiles = []
+  const allFiles    = []
+  const scanErrors  = []
   for (const src of sources) {
     try {
       const st = statSync(src)
@@ -26,7 +27,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
       } else {
         walk(src, excPaths, excPats, allFiles)
       }
-    } catch (e) { /* sorgente non accessibile */ }
+    } catch (e) { scanErrors.push({ path: src, error: e.code ?? e.message, phase: 'scan' }) }
   }
 
   const total     = allFiles.length
@@ -53,7 +54,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
   let filesDedup = run.files_dedup ?? 0
   let bytesTotal = run.bytes_total ?? 0
   let bytesNew   = run.bytes_new   ?? 0
-  const errors   = [...(run.errors ?? [])]
+  const errors   = [...(run.errors ?? []), ...scanErrors]
   let current    = alreadyDone.size
 
   let lastSaveCount = current
@@ -74,11 +75,11 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
     let stat
     try { stat = statSync(filePath) }
-    catch (e) { errors.push({ path: filePath, error: e.code ?? e.message }); continue }
+    catch (e) { errors.push({ path: filePath, error: e.code ?? e.message, phase: 'stat' }); continue }
 
     let hashVorn
     try { hashVorn = vornHash(filePath) }
-    catch (e) { errors.push({ path: filePath, error: e.code ?? e.message }); continue }
+    catch (e) { errors.push({ path: filePath, error: e.code ?? e.message, phase: 'hash' }); continue }
 
     const bytes = stat.size
     bytesTotal += bytes
@@ -89,7 +90,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
       else                   { filesDedup++ }
       run.files[relPath] = hashVorn
     } catch (e) {
-      errors.push({ path: filePath, error: e.code ?? e.message })
+      errors.push({ path: filePath, error: e.code ?? e.message, phase: 'store' })
     }
 
     onProgress?.({

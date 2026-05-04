@@ -18,9 +18,10 @@ contextBridge.exposeInMainWorld('vorn', {
   deleteSession:  (name)          => ipcRenderer.invoke('vorn:delete-session', name),
 
   // Runs
-  listRuns:   (sessionName)             => ipcRenderer.invoke('vorn:list-runs', sessionName),
-  loadRun:    (sessionName, runTs)      => ipcRenderer.invoke('vorn:load-run', { sessionName, runTs }),
-  deleteRun:  (sessionName, runTs)      => ipcRenderer.invoke('vorn:delete-run', { sessionName, runTs }),
+  listRuns:     (sessionName)                                    => ipcRenderer.invoke('vorn:list-runs', sessionName),
+  loadRun:      (sessionName, runTs)                             => ipcRenderer.invoke('vorn:load-run', { sessionName, runTs }),
+  listRunFiles: (sessionName, runTs, offset, limit, search)      => ipcRenderer.invoke('vorn:list-run-files', { sessionName, runTs, offset, limit, search }),
+  deleteRun:    (sessionName, runTs)                             => ipcRenderer.invoke('vorn:delete-run', { sessionName, runTs }),
 
   // Tasks
   startBackup:        (sessionName, resumeTs = null)                      => ipcRenderer.invoke('vorn:start-backup', { sessionName, resumeTs }),

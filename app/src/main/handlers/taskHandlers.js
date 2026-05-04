@@ -2,6 +2,7 @@ import { ipcMain }                                                from 'electron
 import { createTask, cancelTask, listTasks, finishTask, failTask } from '../vorn/taskManager.js'
 import { extractByHash }                                           from '../vorn/restore.js'
 import { ctx, spawnWorker }                                        from '../workerManager.js'
+import { loadRun, saveRun }                                        from '../vorn/sessions.js'
 
 function _onDone(task, mainWindow) {
   return (result, error) => {
@@ -17,6 +18,14 @@ export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:start-backup', (_, { sessionName, resumeTs = null }) => {
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
       throw new Error(`Operazione già in corso: ${sessionName}`)
+    // Aggiorna subito il run su disco a 'running' così refreshSession legge lo stato corretto
+    if (resumeTs) {
+      try {
+        const run = loadRun(ctx.activeStore, sessionName, resumeTs)
+        run.status = 'running'
+        saveRun(ctx.activeStore, sessionName, run)
+      } catch { /* run non trovato: il worker lo creerà */ }
+    }
     const task = createTask('backup', sessionName)
     spawnWorker('backupWorker.js', { storeDir: ctx.activeStore, sessionName, resumeTs }, task.id, mainWindow, _onDone(task, mainWindow))
     return { taskId: task.id }

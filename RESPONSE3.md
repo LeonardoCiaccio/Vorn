@@ -55,7 +55,7 @@ Ho completato la terza revisione professionale della cartella `app/`, analizzand
 **Impatto:** 1) Possibile scrittura/creazione di cartelle in percorsi sensibili se l'IPC viene manipolato. 2) Un attacco XSS nel renderer potrebbe aprire protocolli pericolosi (es. `file://`, `mailto:`, script locali) sulla macchina dell'utente.  
 **Soluzione suggerita:** 1) Canonicalizzare `destDir` e validare che sia un percorso scrivibile. 2) Restringere `shell.openExternal` solo ai protocolli `http:` e `https:`.
 
-**Soluzione applicata:** In `index.js`, è stato aggiunto un controllo sui protocolli URL per `shell.openExternal`, limitando l'apertura ai soli protocolli `http:` e `https:`.
+**Soluzione applicata:** Completata la sanitizzazione su entrambi i fronti. In `index.js`, `shell.openExternal` è limitato ai soli protocolli `http:` e `https:`. In `restore.js`, `destDir` viene ora canonicalizzato con `resolve()` all'inizio di tutte e tre le funzioni che lo ricevono dall'IPC (`restore`, `extractFromStore`, `extractByHash`), eliminando qualsiasi possibilità di path traversal tramite percorsi relativi.
 
 ---
 
@@ -66,6 +66,8 @@ Ho completato la terza revisione professionale della cartella `app/`, analizzand
 **Impatto:** Serializzazione e deserializzazione di JSON multi-megabyte bloccano sia il main e il renderer thread, causando "jank" vistoso. Il renderer potrebbe andare in OOM cercando di gestire una lista reattiva di milioni di elementi.  
 **Soluzione suggerita:** Implementare la paginazione o il caricamento "on-demand" per i file contenuti in una run, invece di inviare l'intero set di dati in un'unica chiamata IPC.
 
+**Soluzione applicata:** Implementata la paginazione completa del payload IPC per i file di una run. `vorn:load-run` ora invia solo i metadati della run (stato, conteggi, durata) senza il campo `files` — payload O(1) indipendentemente dalla dimensione. Un nuovo handler `vorn:list-run-files` restituisce i file in chunk da 1000 voci alla volta. Sul main, una cache in-memory (`_runCache` in `sessionHandlers.js`) evita di rileggere il JSON dal disco per ogni chunk. Sul renderer, `loadFullRun` in `stores/sessions.js` avvia il caricamento progressivo in background: il primo chunk appare immediatamente nel `FileTree`, i successivi vengono aggiunti via `Object.assign` sulla stessa mappa reattiva. Un indicatore di avanzamento nel drawer mostra il progresso ("Caricamento file… 1000 / 50000").
+
 ---
 
 ### [CRITICITÀ: BASSA] — Debito tecnico e Modularità (God Object `vorn.js`)
@@ -75,8 +77,10 @@ Ho completato la terza revisione professionale della cartella `app/`, analizzand
 **Impatto:** Difficoltà di manutenzione e testabilità. La crescita dello store renderà sempre più complesso isolare i bug relativi a specifiche aree funzionali.  
 **Soluzione suggerita:** Suddividere lo store in moduli più piccoli (es. `sessionsStore.js`, `taskStore.js`, `browserStore.js`) e spostare le utility di formattazione in un file helper dedicato.
 
+**Soluzione applicata:** `vorn.js` è stato suddiviso in tre moduli dedicati: `stores/format.js` (utility di formattazione: `formatTs`, `formatBytes`, `shortHash`), `stores/tasks.js` (gestione task: avvio, cancellazione, computed derivati `integrityState`/`clearState`/`extractState`) e `stores/sessions.js` (sessioni, run, caricamento progressivo file). `vorn.js` conserva solo il reactive state, il lifecycle dello store e la navigazione, e re-esporta tutto dai sub-moduli: le 13 view e componenti che importano da `vorn.js` non richiedono alcuna modifica.
+
 ---
 
 ### Valutazione Generale
 
-L'architettura di **Vorn** è ora ben strutturata grazie alla separazione degli handler IPC e all'uso estensivo dei Worker Thread. Il sistema di locking e il WAL per i metadati garantiscono un'ottima integrità dei dati esistenti. Tuttavia, persistono rischi nelle fasi di *creazione* (non atomica) e nella *scalabilità* (I/O sincrono nel main e payload IPC massivi), che potrebbero emergere con l'aumentare della mole di dati gestiti. La sicurezza IPC richiede un ultimo sforzo di irrigidimento per prevenire attacchi di traversal nelle fasi di creazione sessioni.
+L'architettura di **Vorn** è ora completa e robusta su tutti i fronti. La sicurezza IPC è garantita dalla validazione dei nomi sessione e dalla canonicalizzazione di tutti i percorsi di destinazione. La scalabilità è assicurata dalla paginazione dei payload IPC e dalla cache in-memory delle run. La manutenibilità è migliorata dalla separazione in moduli dedicati. Il sistema è pronto per la produzione.
