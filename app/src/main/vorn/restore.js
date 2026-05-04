@@ -1,11 +1,18 @@
 import { mkdirSync, createWriteStream, existsSync, readdirSync } from 'fs'
-import { join, basename, dirname, resolve } from 'path'
+import { join, basename, dirname, resolve, sep } from 'path'
 import { pipeline } from 'stream/promises'
 import { extractContent } from './store.js'
 import { readVornMeta } from './format.js'
 import { loadRun } from './sessions.js'
 
 const EXTRACT_MAX_BYTES = 500 * 1024 * 1024 // 500 MB
+
+// Restituisce il path assoluto solo se è contenuto dentro baseDir, altrimenti null
+function _safeJoin(baseDir, relPath) {
+  const out = resolve(join(baseDir, relPath))
+  if (out !== baseDir && !out.startsWith(baseDir + sep)) return null
+  return out
+}
 
 export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) {
   destDir = resolve(destDir)
@@ -29,7 +36,12 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
         onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
         continue
       }
-      const outPath = join(destDir, relPath)
+      const outPath = _safeJoin(destDir, relPath)
+      if (!outPath) {
+        errors.push({ path: relPath, hash: hashVorn, error: 'path_traversal' })
+        onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
+        continue
+      }
       mkdirSync(join(outPath, '..'), { recursive: true })
       await pipeline(extractContent(storeDir, hashVorn), createWriteStream(outPath))
       restored++
@@ -78,7 +90,8 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
       for (const relPath of rec.paths) {
         try {
           const folderName = `${rec.session}-${rec.id}`
-          const outPath = join(destDir, folderName, relPath)
+          const outPath    = _safeJoin(join(destDir, folderName), relPath)
+          if (!outPath) { errors.push({ hash: hashVorn, session: rec.session, path: relPath, error: 'path_traversal' }); continue }
           mkdirSync(dirname(outPath), { recursive: true })
           await pipeline(extractContent(storeDir, hashVorn), createWriteStream(outPath))
           extracted++

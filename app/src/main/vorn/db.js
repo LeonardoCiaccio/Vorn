@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3'
-import { mkdirSync } from 'fs'
+import { mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
 
@@ -40,4 +40,17 @@ export function dbUpsertFile(path, mtime, size, hash) {
       hash    = excluded.hash,
       updated = excluded.updated
   `).run(path, mtime, size, hash, new Date().toISOString())
+}
+
+// Rimuove dal DB le path che non esistono più sul filesystem.
+// Ritorna il numero di record eliminati.
+export function dbPruneOrphans() {
+  const db   = getDb()
+  const rows = db.prepare('SELECT path FROM Files').all()
+  const del  = db.prepare('DELETE FROM Files WHERE path = ?')
+  let removed = 0
+  for (const { path } of rows) {
+    if (!existsSync(path)) { del.run(path); removed++ }
+  }
+  return removed
 }

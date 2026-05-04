@@ -6,6 +6,15 @@ const MAGIC = Buffer.from('VORN')
 const SEPARATOR = Buffer.from([0xFF, 0x00, 0xFF, 0x00])
 const HEADER_SIZE = 12 // 4 (VORN) + 8 (Length uint64)
 
+export const VORN_HEADER_SIZE   = HEADER_SIZE
+export const VORN_SEPARATOR_LEN = SEPARATOR.length
+
+export function readVornContentLen(filePath) {
+  const fd = openSync(filePath, 'r')
+  try { return _getContentInfo(fd) }
+  finally { closeSync(fd) }
+}
+
 // ── Internal: Get content info from the 12-byte header ────────────────────────
 
 function _getContentInfo(fd) {

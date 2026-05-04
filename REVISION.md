@@ -6,10 +6,6 @@ Stai effettuando una revisione critica del codice dell'applicazione **Vorn**, un
 
 Il codice da analizzare si trova esclusivamente nella cartella `app/`. Ignora qualsiasi altro contenuto del repository (cartella `proto/`, file di configurazione root, ecc.).
 
-## Cosa ignorare deliberatamente
-
-- **Collisioni di hash (`hash_vorn`)**: l'algoritmo di hashing per file grandi usa un campionamento a 13 punti (104 byte totali) invece di leggere l'intero file. Il rischio di collisione è noto e accettato consapevolmente a favore della velocità. Non segnalare questo aspetto.
-
 ## Ambiti di analisi richiesti
 
 Analizza il codice nei seguenti ambiti, con attenzione critica:

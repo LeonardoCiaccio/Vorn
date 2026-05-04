@@ -4,7 +4,7 @@ import { vornHash } from './hash.js'
 import { storeBlob } from './store.js'
 import { getSession, saveRun, loadRun } from './sessions.js'
 import { walk, matchPattern } from './scanner.js'
-import { dbGetFile, dbUpsertFile } from './db.js'
+import { dbGetFile, dbUpsertFile, dbPruneOrphans } from './db.js'
 
 export async function backup(storeDir, sessionName, opts = {}) {
   const { onProgress, isCancelled, resumeTs, runTs, storeFn } = opts
@@ -155,6 +155,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
   run.bytes_new    = bytesNew
   run.errors       = errors
   saveRun(storeDir, sessionName, run)
+
+  if (run.status === 'done') dbPruneOrphans()
 
   return { status: run.status, ts: run.ts, files_total: total, filesNew, filesDedup, errors }
 }

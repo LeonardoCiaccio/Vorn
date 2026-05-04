@@ -1,33 +1,24 @@
-import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, openSync, readSync, writeSync, closeSync, truncateSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, openSync, writeSync, closeSync, truncateSync, writeFileSync, fsyncSync } from 'fs'
 import { join, basename } from 'path'
-import { readVornMeta, readVorn, writeVornFromSource, contentStream } from './format.js'
+import { readVornMeta, readVorn, writeVornFromSource, contentStream, VORN_HEADER_SIZE, VORN_SEPARATOR_LEN, readVornContentLen } from './format.js'
 import { withFileLock } from './fileLock.js'
 
-const _HEADER_SIZE  = 12
-const _SEPARATOR_LEN = 4
-
-function _readVornContentLen(fd) {
-  const buf = Buffer.alloc(_HEADER_SIZE)
-  readSync(fd, buf, 0, _HEADER_SIZE, 0)
-  return buf.readBigUInt64BE(4)
-}
-
 function _updateMeta(filePath, meta) {
-  const fd = openSync(filePath, 'r')
-  let contentLen
-  try { contentLen = _readVornContentLen(fd) }
-  finally { closeSync(fd) }
+  const contentLen = readVornContentLen(filePath)
+  const metaBuf    = Buffer.from(JSON.stringify(meta), 'utf8')
+  const tmpPath    = filePath + '.mtmp'
 
-  const metaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
-  const tmpPath = filePath + '.mtmp'
+  writeFileSync(tmpPath, metaBuf) // WAL: esiste prima della modifica
 
-  writeFileSync(tmpPath, metaBuf)
-
-  truncateSync(filePath, _HEADER_SIZE + Number(contentLen) + _SEPARATOR_LEN)
+  truncateSync(filePath, VORN_HEADER_SIZE + Number(contentLen) + VORN_SEPARATOR_LEN)
 
   const fdw = openSync(filePath, 'a')
-  try { writeSync(fdw, metaBuf) }
-  finally { closeSync(fdw) }
+  try {
+    writeSync(fdw, metaBuf)
+    fsyncSync(fdw) // flush su disco garantito prima di rimuovere il WAL
+  } finally {
+    closeSync(fdw)
+  }
 
   try { unlinkSync(tmpPath) } catch { /* non-critico */ }
 }

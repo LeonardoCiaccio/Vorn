@@ -33,7 +33,10 @@ export function stopStoreWatch() {
 export function triggerDisconnect(mainWindow) {
   if (!ctx.activeStore) return
   stopStoreWatch()
-  for (const { cancelFlag } of ctx.activeWorkers.values()) Atomics.store(cancelFlag, 0, 1)
+  for (const { worker, cancelFlag } of ctx.activeWorkers.values()) {
+    Atomics.store(cancelFlag, 0, 1)
+    setTimeout(() => worker.terminate(), 5000) // terminate forzata se non risponde al cancel
+  }
   ctx.activeWorkers.clear()
   releaseLock(ctx.activeStore)
   ctx.activeStore = null
