@@ -49,6 +49,12 @@
       "label": "Notifiche di sistema",
       "sub": "Mostra una notifica al termine di ogni run"
     },
+    "log": {
+      "section": "Log",
+      "label": "Log dell'applicazione",
+      "sub": "Eventi, avvisi ed errori registrati dall'app",
+      "open": "Apri"
+    },
     "about": {
       "github": "Repository GitHub",
       "githubSub": "Codice sorgente, issue e contributi",

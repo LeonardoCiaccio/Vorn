@@ -122,6 +122,11 @@ export function saveRun(storeDir, sessionName, run) {
   writeFileSync(tmp, JSON.stringify(run, null, 2), 'utf8')
   renameSync(tmp, dest)
 
+  // Nota: se l'app crasha tra qui e l'aggiornamento del manifest, la run esiste su disco
+  // ma runs_meta non la rispecchia. Al riavvio listRuns() la ricostruisce dai file se
+  // runs_meta è assente; se presente ma stale, la run risulta "persa" fino al rebuild.
+  // Rischio accettato: il recovery via rebuild esiste già.
+
   // Aggiornamento cache metadati nel manifest della sessione (veloce)
   const session = getSession(storeDir, sessionName)
   if (session) {

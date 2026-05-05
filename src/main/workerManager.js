@@ -4,6 +4,7 @@ import { statSync } from 'fs'
 import { storeBlob }                                         from './vorn/store.js'
 import { releaseLock }                                       from './vorn/lockFile.js'
 import { setTaskCancelFn, updateTaskProgress }               from './vorn/taskManager.js'
+import { logger }                                            from './vorn/logger.js'
 
 export const ctx = {
   activeWorkers: new Map(), // taskId → { worker, cancelFlag }
@@ -32,6 +33,7 @@ export function stopStoreWatch() {
 
 export function triggerDisconnect(mainWindow) {
   if (!ctx.activeStore) return
+  logger.warn(`Store disconnected: ${ctx.activeStore}`)
   stopStoreWatch()
   for (const { worker, cancelFlag } of ctx.activeWorkers.values()) {
     Atomics.store(cancelFlag, 0, 1)
@@ -68,6 +70,10 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
     const { type } = msg
     if (type === 'store-request') {
       const { id, hashVorn, bytes, filePath, sessionId, sessionName, relPath } = msg
+      if (!ctx.activeStore) {
+        worker.postMessage({ type: 'store-result', id, error: 'Store disconnesso' })
+        return
+      }
       storeBlob(ctx.activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath)
         .then(outcome => worker.postMessage({ type: 'store-result', id, outcome }))
         .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message }))
@@ -80,6 +86,9 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
     } else if (type === 'error') {
       ctx.activeWorkers.delete(taskId)
       _settle(null, msg.error)
+    } else if (type === 'log') {
+      const level = msg.level === 'warn' ? 'warn' : msg.level === 'error' ? 'error' : 'info'
+      logger[level](`[worker:${taskId}] ${msg.message}`)
     } else if (type === 'store-disconnected') {
       _settle(null, 'Store non raggiungibile')
       triggerDisconnect(mainWindow)
@@ -87,6 +96,7 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
   })
 
   worker.on('error', (err) => {
+    logger.error(`Worker [${taskId}] uncaught error: ${err.message}`)
     ctx.activeWorkers.delete(taskId)
     _settle(null, err.message)
   })

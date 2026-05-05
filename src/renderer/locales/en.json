@@ -49,6 +49,12 @@
       "label": "System notifications",
       "sub": "Show a notification at the end of each run"
     },
+    "log": {
+      "section": "Logs",
+      "label": "Application log",
+      "sub": "Events, warnings and errors recorded by the app",
+      "open": "Open"
+    },
     "about": {
       "github": "GitHub Repository",
       "githubSub": "Source code, issues and contributions",

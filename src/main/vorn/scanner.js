@@ -9,7 +9,8 @@ export function walk(dir, excludePaths = [], excludePatterns = [], _results = []
       for (const entry of readdirSync(current, { withFileTypes: true })) {
         const full = join(current, entry.name)
         if (excludePaths.some(p => full === p || full.startsWith(p + '\\') || full.startsWith(p + '/'))) continue
-        if (excludePatterns.some(pat => matchPattern(entry.name, pat))) continue
+        const relFromRoot = full.slice(dir.length + 1).replace(/\\/g, '/')
+        if (excludePatterns.some(pat => matchPattern(relFromRoot, pat))) continue
         
         if (entry.isDirectory()) {
           queue.push(full)
@@ -34,6 +35,7 @@ export function matchPattern(name, pattern) {
   if (!pattern || pattern.length > 200) return false
   let re = _patternCache.get(pattern)
   if (!re) {
+    if (_patternCache.size > 200) _patternCache.clear()
     const pat = pattern.endsWith('/') ? pattern.slice(0, -1) : pattern
     const escaped = pat.replace(/[.+^${}()|[\]\\]/g, '\\$&')
     // Collassa wildcards consecutive prima della conversione per prevenire ReDoS (*** → .*)

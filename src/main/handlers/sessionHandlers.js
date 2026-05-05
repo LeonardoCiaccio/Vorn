@@ -14,7 +14,7 @@ function _getCachedRun(storeDir, sessionName, runTs) {
     return _runCache.data
   }
   const data = loadRun(storeDir, sessionName, runTs)
-  _runCache = { storeDir, sessionName, runTs, data }
+  if (data.status !== 'running') _runCache = { storeDir, sessionName, runTs, data }
   return data
 }
 

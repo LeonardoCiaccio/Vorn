@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
 import { registerIpcHandlers } from './ipc.js'
+import { logger, initLogger } from './vorn/logger.js'
 
 // Singola istanza: se una seconda viene lanciata (es. click su toast Windows)
 // focalizza quella già aperta e termina la nuova
@@ -41,6 +42,8 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  initLogger()
+  logger.info(`Application started — version ${app.getVersion()} platform=${process.platform}`)
   // AUMID solo nel build packaged — in dev resterebbe registrato su electron.exe
   if (process.platform === 'win32' && app.isPackaged) app.setAppUserModelId('com.vorn.app')
 

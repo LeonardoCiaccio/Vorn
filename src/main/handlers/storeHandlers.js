@@ -4,6 +4,7 @@ import { checkLock, acquireLock, releaseLock }        from '../vorn/lockFile.js'
 import { loadSettings, saveSettings, addRecentStore } from '../vorn/settings.js'
 import { ctx, startStoreWatch, stopStoreWatch }       from '../workerManager.js'
 import { listSessions, listRuns, loadRun, saveRun }   from '../vorn/sessions.js'
+import { logger }                                     from '../vorn/logger.js'
 
 async function _cleanCrashedRuns(storeDir) {
   for (const session of listSessions(storeDir)) {
@@ -29,14 +30,19 @@ export function registerStoreHandlers(mainWindow) {
     acquireLock(storeDir)
     ctx.activeStore = storeDir
     addRecentStore(storeDir)
-    _cleanCrashedRuns(storeDir) // non-blocking: fire-and-forget
+    logger.info(`Store opened: ${storeDir}`)
+    _cleanCrashedRuns(storeDir).catch(err => logger.error(`[storeHandlers] cleanCrashedRuns: ${err.message}`))
     startStoreWatch(mainWindow)
     return { ok: true }
   })
 
   ipcMain.handle('vorn:close-store', () => {
     stopStoreWatch()
-    if (ctx.activeStore) { releaseLock(ctx.activeStore); ctx.activeStore = null }
+    if (ctx.activeStore) {
+      logger.info(`Store closed: ${ctx.activeStore}`)
+      releaseLock(ctx.activeStore)
+      ctx.activeStore = null
+    }
   })
 
   ipcMain.handle('vorn:get-settings',      ()         => loadSettings())

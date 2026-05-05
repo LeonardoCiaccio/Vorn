@@ -1,7 +1,8 @@
 import { openSync, readSync, closeSync, statSync } from 'fs'
 import { blake3 } from '@noble/hashes/blake3.js'
+import { HASH_CHUNK_BYTES } from './constants.js'
 
-const CHUNK = 4 * 1024 * 1024  // 4 MB — mai più di questo in RAM per volta
+const CHUNK = HASH_CHUNK_BYTES
 
 export function vornHash(filePath) {
   const size  = statSync(filePath).size

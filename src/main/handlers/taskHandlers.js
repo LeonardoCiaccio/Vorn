@@ -1,7 +1,9 @@
 import { ipcMain, Notification, nativeImage, app }                  from 'electron'
+import { logger }                                                  from '../vorn/logger.js'
 import { join }                                                    from 'path'
 import { createTask, cancelTask, listTasks, finishTask, failTask } from '../vorn/taskManager.js'
 import { extractByHash }                                           from '../vorn/restore.js'
+import { invalidateListCache }                                     from '../vorn/store.js'
 import { ctx, spawnWorker }                                        from '../workerManager.js'
 import { loadRun, saveRun, validateSessionName }                   from '../vorn/sessions.js'
 import { loadSettings }                                            from '../vorn/settings.js'
@@ -37,8 +39,16 @@ function _notifyRunDone(task, result, mainWindow) {
 
 function _onDone(task, mainWindow) {
   return (result, error) => {
-    if (error) { failTask(task.id, error);   _send(mainWindow, { taskId: task.id, error }) }
-    else        { finishTask(task.id, result); _notifyRunDone(task, result, mainWindow); _send(mainWindow, { taskId: task.id, result }) }
+    if (error) {
+      logger.error(`Task ${task.type} [${task.id}]${task.sessionName ? ` session="${task.sessionName}"` : ''} failed: ${error}`)
+      failTask(task.id, error)
+      _send(mainWindow, { taskId: task.id, error })
+    } else {
+      logger.info(`Task ${task.type} [${task.id}]${task.sessionName ? ` session="${task.sessionName}"` : ''} completed`)
+      finishTask(task.id, result)
+      _notifyRunDone(task, result, mainWindow)
+      _send(mainWindow, { taskId: task.id, result })
+    }
   }
 }
 
@@ -65,6 +75,7 @@ export function registerTaskHandlers(mainWindow) {
       saveRun(ctx.activeStore, sessionName, { ts: runTs, status: 'running', files: {} })
     }
     const task = createTask('backup', sessionName)
+    logger.info(`Task backup started [${task.id}] session="${sessionName}"${resumeTs ? ` resume=${resumeTs}` : ''}`)
     spawnWorker('backupWorker.js', { storeDir: ctx.activeStore, sessionName, resumeTs, runTs }, task.id, mainWindow, _onDone(task, mainWindow))
     return { taskId: task.id }
   })
@@ -74,6 +85,7 @@ export function registerTaskHandlers(mainWindow) {
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
       throw new Error(`Operazione già in corso: ${sessionName}`)
     const task = createTask('restore', sessionName)
+    logger.info(`Task restore started [${task.id}] session="${sessionName}" runTs=${runTs} dest="${destDir}"`)
     spawnWorker('restoreWorker.js', { storeDir: ctx.activeStore, sessionName, runTs, destDir, selectedFiles }, task.id, mainWindow,
       (result, error) => {
         if (error) { failTask(task.id, error);   _send(mainWindow, { taskId: task.id, error }) }
@@ -85,6 +97,7 @@ export function registerTaskHandlers(mainWindow) {
 
   ipcMain.handle('vorn:start-integrity', () => {
     const task = createTask('integrity', null)
+    logger.info(`Task integrity started [${task.id}]`)
     spawnWorker('integrityWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, _onDone(task, mainWindow))
     return { taskId: task.id }
   })
@@ -93,12 +106,17 @@ export function registerTaskHandlers(mainWindow) {
     if (listTasks().some(t => t.status === 'running'))
       throw new Error('Impossibile svuotare: operazioni in corso')
     const task = createTask('clear', null)
-    spawnWorker('clearWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, _onDone(task, mainWindow))
+    logger.info(`Task clear-store started [${task.id}]`)
+    spawnWorker('clearWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, (result, error) => {
+      if (!error) invalidateListCache()
+      _onDone(task, mainWindow)(result, error)
+    })
     return { taskId: task.id }
   })
 
   ipcMain.handle('vorn:start-extract-store', (_, { destDir, sessionFilter = null }) => {
     const task = createTask('extract-store', null)
+    logger.info(`Task extract-store started [${task.id}] dest="${destDir}"`)
     spawnWorker('extractStoreWorker.js', { storeDir: ctx.activeStore, destDir, sessionFilter }, task.id, mainWindow, _onDone(task, mainWindow))
     return { taskId: task.id }
   })
@@ -107,6 +125,7 @@ export function registerTaskHandlers(mainWindow) {
     if (listTasks().some(t => t.status === 'running'))
       throw new Error('Impossibile pulire: operazioni in corso')
     const task = createTask('prune', null)
+    logger.info(`Task prune started [${task.id}]`)
     spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, _onDone(task, mainWindow))
     return { taskId: task.id }
   })
@@ -115,6 +134,7 @@ export function registerTaskHandlers(mainWindow) {
     if (listTasks().some(t => t.status === 'running'))
       throw new Error('Impossibile riprendere: operazioni in corso')
     const task = createTask('prune', null)
+    logger.info(`Task prune resumed [${task.id}] from index=${nextIndex}`)
     spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore, orphanList, startIndex: nextIndex }, task.id, mainWindow, _onDone(task, mainWindow))
     return { taskId: task.id }
   })

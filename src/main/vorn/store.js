@@ -36,6 +36,8 @@ export function ensureStore(storeDir) {
 
 let _listCache = null // { dir: string, files: string[] }
 
+export function invalidateListCache() { _listCache = null }
+
 export function getCachedFileList(storeDir) {
   return _listCache?.dir === storeDir ? _listCache.files : null
 }

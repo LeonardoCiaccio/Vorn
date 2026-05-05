@@ -5,6 +5,7 @@ import { storeBlob } from './store.js'
 import { getSession, saveRun, loadRun } from './sessions.js'
 import { walk, matchPattern } from './scanner.js'
 import { dbGetFile, dbUpsertFile, dbPruneOrphans } from './db.js'
+import { SAVE_INTERVAL_FILES, SAVE_INTERVAL_MS } from './constants.js'
 
 export async function backup(storeDir, sessionName, opts = {}) {
   const { onProgress, isCancelled, resumeTs, runTs, storeFn } = opts
@@ -60,8 +61,6 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
   let lastSaveCount = current
   let lastSaveTime  = Date.now()
-  const SAVE_INTERVAL_FILES = 500
-  const SAVE_INTERVAL_MS    = 60_000
 
   for (let i = 0; i < allFiles.length; i++) {
     if (isCancelled?.()) break

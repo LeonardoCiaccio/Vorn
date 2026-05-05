@@ -4,7 +4,7 @@
 
 Stai effettuando una revisione critica del codice dell'applicazione **Vorn**, un sistema di backup content-addressable per desktop (Electron + Vue 3 + Node.js).
 
-Il codice da analizzare si trova esclusivamente nella cartella `app/`. Ignora qualsiasi altro contenuto del repository (cartella `proto/`, file di configurazione root, ecc.).
+Il codice da analizzare si trova esclusivamente nella cartella `src/`. Ignora qualsiasi altro contenuto del repository (cartella `proto/`, file di configurazione root, ecc.).
 
 ## Ambiti di analisi richiesti
 

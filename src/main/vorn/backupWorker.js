@@ -1,5 +1,6 @@
 import { workerData, parentPort } from 'worker_threads'
 import { backup } from './backup.js'
+import { STORE_REQUEST_TIMEOUT_MS } from './constants.js'
 
 const { storeDir, sessionName, cancelBuffer, resumeTs, runTs } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
@@ -19,8 +20,6 @@ parentPort.on('message', (msg) => {
     }
   }
 })
-
-const STORE_REQUEST_TIMEOUT_MS = 30_000
 
 function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, relPath) {
   return new Promise((resolve, reject) => {

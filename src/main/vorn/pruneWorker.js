@@ -2,11 +2,12 @@ import { workerData, parentPort } from 'worker_threads'
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
 import { unlink } from 'fs/promises'
 import { join } from 'path'
+import { PRUNE_BATCH } from './constants.js'
 
 const { storeDir, cancelBuffer, orphanList = null, startIndex = 0 } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
-const BATCH = 32
+const BATCH = PRUNE_BATCH
 
 async function run() {
   // Segnale immediato che il worker è partito

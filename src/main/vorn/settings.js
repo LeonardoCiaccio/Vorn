@@ -12,6 +12,13 @@ const _defaults = {
 
 const ALLOWED_KEYS = new Set(['theme', 'notifications', 'language', 'recentStores'])
 
+const _validators = {
+  theme:         v => typeof v === 'string',
+  notifications: v => typeof v === 'boolean',
+  language:      v => typeof v === 'string',
+  recentStores:  v => Array.isArray(v),
+}
+
 let _cache = null
 
 export function loadSettings() {
@@ -26,7 +33,7 @@ export function loadSettings() {
 
 export function saveSettings(patch) {
   const filtered = Object.fromEntries(
-    Object.entries(patch).filter(([k]) => ALLOWED_KEYS.has(k))
+    Object.entries(patch).filter(([k, v]) => ALLOWED_KEYS.has(k) && (_validators[k]?.(v) ?? true))
   )
   const updated = { ...loadSettings(), ...filtered }
   _cache = updated

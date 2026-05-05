@@ -4,8 +4,7 @@ import { pipeline } from 'stream/promises'
 import { extractContent } from './store.js'
 import { readVornMeta } from './format.js'
 import { loadRun } from './sessions.js'
-
-const EXTRACT_MAX_BYTES = 500 * 1024 * 1024 // 500 MB
+import { EXTRACT_MAX_BYTES } from './constants.js'
 
 // Restituisce il path assoluto solo se è contenuto dentro baseDir, altrimenti null
 function _safeJoin(baseDir, relPath) {
@@ -88,6 +87,7 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
 
     for (const rec of recsToExtract) {
       for (const relPath of rec.paths) {
+        if (isCancelled?.()) break
         try {
           const folderName = `${rec.session}-${rec.id}`
           const outPath    = _safeJoin(join(destDir, folderName), relPath)
