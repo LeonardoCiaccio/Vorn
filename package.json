@@ -1,7 +1,7 @@
 {
   "name": "vorn",
-  "version": "0.7.0",
-  "description": "Vorn — backup content-addressable",
+  "version": "0.7.3",
+  "description": "Vorn — Vault Of Redundant Nodes",
   "license": "AGPL-3.0-only",
   "author": "Leonardo Ciaccio <leonardo.ciaccio@gmail.com>",
   "main": "out/main/index.js",
