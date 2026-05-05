@@ -260,15 +260,17 @@
               >
                 <!-- Dot -->
                 <div class="shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center z-10 transition-colors"
-                  :class="run.status === 'done'   ? 'bg-gray-900 border-emerald-500/70' :
-                          run.status === 'paused' ? 'bg-gray-900 border-amber-500/70'  :
-                          run.status === 'running' ? 'bg-gray-900 border-indigo-500'    :
-                                                     'bg-gray-900 border-gray-600'"
+                  :class="run.status === 'done'    ? 'bg-gray-900 border-emerald-500/70' :
+                          run.status === 'paused'  ? 'bg-gray-900 border-amber-500/70'  :
+                          run.status === 'running'  ? 'bg-gray-900 border-indigo-500'    :
+                          run.status === 'error'    ? 'bg-gray-900 border-red-500/70'    :
+                                                      'bg-gray-900 border-gray-600'"
                 >
-                  <CheckCircleIcon     v-if="run.status === 'done'"    class="w-3 h-3 text-emerald-400" />
-                  <StopIcon            v-else-if="run.status === 'paused'"  class="w-3 h-3 text-amber-400" />
-                  <ArrowPathIcon       v-else-if="run.status === 'running'" class="w-3 h-3 text-indigo-400 animate-spin" />
-                  <ExclamationTriangleIcon v-else                           class="w-3 h-3 text-gray-500" />
+                  <CheckCircleIcon         v-if="run.status === 'done'"    class="w-3 h-3 text-emerald-400" />
+                  <StopIcon                v-else-if="run.status === 'paused'"  class="w-3 h-3 text-amber-400" />
+                  <ArrowPathIcon           v-else-if="run.status === 'running'" class="w-3 h-3 text-indigo-400 animate-spin" />
+                  <ExclamationTriangleIcon v-else-if="run.status === 'error'"   class="w-3 h-3 text-red-400" />
+                  <ExclamationTriangleIcon v-else                               class="w-3 h-3 text-gray-500" />
                 </div>
 
                 <!-- Card -->

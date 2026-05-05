@@ -1,4 +1,8 @@
 {
+  "ipcErrors": {
+    "ERR_FILESYSTEM_FAT32": "Le système de fichiers FAT32 n'est pas pris en charge. Formatez le volume en exFAT ou NTFS et réessayez."
+  },
+
   "nav": {
     "sessions": "Sessions",
     "store": "Dépôt",
@@ -23,7 +27,8 @@
     "running": "En cours",
     "paused": "En pause",
     "crashed": "Interrompu",
-    "aborted": "Abandonné"
+    "aborted": "Abandonné",
+    "error": "Erreur"
   },
 
   "sidebar": {

@@ -70,6 +70,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   CircleStackIcon,
   FolderOpenIcon,
@@ -78,6 +79,8 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/vue/24/outline'
 import { state, openStore, formatTs } from '../stores/vorn.js'
+
+const { t, te } = useI18n()
 
 const loading = ref(false)
 const error   = ref(null)
@@ -88,7 +91,9 @@ async function selectStore(path) {
   try {
     await openStore(path)
   } catch (e) {
-    error.value = e.message
+    const code = e.message.split('Error: ').pop()
+    const key  = `ipcErrors.${code}`
+    error.value = te(key) ? t(key) : code
   } finally {
     loading.value = false
   }

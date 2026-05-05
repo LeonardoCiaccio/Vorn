@@ -15,7 +15,7 @@ parentPort.on('message', (msg) => {
     const p = _pending.get(msg.id)
     if (p) {
       _pending.delete(msg.id)
-      if (msg.error) p.reject(new Error(msg.error))
+      if (msg.error) p.reject(Object.assign(new Error(msg.error), { code: msg.code }))
       else           p.resolve(msg.outcome)
     }
   }

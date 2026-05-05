@@ -19,6 +19,7 @@ const cfg = computed(() => {
     case 'paused':  return { label: t('status.paused'),  classes: 'bg-amber-500/15 text-amber-400',     dot: 'bg-amber-400' }
     case 'crashed': return { label: t('status.crashed'), classes: 'bg-red-500/15 text-red-400',         dot: 'bg-red-400' }
     case 'aborted': return { label: t('status.aborted'), classes: 'bg-orange-500/15 text-orange-400',   dot: 'bg-orange-400' }
+    case 'error':   return { label: t('status.error'),   classes: 'bg-red-500/15 text-red-400',         dot: 'bg-red-400' }
     default:        return { label: props.status,        classes: 'bg-gray-800 text-gray-400',          dot: 'bg-gray-500' }
   }
 })

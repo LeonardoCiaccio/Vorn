@@ -76,7 +76,7 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
       }
       storeBlob(ctx.activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath)
         .then(outcome => worker.postMessage({ type: 'store-result', id, outcome }))
-        .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message }))
+        .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message, code: err.code }))
     } else if (type === 'progress') {
       updateTaskProgress(taskId, msg.progress)
       _send(mainWindow, 'vorn:task-progress', { taskId, ...msg.progress })

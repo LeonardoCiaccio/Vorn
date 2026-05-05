@@ -1,4 +1,8 @@
 {
+  "ipcErrors": {
+    "ERR_FILESYSTEM_FAT32": "Il filesystem FAT32 non è supportato. Formatta il volume in exFAT o NTFS e riprova."
+  },
+
   "nav": {
     "sessions": "Sessioni",
     "store": "Store",
@@ -23,7 +27,8 @@
     "running": "In corso",
     "paused": "In pausa",
     "crashed": "Interrotta",
-    "aborted": "Annullata"
+    "aborted": "Annullata",
+    "error": "Errore"
   },
 
   "sidebar": {

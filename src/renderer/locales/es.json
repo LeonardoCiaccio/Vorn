@@ -1,4 +1,8 @@
 {
+  "ipcErrors": {
+    "ERR_FILESYSTEM_FAT32": "El sistema de archivos FAT32 no está soportado. Formatea el volumen como exFAT o NTFS e inténtalo de nuevo."
+  },
+
   "nav": {
     "sessions": "Sesiones",
     "store": "Almacén",
@@ -23,7 +27,8 @@
     "running": "En curso",
     "paused": "Pausado",
     "crashed": "Interrumpido",
-    "aborted": "Abortado"
+    "aborted": "Abortado",
+    "error": "Error"
   },
 
   "sidebar": {

@@ -119,6 +119,16 @@ export async function backup(storeDir, sessionName, opts = {}) {
       run.files[relPath] = hashVorn
       dbUpsertFile(filePath, mtime, bytes, hashVorn)
     } catch (e) {
+      if (e.code === 'ENOSPC') {
+        run.status      = 'error'
+        run.files_new   = filesNew
+        run.files_dedup = filesDedup
+        run.bytes_total = bytesTotal
+        run.bytes_new   = bytesNew
+        run.errors      = [...errors, { path: filePath, error: e.code, phase: 'store' }]
+        saveRun(storeDir, sessionName, run)
+        throw e
+      }
       errors.push({ path: filePath, error: e.code ?? e.message, phase: 'store' })
     }
 
