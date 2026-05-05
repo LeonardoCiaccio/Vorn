@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/banner.png" alt="Vorn — Vault Of Redundant Nodes" width="100%" />
+  <img src="build/icon.png" alt="Vorn — Vault Of Redundant Nodes" width="256px" />
   <br/><br/>
 
   <h1>Vorn</h1>
