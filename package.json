@@ -2,6 +2,8 @@
   "name": "vorn",
   "version": "0.7.0",
   "description": "Vorn — backup content-addressable",
+  "license": "AGPL-3.0-only",
+  "author": "Leonardo Ciaccio <leonardo.ciaccio@gmail.com>",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
