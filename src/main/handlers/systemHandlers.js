@@ -1,13 +1,27 @@
 import { ipcMain, app, dialog, shell, BrowserWindow } from 'electron'
 import { join, normalize, resolve } from 'path'
-import { readdirSync }              from 'fs'
+import { readdirSync, existsSync }  from 'fs'
 import { homedir }                  from 'os'
 import { getEntry, listStoreFiles, countStoreFiles, deleteStoreEntry, getCachedFileList } from '../vorn/store.js'
 import { listTasks }                from '../vorn/taskManager.js'
 import { ctx }                      from '../workerManager.js'
 import { logger }                   from '../vorn/logger.js'
+import { loadSettings }             from '../vorn/settings.js'
 
 const HASH_RE = /^[0-9a-f]{64}$/
+
+function _resolveIcon() {
+  const candidates = process.platform === 'win32'
+    ? ['../../build/icon.ico', '../../build/icon.png']
+    : process.platform === 'darwin'
+    ? ['../../build/icon.icns', '../../build/icon.png']
+    : ['../../build/icon.png']
+  for (const rel of candidates) {
+    const abs = join(__dirname, rel)
+    if (existsSync(abs)) return abs
+  }
+  return undefined
+}
 
 let _logWin = null
 
@@ -35,14 +49,39 @@ export function registerSystemHandlers(mainWindow) {
 
     const content = logger.read() || '(log file is empty)'
     const logPath = logger.path()
+    const isDark  = (loadSettings().theme ?? 'dark') === 'dark'
+
+    const c = isDark ? {
+      bg:            '#111827',
+      text:          '#d1d5db',
+      headerBg:      '#1f2937',
+      headerBorder:  '#374151',
+      headerTitle:   '#f9fafb',
+      headerPath:    '#6b7280',
+      error:         '#f87171',
+      warn:          '#fbbf24',
+      separator:     '#4b5563',
+      scrollThumb:   '#374151',
+    } : {
+      bg:            '#f9fafb',
+      text:          '#1f2937',
+      headerBg:      '#f3f4f6',
+      headerBorder:  '#e5e7eb',
+      headerTitle:   '#111827',
+      headerPath:    '#6b7280',
+      error:         '#dc2626',
+      warn:          '#d97706',
+      separator:     '#9ca3af',
+      scrollThumb:   '#d1d5db',
+    }
 
     _logWin = new BrowserWindow({
       width: 860,
       height: 640,
       title: 'Vorn — Log',
       autoHideMenuBar: true,
-      backgroundColor: '#111827',
-      icon: join(__dirname, '../../build/icon.png'),
+      backgroundColor: c.bg,
+      icon: _resolveIcon(),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -58,25 +97,30 @@ export function registerSystemHandlers(mainWindow) {
         (function () {
           const content = ${JSON.stringify(content)};
           const logPath = ${JSON.stringify(logPath)};
+          const c = ${JSON.stringify(c)};
 
           Object.assign(document.documentElement.style, { height: '100%' });
           Object.assign(document.body.style, {
             margin: '0', height: '100%', display: 'flex', flexDirection: 'column',
-            background: '#111827', color: '#d1d5db',
+            background: c.bg, color: c.text,
             fontFamily: "Consolas, 'Courier New', monospace", fontSize: '12px',
           });
 
+          const style = document.createElement('style');
+          style.textContent = '::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:' + c.scrollThumb + ';border-radius:99px}';
+          document.head.appendChild(style);
+
           const header = document.createElement('div');
           Object.assign(header.style, {
-            background: '#1f2937', borderBottom: '1px solid #374151',
+            background: c.headerBg, borderBottom: '1px solid ' + c.headerBorder,
             padding: '10px 16px', display: 'flex',
             alignItems: 'center', justifyContent: 'space-between', flexShrink: '0',
           });
           const h1 = document.createElement('span');
-          Object.assign(h1.style, { fontSize: '13px', fontWeight: '600', color: '#f9fafb' });
+          Object.assign(h1.style, { fontSize: '13px', fontWeight: '600', color: c.headerTitle });
           h1.textContent = 'Vorn — Application Log';
           const pathEl = document.createElement('span');
-          Object.assign(pathEl.style, { fontSize: '11px', color: '#6b7280' });
+          Object.assign(pathEl.style, { fontSize: '11px', color: c.headerPath });
           pathEl.textContent = logPath;
           header.appendChild(h1);
           header.appendChild(pathEl);
@@ -88,10 +132,10 @@ export function registerSystemHandlers(mainWindow) {
           });
           content.split('\\n').forEach(line => {
             const span = document.createElement('span');
-            if (line.includes('[ERROR]'))        span.style.color = '#f87171';
-            else if (line.includes('[WARN ]'))   span.style.color = '#fbbf24';
+            if (line.includes('[ERROR]'))        span.style.color = c.error;
+            else if (line.includes('[WARN ]'))   span.style.color = c.warn;
             else if (line.startsWith('─') || line.includes(' Session ')) {
-              span.style.color = '#4b5563';
+              span.style.color = c.separator;
               span.style.display = 'block';
               span.style.marginTop = '8px';
             }

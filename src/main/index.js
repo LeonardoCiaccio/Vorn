@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
+import { existsSync } from 'fs'
 import { registerIpcHandlers } from './ipc.js'
 import { logger, initLogger } from './vorn/logger.js'
 
@@ -7,6 +8,19 @@ import { logger, initLogger } from './vorn/logger.js'
 // focalizza quella già aperta e termina la nuova
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) app.quit()
+
+function resolveIcon() {
+  const candidates = process.platform === 'win32'
+    ? ['../../build/icon.ico', '../../build/icon.png']
+    : process.platform === 'darwin'
+    ? ['../../build/icon.icns', '../../build/icon.png']
+    : ['../../build/icon.png']
+  for (const rel of candidates) {
+    const abs = join(__dirname, rel)
+    if (existsSync(abs)) return abs
+  }
+  return undefined
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -16,7 +30,7 @@ function createWindow() {
     minHeight: 720,
     show: false,
     autoHideMenuBar: true,
-    icon: join(__dirname, '../../build/icon.png'),
+    icon: resolveIcon(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
     }

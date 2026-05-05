@@ -187,6 +187,22 @@ html.light .bg-indigo-500\/20 {
   background-color: rgba(99, 102, 241, 0.2) !important;
 }
 
+/* ── Drop overlay ── */
+html.light .bg-gray-950\/85 {
+  background-color: rgba(249, 250, 251, 0.93) !important;
+}
+
+/* ── Drop error banner ── */
+html.light .bg-red-950\/40 {
+  background-color: rgba(254, 226, 226, 0.9) !important;
+}
+html.light .border-red-700\/50 {
+  border-color: rgba(220, 38, 38, 0.4) !important;
+}
+html.light .text-red-300 {
+  color: #dc2626 !important;
+}
+
 /* ── Sezioni warning/danger: usa tinte chiare invece dei dark-950 ── */
 html.light .bg-amber-950\/30 {
   background-color: rgba(254, 243, 199, 0.8) !important;
