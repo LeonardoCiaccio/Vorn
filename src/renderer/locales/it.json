@@ -14,7 +14,8 @@
     "add": "Aggiungi",
     "stop": "Stop",
     "operationWait": "Operazione in corso — attendere il completamento",
-    "cannotUndo": "Questa operazione non può essere annullata."
+    "cannotUndo": "Questa operazione non può essere annullata.",
+    "avScan": "Scansione Antivirus"
   },
 
   "status": {

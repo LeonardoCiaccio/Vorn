@@ -14,7 +14,8 @@
     "add": "Add",
     "stop": "Stop",
     "operationWait": "Operation in progress — please wait",
-    "cannotUndo": "This operation cannot be undone."
+    "cannotUndo": "This operation cannot be undone.",
+    "avScan": "Antivirus Scan"
   },
 
   "status": {

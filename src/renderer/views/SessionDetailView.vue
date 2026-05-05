@@ -68,8 +68,11 @@
     <!-- Backup progress bar -->
     <div v-if="isRunning && backupProgress" class="px-8 py-3 bg-gray-900/60 border-b border-gray-800 shrink-0">
       <div class="flex items-center justify-between mb-1.5">
-        <span class="text-xs text-gray-400">
-          {{ backupProgress.file ? backupProgress.file.split(/[\\/]/).at(-1) : $t('sessionDetail.preparing') }}
+        <span class="text-xs text-gray-400 flex items-center gap-1.5">
+          <template v-if="backupProgress.file">
+            <span v-if="isExecutable(backupProgress.file)" class="text-red-400 font-semibold shrink-0">{{ $t('common.avScan') }}</span>{{ backupProgress.file.split(/[\\/]/).at(-1) }}
+          </template>
+          <template v-else>{{ $t('sessionDetail.preparing') }}</template>
         </span>
         <span class="text-xs text-gray-500 font-mono">
           {{ backupProgress.current ?? 0 }} / {{ backupProgress.total ?? '…' }}
@@ -672,6 +675,7 @@ function formatDuration(sec) {
   return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`
 }
 import StatusBadge from '../components/StatusBadge.vue'
+import { isExecutable } from '../utils/executable.js'
 import RestoreModal from '../components/RestoreModal.vue'
 import FileTree from '../components/FileTree.vue'
 

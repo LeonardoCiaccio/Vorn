@@ -264,9 +264,14 @@
                     <span v-if="activeTask(session.name).progress?.errors" class="text-red-400">
                       {{ $t('sessions.progress.errors', { n: activeTask(session.name).progress.errors }) }}
                     </span>
-                    <span v-if="activeTask(session.name).progress?.file" class="text-gray-600 font-mono truncate max-w-72 ml-auto">
-                      {{ activeTask(session.name).progress.file.split(/[\\/]/).at(-1) }}
-                    </span>
+                    <div v-if="activeTask(session.name).progress?.file" class="ml-auto flex items-center gap-1.5 min-w-0">
+                      <span v-if="isExecutable(activeTask(session.name).progress.file)" class="text-red-400 text-[10px] font-semibold shrink-0">
+                        {{ $t('common.avScan') }}
+                      </span>
+                      <span class="text-gray-600 font-mono truncate max-w-72">
+                        {{ activeTask(session.name).progress.file.split(/[\\/]/).at(-1) }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </td>
@@ -328,6 +333,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, PauseIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon } from '@heroicons/vue/24/outline'
 import { state, selectSession, deleteSession, getActiveTask, startBackup, cancelTask, formatTs, formatBytes } from '../stores/vorn.js'
+import { isExecutable } from '../utils/executable.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
 
