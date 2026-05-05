@@ -1,0 +1,409 @@
+{
+  "nav": {
+    "sessions": "Sitzungen",
+    "store": "Speicher",
+    "stats": "Statistiken",
+    "settings": "Einstellungen"
+  },
+
+  "common": {
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "close": "Schließen",
+    "delete": "Löschen",
+    "add": "Hinzufügen",
+    "stop": "Stopp",
+    "operationWait": "Vorgang läuft — bitte warten",
+    "cannotUndo": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
+    "avScan": "Virenscan"
+  },
+
+  "status": {
+    "done": "Abgeschlossen",
+    "running": "Laufend",
+    "paused": "Pausiert",
+    "crashed": "Unterbrochen",
+    "aborted": "Abgebrochen"
+  },
+
+  "sidebar": {
+    "noStore": "Kein Speicher konfiguriert"
+  },
+
+  "topbar": {
+    "settings": "Einstellungen",
+    "lightTheme": "Zum hellen Design wechseln",
+    "darkTheme": "Zum dunklen Design wechseln"
+  },
+
+  "settings": {
+    "title": "Einstellungen",
+    "interface": "Benutzeroberfläche",
+    "backup": "Sicherung",
+    "info": "Über",
+    "lang": {
+      "label": "Sprache",
+      "sub": "Sprache der Benutzeroberfläche"
+    },
+    "notif": {
+      "label": "Systembenachrichtigungen",
+      "sub": "Benachrichtigung am Ende jedes Laufs anzeigen"
+    },
+    "log": {
+      "section": "Protokolle",
+      "label": "Anwendungsprotokoll",
+      "sub": "Von der App aufgezeichnete Ereignisse, Warnungen und Fehler",
+      "open": "Öffnen"
+    },
+    "about": {
+      "github": "GitHub-Repository",
+      "githubSub": "Quellcode, Probleme und Beiträge",
+      "releases": "Updates",
+      "releasesSub": "Nach den neuesten verfügbaren Versionen suchen",
+      "open": "Öffnen"
+    }
+  },
+
+  "storeSelect": {
+    "disconnected": "Speicher getrennt — wählen Sie einen Speicher aus, um fortzufahren",
+    "title": "Speicher auswählen",
+    "subtitle": "Wählen Sie aus, wo Ihre Sicherungen gespeichert werden",
+    "recent": "Zuletzt verwendet",
+    "browse": "Durchsuchen…",
+    "opening": "Wird geöffnet…"
+  },
+
+  "store": {
+    "title": "Speicher",
+    "changeStore": "Speicher ändern",
+    "extractFiles": "Dateien extrahieren",
+    "refresh": "Aktualisieren",
+    "clearStore": "Speicher leeren",
+    "verifyIntegrity": "Integrität prüfen",
+    "hdr": {
+      "hash": "Hash",
+      "size": "Größe",
+      "lastModified": "Zuletzt geändert"
+    },
+    "noFiles": "Keine Dateien im Speicher",
+    "clearing": {
+      "title": "Leeren läuft…",
+      "dontClose": "Schließen Sie die Anwendung nicht",
+      "deleted": "{n} gelöscht",
+      "total": "{n} insgesamt",
+      "errors": "{n} Fehler"
+    },
+    "detail": {
+      "title": "Dateidetails",
+      "hash": "Hash",
+      "size": "Größe",
+      "created": "Erstellt am",
+      "modified": "Geändert am",
+      "sessions": "Sitzungen ({n})",
+      "noSessions": "Keine Sitzungen",
+      "copyHash": "Hash kopieren",
+      "copied": "Kopiert!",
+      "restoreFile": "Datei wiederherstellen",
+      "operationInProgress": "Vorgang läuft"
+    },
+    "clearModal": {
+      "title": "Speicher leeren",
+      "irrev": "Unumkehrbarer Vorgang",
+      "warning": "Alle {count} .vorn-Dateien im Speicher werden dauerhaft gelöscht. Sitzungsmanifeste sind nicht betroffen, aber die Sicherungsdaten sind unwiederbringlich verloren.",
+      "typeToConfirm": "Geben Sie {word} zur Bestätigung ein",
+      "confirmWord": "LÖSCHEN",
+      "deleteAll": "Alles löschen"
+    },
+    "clearReport": {
+      "title": "Speicher geleert",
+      "deleted": "Gelöscht",
+      "errors": "Fehler"
+    },
+    "integrityReport": {
+      "title": "Integritätsbericht",
+      "checked": "Geprüft",
+      "ok": "OK",
+      "corrupt": "Beschädigt",
+      "allOk": "Alle Dateien sind intakt",
+      "noIssues": "Keine Anomalien im Speicher erkannt.",
+      "corruptFiles": "Beschädigte Dateien"
+    },
+    "prune": {
+      "button": "Bereinigen",
+      "confirmTitle": "Veraltete Dateien bereinigen",
+      "confirmBody": "Alle .vorn-Dateien, auf die kein Lauf einer Sitzung mehr verweist, werden dauerhaft gelöscht. Aktive Daten werden nicht angetastet.",
+      "confirm": "Analysieren und bereinigen",
+      "runningTitle": "Bereinigung läuft…",
+      "dontClose": "Schließen Sie die Anwendung nicht",
+      "scanning": "Sitzungen werden gescannt… ({scanned}/{total})",
+      "computing": "Veraltete Dateien werden berechnet…",
+      "deleting": "Veraltete Dateien werden gelöscht…",
+      "orphansFound": "{n} veraltete Dateien gefunden",
+      "deleted": "{n} gelöscht",
+      "failed": "{n} Fehler",
+      "pause": "Pause",
+      "resume": "Fortsetzen",
+      "pausedTitle": "Bereinigung pausiert",
+      "pausedSub": "Der Vorgang wurde unterbrochen. Sie können ihn jederzeit fortsetzen.",
+      "reportTitle": "Bereinigung abgeschlossen",
+      "reportTitleCancelled": "Bereinigung abgebrochen",
+      "orphanCount": "Veraltet gefunden",
+      "reportDeleted": "Gelöscht",
+      "reportFailed": "Fehler",
+      "allClean": "Speicher bereits sauber",
+      "allCleanSub": "Keine veralteten Dateien im Speicher gefunden."
+    },
+    "restoreModal": {
+      "title": "Datei wiederherstellen",
+      "session": "Sitzung:",
+      "originalPath": "Originalpfad",
+      "customDest": "Benutzerdefiniertes Ziel",
+      "notAvailable": "Sitzung nicht mehr verfügbar",
+      "savedDirectly": "Die Datei wird direkt in diesen Ordner gespeichert.",
+      "placeholder": "C:\\Pfad\\Ziel",
+      "confirm": "Wiederherstellung bestätigen",
+      "fileRestored": "Datei wiederhergestellt: {name}",
+      "restoreFailed": "Fehler bei der Wiederherstellung"
+    }
+  },
+
+  "sessions": {
+    "title": "Sitzungen",
+    "subtitle": "{sessions} Sitzungen · {runs} Läufe",
+    "select": "Auswählen",
+    "startAll": "Alle starten",
+    "deleteAll": "Alle löschen",
+    "cancel": "Abbrechen",
+    "newSession": "Neue Sitzung",
+    "startSelected": "Ausgewählte starten",
+    "startSelectedCount": "Ausgewählte starten ({n})",
+    "deleteSelected": "Ausgewählte löschen",
+    "deleteSelectedCount": "Ausgewählte löschen ({n})",
+    "neverRun": "Nie ausgeführt",
+    "loading": "Sitzungen werden geladen…",
+    "hdr": {
+      "session": "Sitzung",
+      "lastRun": "Letzter Lauf",
+      "status": "Status",
+      "runs": "Läufe",
+      "files": "Dateien"
+    },
+    "sourcesCount": "{count} Quelle | {count} Quellen",
+    "actions": {
+      "suspend": "Sicherung aussetzen",
+      "resume": "Sicherung fortsetzen",
+      "start": "Sicherung starten",
+      "delete": "Sitzung löschen"
+    },
+    "confirmDelete": {
+      "title": "Löschung bestätigen",
+      "message": "Sie sind dabei, {count} Sitzung zu löschen. | Sie sind dabei, {count} Sitzungen zu löschen."
+    },
+    "noSessions": "Keine Sitzungen",
+    "noSessionsHelp": "Erstellen Sie Ihre erste Sitzung, um mit der Sicherung zu beginnen",
+    "drop": {
+      "title": "Hier ablegen, um eine Sitzung zu erstellen",
+      "sub": "Ordner werden als Quellen verwendet",
+      "errorDrives": "Sitzung kann nicht von verschiedenen Laufwerken erstellt werden ({drives})"
+    },
+    "progress": {
+      "new": "+{n} neu",
+      "dedup": "{n} dedup",
+      "errors": "{n} Fehler",
+      "written": "{n} geschrieben",
+      "total": "{n} insgesamt"
+    }
+  },
+
+  "sessionDetail": {
+    "createdAt": "Erstellt am {date}",
+    "select": "Auswählen",
+    "cancel": "Abbrechen",
+    "deleteSelectedRuns": "Ausgewählte löschen ({n})",
+    "suspend": "Aussetzen",
+    "suspending": "Wird ausgesetzt…",
+    "resume": "Fortsetzen",
+    "backup": "Sicherung",
+    "preparing": "Vorbereitung…",
+    "restoring": "Wiederherstellung läuft…",
+    "restoreOk": "Wiederherstellung abgeschlossen: {restored} von {total} Dateien wiederhergestellt",
+    "restorePartial": "{restored}/{total} wiederhergestellt — {errors} Fehler",
+    "fileNotFound": "Datei im Speicher nicht gefunden",
+    "noRuns": "Noch keine Läufe",
+    "hdr": {
+      "datetime": "Datum / Uhrzeit",
+      "status": "Status",
+      "files": "Dateien",
+      "new": "Neu",
+      "written": "Geschrieben",
+      "errors": "Fehler"
+    },
+    "list": "Liste",
+    "timeline": "Zeitachse",
+    "id": "ID",
+    "runs": "Läufe",
+    "sources": "Quellen",
+    "excludedPaths": "Ausgeschlossene Pfade",
+    "excludePatterns": "Ausschlussmuster",
+    "runDetail": "Laufdetails",
+    "loadingFiles": "Dateien werden geladen…",
+    "errorsInRun": "{n} Fehler aufgezeichnet",
+    "tl": {
+      "total": "Gesamt",
+      "new": "Neu",
+      "dedup": "Dedup",
+      "written": "Geschrieben",
+      "totalBytes": "Gesamt",
+      "duration": "Dauer",
+      "new_legend": "neu",
+      "dedup_legend": "dedup"
+    },
+    "deleteRun": "Diesen Lauf löschen?",
+    "confirmDeleteRuns": {
+      "title": "Löschung bestätigen",
+      "message": "Sie sind dabei, {count} Läufe zu löschen."
+    },
+    "selectedFiles": "{n} ausgewählt",
+    "noFileSelected": "Keine Datei ausgewählt",
+    "deleteRun_btn": "Löschen",
+    "restore": "Wiederherstellen",
+    "restoreBtn": "Wiederherstellen",
+    "progress": {
+      "new": "+{n} neu",
+      "dedup": "{n} dedup",
+      "errors": "{n} Fehler",
+      "written": "{n} geschrieben",
+      "restored": "{n} wiederhergestellt"
+    }
+  },
+
+  "newSession": {
+    "title": "Neue Sitzung",
+    "foldersLabel": "Einzuschließende Ordner",
+    "legend": {
+      "source": "Quelle",
+      "excluded": "ausgeschlossen"
+    },
+    "instructions": "Ordner auswählen. Erweitern und Unterordner abwählen, um sie auszuschließen.",
+    "nameLabel": "Sitzungsname",
+    "namePlaceholder": "z. B. Dokumente, Projekte, Fotos…",
+    "patternsLabel": "Ausschlussmuster",
+    "patternsHelp": "Auf Datei-/Ordnernamen angewendet. Verwenden Sie * als Platzhalter.",
+    "patternPlaceholder": "z. B. *.bak oder .cache",
+    "resetPatterns": "Alle Muster zurücksetzen",
+    "create": "Sitzung erstellen",
+    "sourcesCount": "{count} Quelle ausgewählt | {count} Quellen ausgewählt",
+    "excludedCount": "· {count} ausgeschlossen",
+    "errors": {
+      "noName": "Geben Sie einen Sitzungsnamen ein",
+      "duplicateName": "Eine Sitzung mit diesem Namen existiert bereits",
+      "noSource": "Wählen Sie mindestens einen Quellordner aus",
+      "createFailed": "Fehler beim Erstellen der Sitzung"
+    }
+  },
+
+  "editSession": {
+    "title": "Sitzung bearbeiten",
+    "nameLabel": "Sitzungsname",
+    "sources": {
+      "label": "Quellordner",
+      "origin": "(Herkunft)",
+      "placeholder": "Quellordnerpfad"
+    },
+    "storeDir": {
+      "label": "Speicherordner",
+      "destination": "(Ziel)",
+      "placeholder": "z. B. D:\\VornStore oder /mnt/backup/vorn",
+      "help": "Der Ordner, in dem .vorn-Dateien gespeichert werden"
+    },
+    "saveChanges": "Änderungen speichern",
+    "errors": {
+      "noStore": "Geben Sie den Speicherpfad ein",
+      "noSource": "Geben Sie mindestens einen Quellordner ein",
+      "saveFailed": "Speichern fehlgeschlagen"
+    }
+  },
+
+  "restore": {
+    "title": "Sicherung wiederherstellen",
+    "description": "Wählen Sie aus, wohin die Dateien für den Lauf vom {date} wiederhergestellt werden sollen.",
+    "selective": "Selektive Wiederherstellung:",
+    "files": "{n} Dateien",
+    "originalPath": "Originalpfad",
+    "customDest": "Benutzerdefiniertes Ziel",
+    "customPlaceholder": "C:\\Pfad\\Ziel",
+    "note": "Hinweis: Die Unterordnerstruktur wird hier nachgebildet.",
+    "confirm": "Wiederherstellung bestätigen"
+  },
+
+  "extractModal": {
+    "title": "Datei extrahieren",
+    "fileLabel": "Datei:",
+    "destLabel": "Zielordner",
+    "destPlaceholder": "Ordner auswählen…",
+    "extract": "Extrahieren"
+  },
+
+  "extractStore": {
+    "title": "Dateien aus Speicher extrahieren",
+    "warning": {
+      "title": "Datenwiederherstellungsverfahren",
+      "text1": "Verwenden Sie diese Funktion <strong>nur, wenn Sie die Sitzungsreferenzen verloren haben</strong>. Extrahierte Dateien entsprechen möglicherweise nicht den ursprünglichen Sitzungen: Im Laufe der Zeit wurden Datensätze möglicherweise geändert, Dateien gelöscht oder verschoben.",
+      "text2": "Wenn mehrere Sitzungen denselben Namen haben, werden separate Ordner im Format <code>Name-ID</code> erstellt — zum Beispiel <code>Pippo-a1b2c3</code> und <code>Pippo-d4e5f6</code>."
+    },
+    "filterLabel": "Nach Sitzung filtern",
+    "filterHelp": "Leer lassen, um alle Dateien aus allen im Speicher gefundenen Sitzungen zu extrahieren.",
+    "filterPlaceholder": "z. B. Pippo",
+    "destLabel": "Zielordner",
+    "destPlaceholder": "Einen Ordner auswählen…",
+    "destHelp": "Dateien werden in Ziel/<Sitzungs-ID>/<relativer Pfad> extrahiert",
+    "analyzing": "Analyse…",
+    "extracted": "{n} extrahiert",
+    "fatalError": "Fehler: {msg}",
+    "empty": "Speicher leer — keine Dateien zum Extrahieren",
+    "success": "{extracted} von {total} analysierten Dateien extrahiert",
+    "sessionsFound": "Im Speicher gefundene Sitzungen",
+    "noRecords": {
+      "title": "Dateien ohne Header ({n})",
+      "sub": "Diese Dateien enthalten keine Sitzungsdatensätze und wurden nicht extrahiert."
+    },
+    "errorsCount": "{n} Fehler",
+    "extracting": "Extraktion…",
+    "extract": "Extrahieren",
+    "newExtraction": "Neue Extraktion",
+    "closeOrCancel": {
+      "done": "Schließen",
+      "running": "Abbrechen"
+    },
+    "errors": {
+      "noDestination": "Wählen Sie einen Zielordner aus",
+      "extractFailed": "Fehler bei der Extraktion"
+    }
+  },
+
+  "fileTree": {
+    "title": "Dateien im Lauf",
+    "exitSelection": "Auswahl beenden",
+    "selectForRestore": "Dateien zur Wiederherstellung auswählen",
+    "collapseAll": "Alle einklappen",
+    "expandAll": "Alle ausklappen",
+    "loading": "Wird geladen…",
+    "noFiles": "Keine Dateien in diesem Lauf"
+  },
+
+  "folderBrowser": {
+    "noSubfolders": "Keine Unterordner",
+    "add": "Hinzufügen",
+    "added": "Hinzugefügt",
+    "addCurrent": "Aktuellen Ordner hinzufügen",
+    "currentAdded": "Aktueller Ordner hinzugefügt"
+  },
+
+  "sourceTree": {
+    "changeRoot": "Wurzelverzeichnis ändern",
+    "storeError": "Der Speicherordner kann nicht als Quelle verwendet werden.",
+    "badgeSource": "Quelle",
+    "badgeFile": "Datei",
+    "empty": "Kein Inhalt"
+  }
+}

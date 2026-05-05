@@ -15,7 +15,7 @@ const ALLOWED_KEYS = new Set(['theme', 'notifications', 'language', 'recentStore
 const _validators = {
   theme:         v => v === 'dark' || v === 'light',
   notifications: v => typeof v === 'boolean',
-  language:      v => ['it', 'en'].includes(v),
+  language:      v => ['it', 'en', 'fr', 'de', 'es', 'pt'].includes(v),
   recentStores:  v => Array.isArray(v),
 }
 

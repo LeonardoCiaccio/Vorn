@@ -1,0 +1,409 @@
+{
+  "nav": {
+    "sessions": "Sessões",
+    "store": "Repositório",
+    "stats": "Estatísticas",
+    "settings": "Configurações"
+  },
+
+  "common": {
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "close": "Fechar",
+    "delete": "Excluir",
+    "add": "Adicionar",
+    "stop": "Parar",
+    "operationWait": "Operação em curso — por favor aguarde",
+    "cannotUndo": "Esta operação não pode ser desfeita.",
+    "avScan": "Verificação de Antivírus"
+  },
+
+  "status": {
+    "done": "Concluído",
+    "running": "Em execução",
+    "paused": "Pausado",
+    "crashed": "Interrompido",
+    "aborted": "Abortado"
+  },
+
+  "sidebar": {
+    "noStore": "Nenhum repositório configurado"
+  },
+
+  "topbar": {
+    "settings": "Configurações",
+    "lightTheme": "Mudar para tema claro",
+    "darkTheme": "Mudar para tema escuro"
+  },
+
+  "settings": {
+    "title": "Configurações",
+    "interface": "Interface",
+    "backup": "Backup",
+    "info": "Sobre",
+    "lang": {
+      "label": "Idioma",
+      "sub": "Idioma da interface"
+    },
+    "notif": {
+      "label": "Notificações do sistema",
+      "sub": "Mostrar uma notificação ao final de cada execução"
+    },
+    "log": {
+      "section": "Logs",
+      "label": "Log da aplicação",
+      "sub": "Eventos, avisos e erros registrados pela aplicação",
+      "open": "Abrir"
+    },
+    "about": {
+      "github": "Repositório GitHub",
+      "githubSub": "Código-fonte, problemas e contribuições",
+      "releases": "Atualizações",
+      "releasesSub": "Verificar as últimas versões disponíveis",
+      "open": "Abrir"
+    }
+  },
+
+  "storeSelect": {
+    "disconnected": "Repositório desconectado — selecione um repositório para continuar",
+    "title": "Selecionar repositório",
+    "subtitle": "Escolha onde seus backups serão armazenados",
+    "recent": "Recente",
+    "browse": "Procurar…",
+    "opening": "Abrindo…"
+  },
+
+  "store": {
+    "title": "Repositório",
+    "changeStore": "Alterar repositório",
+    "extractFiles": "Extrair arquivos",
+    "refresh": "Atualizar",
+    "clearStore": "Limpar repositório",
+    "verifyIntegrity": "Verificar integridade",
+    "hdr": {
+      "hash": "Hash",
+      "size": "Tamanho",
+      "lastModified": "Última modificação"
+    },
+    "noFiles": "Nenhum arquivo no repositório",
+    "clearing": {
+      "title": "Limpeza em curso…",
+      "dontClose": "Não feche a aplicação",
+      "deleted": "{n} excluídos",
+      "total": "{n} no total",
+      "errors": "{n} erros"
+    },
+    "detail": {
+      "title": "Detalhe do arquivo",
+      "hash": "Hash",
+      "size": "Tamanho",
+      "created": "Criado em",
+      "modified": "Modificado em",
+      "sessions": "Sessões ({n})",
+      "noSessions": "Sem sessões",
+      "copyHash": "Copiar hash",
+      "copied": "Copiado!",
+      "restoreFile": "Restaurar arquivo",
+      "operationInProgress": "Operação em curso"
+    },
+    "clearModal": {
+      "title": "Limpar Repositório",
+      "irrev": "Operação irreversível",
+      "warning": "Todos os {count} arquivos .vorn no repositório serão excluídos permanentemente. Os manifestos de sessão não são afetados, mas os dados de backup serão irrecuperáveis.",
+      "typeToConfirm": "Digite {word} para confirmar",
+      "confirmWord": "EXCLUIR",
+      "deleteAll": "Excluir tudo"
+    },
+    "clearReport": {
+      "title": "Repositório limpo",
+      "deleted": "Excluídos",
+      "errors": "Erros"
+    },
+    "integrityReport": {
+      "title": "Relatório de Integridade",
+      "checked": "Verificados",
+      "ok": "OK",
+      "corrupt": "Corrompidos",
+      "allOk": "Todos os arquivos estão intactos",
+      "noIssues": "Nenhuma anomalia detectada no repositório.",
+      "corruptFiles": "Arquivos corrompidos"
+    },
+    "prune": {
+      "button": "Limpar",
+      "confirmTitle": "Limpar arquivos obsoletos",
+      "confirmBody": "Todos os arquivos .vorn que não são mais referenciados por nenhuma execução de nenhuma sessão serão excluídos permanentemente. Dados ativos não serão tocados.",
+      "confirm": "Analisar e limpar",
+      "runningTitle": "Limpeza em curso…",
+      "dontClose": "Não feche a aplicação",
+      "scanning": "Escaneando sessões… ({scanned}/{total})",
+      "computing": "Calculando arquivos obsoletos…",
+      "deleting": "Excluindo arquivos obsoletos…",
+      "orphansFound": "{n} arquivos obsoletos encontrados",
+      "deleted": "{n} excluídos",
+      "failed": "{n} erros",
+      "pause": "Pausa",
+      "resume": "Retomar",
+      "pausedTitle": "Limpeza pausada",
+      "pausedSub": "A operação foi suspensa. Você pode retomar a qualquer momento.",
+      "reportTitle": "Limpeza concluída",
+      "reportTitleCancelled": "Limpeza cancelada",
+      "orphanCount": "Obsoletos encontrados",
+      "reportDeleted": "Excluídos",
+      "reportFailed": "Erros",
+      "allClean": "Repositório já está limpo",
+      "allCleanSub": "Nenhum arquivo obsoleto encontrado no repositório."
+    },
+    "restoreModal": {
+      "title": "Restaurar arquivo",
+      "session": "Sessão:",
+      "originalPath": "Caminho original",
+      "customDest": "Destino personalizado",
+      "notAvailable": "Sessão não mais disponível",
+      "savedDirectly": "O arquivo será salvo diretamente nesta pasta.",
+      "placeholder": "C:\\Caminho\\Destino",
+      "confirm": "Confirmar restauração",
+      "fileRestored": "Arquivo restaurado: {name}",
+      "restoreFailed": "Erro durante a restauração"
+    }
+  },
+
+  "sessions": {
+    "title": "Sessões",
+    "subtitle": "{sessions} sessões · {runs} execuções",
+    "select": "Selecionar",
+    "startAll": "Iniciar todas",
+    "deleteAll": "Excluir todas",
+    "cancel": "Cancelar",
+    "newSession": "Nova sessão",
+    "startSelected": "Iniciar selecionadas",
+    "startSelectedCount": "Iniciar selecionadas ({n})",
+    "deleteSelected": "Excluir selecionadas",
+    "deleteSelectedCount": "Excluir selecionadas ({n})",
+    "neverRun": "Nunca executada",
+    "loading": "Carregando sessões…",
+    "hdr": {
+      "session": "Sessão",
+      "lastRun": "Última execução",
+      "status": "Status",
+      "runs": "Execuções",
+      "files": "Arquivos"
+    },
+    "sourcesCount": "{count} origem | {count} origens",
+    "actions": {
+      "suspend": "Suspender backup",
+      "resume": "Retomar backup",
+      "start": "Iniciar backup",
+      "delete": "Excluir sessão"
+    },
+    "confirmDelete": {
+      "title": "Confirmar exclusão",
+      "message": "Você está prestes a excluir {count} sessão. | Você está prestes a excluir {count} sessões."
+    },
+    "noSessions": "Sem sessões",
+    "noSessionsHelp": "Crie sua primeira sessão para começar o backup",
+    "drop": {
+      "title": "Arraste para criar uma sessão",
+      "sub": "As pastas serão usadas como origens",
+      "errorDrives": "Não é possível criar uma sessão de drives diferentes ({drives})"
+    },
+    "progress": {
+      "new": "+{n} novos",
+      "dedup": "{n} dedup",
+      "errors": "{n} erros",
+      "written": "{n} gravados",
+      "total": "{n} no total"
+    }
+  },
+
+  "sessionDetail": {
+    "createdAt": "Criada em {date}",
+    "select": "Selecionar",
+    "cancel": "Cancelar",
+    "deleteSelectedRuns": "Excluir selecionadas ({n})",
+    "suspend": "Suspender",
+    "suspending": "Suspendendo…",
+    "resume": "Retomar",
+    "backup": "Backup",
+    "preparing": "Preparando…",
+    "restoring": "Restauração em curso…",
+    "restoreOk": "Restauração concluída: {restored} arquivos restaurados de {total}",
+    "restorePartial": "{restored}/{total} restaurados — {errors} erros",
+    "fileNotFound": "arquivo não encontrado no repositório",
+    "noRuns": "Sem execuções ainda",
+    "hdr": {
+      "datetime": "Data / Hora",
+      "status": "Status",
+      "files": "Arquivos",
+      "new": "Novos",
+      "written": "Gravados",
+      "errors": "Erros"
+    },
+    "list": "Lista",
+    "timeline": "Linha do tempo",
+    "id": "ID",
+    "runs": "Execuções",
+    "sources": "Origens",
+    "excludedPaths": "Caminhos excluídos",
+    "excludePatterns": "Padrões de exclusão",
+    "runDetail": "Detalhe da execução",
+    "loadingFiles": "Carregando arquivos…",
+    "errorsInRun": "{n} erros registrados",
+    "tl": {
+      "total": "Total",
+      "new": "Novos",
+      "dedup": "Dedup",
+      "written": "Gravados",
+      "totalBytes": "Total",
+      "duration": "Duração",
+      "new_legend": "novos",
+      "dedup_legend": "dedup"
+    },
+    "deleteRun": "Excluir esta execução?",
+    "confirmDeleteRuns": {
+      "title": "Confirmar exclusão",
+      "message": "Você está prestes a excluir {count} execuções."
+    },
+    "selectedFiles": "{n} selecionados",
+    "noFileSelected": "Nenhum arquivo selecionado",
+    "deleteRun_btn": "Excluir",
+    "restore": "Restaurar",
+    "restoreBtn": "Restaurar",
+    "progress": {
+      "new": "+{n} novos",
+      "dedup": "{n} dedup",
+      "errors": "{n} erros",
+      "written": "{n} gravados",
+      "restored": "{n} restaurados"
+    }
+  },
+
+  "newSession": {
+    "title": "Nova sessão",
+    "foldersLabel": "Pastas a incluir",
+    "legend": {
+      "source": "origem",
+      "excluded": "excluído"
+    },
+    "instructions": "Selecione as pastas. Expanda e desmarque as subpastas para excluir.",
+    "nameLabel": "Nome da sessão",
+    "namePlaceholder": "ex: Documentos, Projetos, Fotos…",
+    "patternsLabel": "Padrões de exclusão",
+    "patternsHelp": "Aplicado ao nome do arquivo/pasta. Use * como curinga.",
+    "patternPlaceholder": "ex: *.bak ou .cache",
+    "resetPatterns": "Redefinir todos os padrões",
+    "create": "Criar sessão",
+    "sourcesCount": "{count} origem selecionada | {count} origens selecionadas",
+    "excludedCount": "· {count} excluídos",
+    "errors": {
+      "noName": "Digite um nome para a sessão",
+      "duplicateName": "Uma sessão com este nome já existe",
+      "noSource": "Selecione pelo menos uma pasta de origem",
+      "createFailed": "Erro ao criar a sessão"
+    }
+  },
+
+  "editSession": {
+    "title": "Editar sessão",
+    "nameLabel": "Nome da sessão",
+    "sources": {
+      "label": "Pastas de origem",
+      "origin": "(origem)",
+      "placeholder": "Caminho da pasta de origem"
+    },
+    "storeDir": {
+      "label": "Pasta do repositório",
+      "destination": "(destino)",
+      "placeholder": "ex: D:\\VornStore ou /mnt/backup/vorn",
+      "help": "A pasta onde os arquivos .vorn serão salvos"
+    },
+    "saveChanges": "Salvar alterações",
+    "errors": {
+      "noStore": "Digite o caminho do repositório",
+      "noSource": "Digite pelo menos uma pasta de origem",
+      "saveFailed": "Falha ao salvar"
+    }
+  },
+
+  "restore": {
+    "title": "Restaurar Backup",
+    "description": "Selecione onde deseja restaurar os arquivos para a execução de {date}.",
+    "selective": "Restauração seletiva:",
+    "files": "{n} arquivos",
+    "originalPath": "Caminho original",
+    "customDest": "Destino personalizado",
+    "customPlaceholder": "C:\\Caminho\\Destino",
+    "note": "Nota: A estrutura de subpastas será recriada aqui.",
+    "confirm": "Confirmar restauração"
+  },
+
+  "extractModal": {
+    "title": "Extrair Arquivo",
+    "fileLabel": "Arquivo:",
+    "destLabel": "Pasta de destino",
+    "destPlaceholder": "Selecionar pasta…",
+    "extract": "Extrair"
+  },
+
+  "extractStore": {
+    "title": "Extrair arquivos do repositório",
+    "warning": {
+      "title": "Procedimento de recuperação de dados",
+      "text1": "Use esta função <strong>apenas se tiver perdido as referências da sessão</strong>. Os arquivos extraídos podem não corresponder às sessões originais: ao longo do tempo os registros podem ter sido modificados, arquivos excluídos ou movidos.",
+      "text2": "Se várias sessões tiverem o mesmo nome, pastas separadas serão criadas no formato <code>nome-id</code> — por exemplo <code>Pippo-a1b2c3</code> e <code>Pippo-d4e5f6</code>."
+    },
+    "filterLabel": "Filtrar por sessão",
+    "filterHelp": "Deixe vazio para extrair todos os arquivos de todas as sessões encontradas no repositório.",
+    "filterPlaceholder": "ex: Pippo",
+    "destLabel": "Pasta de destino",
+    "destPlaceholder": "Selecione uma pasta…",
+    "destHelp": "Os arquivos serão extraídos em destino/<session-id>/<caminho relativo>",
+    "analyzing": "Analisando…",
+    "extracted": "{n} extraídos",
+    "fatalError": "Erro: {msg}",
+    "empty": "Repositório vazio — nenhum arquivo para extrair",
+    "success": "{extracted} arquivos extraídos de {total} analisados",
+    "sessionsFound": "Sessões encontradas no repositório",
+    "noRecords": {
+      "title": "Arquivos sem cabeçalho ({n})",
+      "sub": "Estes arquivos não contêm registros de sessão e não foram extraídos."
+    },
+    "errorsCount": "{n} erros",
+    "extracting": "Extraindo…",
+    "extract": "Extrair",
+    "newExtraction": "Nova extração",
+    "closeOrCancel": {
+      "done": "Fechar",
+      "running": "Cancelar"
+    },
+    "errors": {
+      "noDestination": "Selecione uma pasta de destino",
+      "extractFailed": "Erro durante a extração"
+    }
+  },
+
+  "fileTree": {
+    "title": "Arquivos na execução",
+    "exitSelection": "Sair da seleção",
+    "selectForRestore": "Selecionar arquivos para restaurar",
+    "collapseAll": "Recolher tudo",
+    "expandAll": "Expandir tudo",
+    "loading": "Carregando…",
+    "noFiles": "Nenhum arquivo nesta execução"
+  },
+
+  "folderBrowser": {
+    "noSubfolders": "Sem subpastas",
+    "add": "Adicionar",
+    "added": "Adicionado",
+    "addCurrent": "Adicionar pasta atual",
+    "currentAdded": "Pasta atual adicionada"
+  },
+
+  "sourceTree": {
+    "changeRoot": "Alterar raiz",
+    "storeError": "A pasta do repositório não pode ser usada como origem.",
+    "badgeSource": "origem",
+    "badgeFile": "arquivo",
+    "empty": "Sem conteúdo"
+  }
+}

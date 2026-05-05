@@ -1,0 +1,409 @@
+{
+  "nav": {
+    "sessions": "Sesiones",
+    "store": "Almacén",
+    "stats": "Estadísticas",
+    "settings": "Configuración"
+  },
+
+  "common": {
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "add": "Añadir",
+    "stop": "Detener",
+    "operationWait": "Operación en curso — por favor espere",
+    "cannotUndo": "Esta operación no se puede deshacer.",
+    "avScan": "Escaneo Antivirus"
+  },
+
+  "status": {
+    "done": "Completado",
+    "running": "En curso",
+    "paused": "Pausado",
+    "crashed": "Interrumpido",
+    "aborted": "Abortado"
+  },
+
+  "sidebar": {
+    "noStore": "Ningún almacén configurado"
+  },
+
+  "topbar": {
+    "settings": "Configuración",
+    "lightTheme": "Cambiar a tema claro",
+    "darkTheme": "Cambiar a tema oscuro"
+  },
+
+  "settings": {
+    "title": "Configuración",
+    "interface": "Interfaz",
+    "backup": "Copia de seguridad",
+    "info": "Acerca de",
+    "lang": {
+      "label": "Idioma",
+      "sub": "Idioma de la interfaz"
+    },
+    "notif": {
+      "label": "Notificaciones del sistema",
+      "sub": "Mostrar una notificación al final de cada ejecución"
+    },
+    "log": {
+      "section": "Registros",
+      "label": "Registro de la aplicación",
+      "sub": "Eventos, advertencias y errores registrados por la aplicación",
+      "open": "Abrir"
+    },
+    "about": {
+      "github": "Repositorio GitHub",
+      "githubSub": "Código fuente, problemas y contribuciones",
+      "releases": "Actualizaciones",
+      "releasesSub": "Consultar las últimas versiones disponibles",
+      "open": "Abrir"
+    }
+  },
+
+  "storeSelect": {
+    "disconnected": "Almacén desconectado — seleccione un almacén para continuar",
+    "title": "Seleccionar almacén",
+    "subtitle": "Elija dónde se guardan sus copias de seguridad",
+    "recent": "Reciente",
+    "browse": "Examinar…",
+    "opening": "Abriendo…"
+  },
+
+  "store": {
+    "title": "Almacén",
+    "changeStore": "Cambiar almacén",
+    "extractFiles": "Extraer archivos",
+    "refresh": "Actualizar",
+    "clearStore": "Vaciar almacén",
+    "verifyIntegrity": "Verificar integridad",
+    "hdr": {
+      "hash": "Hash",
+      "size": "Tamaño",
+      "lastModified": "Última modificación"
+    },
+    "noFiles": "No hay archivos en el almacén",
+    "clearing": {
+      "title": "Vaciado en curso…",
+      "dontClose": "No cierre la aplicación",
+      "deleted": "{n} eliminados",
+      "total": "{n} en total",
+      "errors": "{n} errores"
+    },
+    "detail": {
+      "title": "Detalle del archivo",
+      "hash": "Hash",
+      "size": "Tamaño",
+      "created": "Creado el",
+      "modified": "Modificado el",
+      "sessions": "Sesiones ({n})",
+      "noSessions": "Sin sesiones",
+      "copyHash": "Copiar hash",
+      "copied": "¡Copiado!",
+      "restoreFile": "Restaurar archivo",
+      "operationInProgress": "Operación en curso"
+    },
+    "clearModal": {
+      "title": "Vaciar Almacén",
+      "irrev": "Operación irreversible",
+      "warning": "Todos los archivos .vorn ({count}) en el almacén serán eliminados permanentemente. Los manifiestos de sesión no se verán afectados, pero los datos de la copia de seguridad serán irrecuperables.",
+      "typeToConfirm": "Escriba {word} para confirmar",
+      "confirmWord": "ELIMINAR",
+      "deleteAll": "Eliminar todo"
+    },
+    "clearReport": {
+      "title": "Almacén vaciado",
+      "deleted": "Eliminados",
+      "errors": "Errores"
+    },
+    "integrityReport": {
+      "title": "Informe de integridad",
+      "checked": "Verificados",
+      "ok": "OK",
+      "corrupt": "Corruptos",
+      "allOk": "Todos los archivos están intactos",
+      "noIssues": "No se han detectado anomalías en el almacén.",
+      "corruptFiles": "Archivos corruptos"
+    },
+    "prune": {
+      "button": "Limpiar",
+      "confirmTitle": "Limpiar archivos obsoletos",
+      "confirmBody": "Todos los archivos .vorn que ya no estén referenciados por ninguna ejecución de ninguna sesión serán eliminados permanentemente. Los datos activos no se verán afectados.",
+      "confirm": "Analizar y limpiar",
+      "runningTitle": "Limpieza en curso…",
+      "dontClose": "No cierre la aplicación",
+      "scanning": "Escaneando sesiones… ({scanned}/{total})",
+      "computing": "Calculando archivos obsoletos…",
+      "deleting": "Eliminando archivos obsoletos…",
+      "orphansFound": "{n} archivos obsoletos encontrados",
+      "deleted": "{n} eliminados",
+      "failed": "{n} errores",
+      "pause": "Pausa",
+      "resume": "Reanudar",
+      "pausedTitle": "Limpieza pausada",
+      "pausedSub": "La operación ha sido suspendida. Puede reanudarla en cualquier momento.",
+      "reportTitle": "Limpieza completada",
+      "reportTitleCancelled": "Limpieza cancelada",
+      "orphanCount": "Obsoletos encontrados",
+      "reportDeleted": "Eliminados",
+      "reportFailed": "Errores",
+      "allClean": "El almacén ya está limpio",
+      "allCleanSub": "No se han encontrado archivos obsoletos en el almacén."
+    },
+    "restoreModal": {
+      "title": "Restaurar archivo",
+      "session": "Sesión:",
+      "originalPath": "Ruta original",
+      "customDest": "Destino personalizado",
+      "notAvailable": "Sesión ya no disponible",
+      "savedDirectly": "El archivo se guardará directamente en esta carpeta.",
+      "placeholder": "C:\\Ruta\\Destino",
+      "confirm": "Confirmar restauración",
+      "fileRestored": "Archivo restaurado: {name}",
+      "restoreFailed": "Error durante la restauración"
+    }
+  },
+
+  "sessions": {
+    "title": "Sesiones",
+    "subtitle": "{sessions} sesiones · {runs} ejecuciones",
+    "select": "Seleccionar",
+    "startAll": "Iniciar todas",
+    "deleteAll": "Eliminar todas",
+    "cancel": "Cancelar",
+    "newSession": "Nueva sesión",
+    "startSelected": "Iniciar seleccionadas",
+    "startSelectedCount": "Iniciar seleccionadas ({n})",
+    "deleteSelected": "Eliminar seleccionadas",
+    "deleteSelectedCount": "Eliminar seleccionadas ({n})",
+    "neverRun": "Nunca ejecutada",
+    "loading": "Cargando sesiones…",
+    "hdr": {
+      "session": "Sesión",
+      "lastRun": "Última ejecución",
+      "status": "Estado",
+      "runs": "Ejecuciones",
+      "files": "Archivos"
+    },
+    "sourcesCount": "{count} origen | {count} orígenes",
+    "actions": {
+      "suspend": "Suspender copia",
+      "resume": "Reanudar copia",
+      "start": "Iniciar copia",
+      "delete": "Eliminar sesión"
+    },
+    "confirmDelete": {
+      "title": "Confirmar eliminación",
+      "message": "Está a punto de eliminar {count} sesión. | Está a punto de eliminar {count} sesiones."
+    },
+    "noSessions": "No hay sesiones",
+    "noSessionsHelp": "Cree su primera sesión para empezar a hacer copias de seguridad",
+    "drop": {
+      "title": "Suelte para crear una sesión",
+      "sub": "Las carpetas se utilizarán como orígenes",
+      "errorDrives": "No se puede crear una sesión desde diferentes unidades ({drives})"
+    },
+    "progress": {
+      "new": "+{n} nuevos",
+      "dedup": "{n} dedup",
+      "errors": "{n} errores",
+      "written": "{n} escritos",
+      "total": "{n} en total"
+    }
+  },
+
+  "sessionDetail": {
+    "createdAt": "Creada el {date}",
+    "select": "Seleccionar",
+    "cancel": "Cancelar",
+    "deleteSelectedRuns": "Eliminar seleccionadas ({n})",
+    "suspend": "Suspender",
+    "suspending": "Suspendiendo…",
+    "resume": "Reanudar",
+    "backup": "Copia de seguridad",
+    "preparing": "Preparando…",
+    "restoring": "Restauración en curso…",
+    "restoreOk": "Restauración completada: {restored} archivos restaurados de {total}",
+    "restorePartial": "{restored}/{total} restaurados — {errors} errores",
+    "fileNotFound": "archivo no encontrado en el almacén",
+    "noRuns": "Aún no hay ejecuciones",
+    "hdr": {
+      "datetime": "Fecha / Hora",
+      "status": "Estado",
+      "files": "Archivos",
+      "new": "Nuevos",
+      "written": "Escritos",
+      "errors": "Errores"
+    },
+    "list": "Lista",
+    "timeline": "Línea de tiempo",
+    "id": "ID",
+    "runs": "Ejecuciones",
+    "sources": "Orígenes",
+    "excludedPaths": "Rutas excluidas",
+    "excludePatterns": "Patrones de exclusión",
+    "runDetail": "Detalle de la ejecución",
+    "loadingFiles": "Cargando archivos…",
+    "errorsInRun": "{n} errores registrados",
+    "tl": {
+      "total": "Total",
+      "new": "Nuevos",
+      "dedup": "Dedup",
+      "written": "Escritos",
+      "totalBytes": "Total",
+      "duration": "Duración",
+      "new_legend": "nuevos",
+      "dedup_legend": "dedup"
+    },
+    "deleteRun": "¿Eliminar esta ejecución?",
+    "confirmDeleteRuns": {
+      "title": "Confirmar eliminación",
+      "message": "Está a punto de eliminar {count} ejecuciones."
+    },
+    "selectedFiles": "{n} seleccionados",
+    "noFileSelected": "Ningún archivo seleccionado",
+    "deleteRun_btn": "Eliminar",
+    "restore": "Restaurar",
+    "restoreBtn": "Restaurar",
+    "progress": {
+      "new": "+{n} nuevos",
+      "dedup": "{n} dedup",
+      "errors": "{n} errores",
+      "written": "{n} escritos",
+      "restored": "{n} restaurados"
+    }
+  },
+
+  "newSession": {
+    "title": "Nueva sesión",
+    "foldersLabel": "Carpetas a incluir",
+    "legend": {
+      "source": "origen",
+      "excluded": "excluido"
+    },
+    "instructions": "Seleccione carpetas. Expanda y deseleccione subcarpetas para excluirlas.",
+    "nameLabel": "Nombre de la sesión",
+    "namePlaceholder": "ej. Documentos, Proyectos, Fotos…",
+    "patternsLabel": "Patrones de exclusión",
+    "patternsHelp": "Aplicado al nombre del archivo/carpeta. Use * como comodín.",
+    "patternPlaceholder": "ej. *.bak o .cache",
+    "resetPatterns": "Restablecer todos los patrones",
+    "create": "Crear sesión",
+    "sourcesCount": "{count} origen seleccionado | {count} orígenes seleccionados",
+    "excludedCount": "· {count} excluidos",
+    "errors": {
+      "noName": "Introduzca un nombre de sesión",
+      "duplicateName": "Ya existe una sesión con este nombre",
+      "noSource": "Seleccione al menos una carpeta de origen",
+      "createFailed": "Error al crear la sesión"
+    }
+  },
+
+  "editSession": {
+    "title": "Editar sesión",
+    "nameLabel": "Nombre de la sesión",
+    "sources": {
+      "label": "Carpetas de origen",
+      "origin": "(origen)",
+      "placeholder": "Ruta de la carpeta de origen"
+    },
+    "storeDir": {
+      "label": "Carpeta del almacén",
+      "destination": "(destino)",
+      "placeholder": "ej. D:\\VornStore o /mnt/backup/vorn",
+      "help": "La carpeta donde se guardarán los archivos .vorn"
+    },
+    "saveChanges": "Guardar cambios",
+    "errors": {
+      "noStore": "Introduzca la ruta del almacén",
+      "noSource": "Introduzca al menos una carpeta de origen",
+      "saveFailed": "Fallo al guardar"
+    }
+  },
+
+  "restore": {
+    "title": "Restaurar copia de seguridad",
+    "description": "Seleccione dónde desea restaurar los archivos para la ejecución del {date}.",
+    "selective": "Restauración selectiva:",
+    "files": "{n} archivos",
+    "originalPath": "Ruta original",
+    "customDest": "Destino personalizado",
+    "customPlaceholder": "C:\\Ruta\\Destino",
+    "note": "Nota: La estructura de subcarpetas se recreará aquí.",
+    "confirm": "Confirmar restauración"
+  },
+
+  "extractModal": {
+    "title": "Extraer archivo",
+    "fileLabel": "Archivo:",
+    "destLabel": "Carpeta de destino",
+    "destPlaceholder": "Seleccionar carpeta…",
+    "extract": "Extraer"
+  },
+
+  "extractStore": {
+    "title": "Extraer archivos del almacén",
+    "warning": {
+      "title": "Procedimiento de recuperación de datos",
+      "text1": "Use esta función <strong>solo si ha perdido las referencias de la sesión</strong>. Los archivos extraídos pueden no coincidir con las sesiones originales: con el tiempo los registros pueden haber sido modificados, los archivos eliminados o movidos.",
+      "text2": "Si varias sesiones tienen el mismo nombre, se crearán carpetas separadas con el formato <code>nombre-id</code> — por ejemplo <code>Pippo-a1b2c3</code> y <code>Pippo-d4e5f6</code>."
+    },
+    "filterLabel": "Filtrar por sesión",
+    "filterHelp": "Deje vacío para extraer todos los archivos de todas las sesiones encontradas en el almacén.",
+    "filterPlaceholder": "ej. Pippo",
+    "destLabel": "Carpeta de destino",
+    "destPlaceholder": "Seleccione una carpeta…",
+    "destHelp": "Los archivos se extraerán en destino/<session-id>/<ruta relativa>",
+    "analyzing": "Analizando…",
+    "extracted": "{n} extraídos",
+    "fatalError": "Error: {msg}",
+    "empty": "Almacén vacío — no hay archivos para extraer",
+    "success": "{extracted} archivos extraídos de {total} analizados",
+    "sessionsFound": "Sesiones encontradas en el almacén",
+    "noRecords": {
+      "title": "Archivos sin encabezado ({n})",
+      "sub": "Estos archivos no contienen registros de sesión y no fueron extraídos."
+    },
+    "errorsCount": "{n} errores",
+    "extracting": "Extrayendo…",
+    "extract": "Extraer",
+    "newExtraction": "Nueva extracción",
+    "closeOrCancel": {
+      "done": "Cerrar",
+      "running": "Cancelar"
+    },
+    "errors": {
+      "noDestination": "Seleccione una carpeta de destino",
+      "extractFailed": "Error durante la extracción"
+    }
+  },
+
+  "fileTree": {
+    "title": "Archivos en la ejecución",
+    "exitSelection": "Salir de la selección",
+    "selectForRestore": "Seleccionar archivos para restaurar",
+    "collapseAll": "Contraer todo",
+    "expandAll": "Expandir todo",
+    "loading": "Cargando…",
+    "noFiles": "No hay archivos en esta ejecución"
+  },
+
+  "folderBrowser": {
+    "noSubfolders": "No hay subcarpetas",
+    "add": "Añadir",
+    "added": "Añadido",
+    "addCurrent": "Añadir carpeta actual",
+    "currentAdded": "Carpeta actual añadida"
+  },
+
+  "sourceTree": {
+    "changeRoot": "Cambiar raíz",
+    "storeError": "La carpeta del almacén no se puede utilizar como origen.",
+    "badgeSource": "origen",
+    "badgeFile": "archivo",
+    "empty": "Sin contenido"
+  }
+}

@@ -1,0 +1,409 @@
+{
+  "nav": {
+    "sessions": "Sessions",
+    "store": "Dépôt",
+    "stats": "Statistiques",
+    "settings": "Paramètres"
+  },
+
+  "common": {
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "close": "Fermer",
+    "delete": "Supprimer",
+    "add": "Ajouter",
+    "stop": "Arrêter",
+    "operationWait": "Opération en cours — veuillez patienter",
+    "cannotUndo": "Cette opération ne peut pas être annulée.",
+    "avScan": "Scan Antivirus"
+  },
+
+  "status": {
+    "done": "Terminé",
+    "running": "En cours",
+    "paused": "En pause",
+    "crashed": "Interrompu",
+    "aborted": "Abandonné"
+  },
+
+  "sidebar": {
+    "noStore": "Aucun dépôt configuré"
+  },
+
+  "topbar": {
+    "settings": "Paramètres",
+    "lightTheme": "Passer au thème clair",
+    "darkTheme": "Passer au thème sombre"
+  },
+
+  "settings": {
+    "title": "Paramètres",
+    "interface": "Interface",
+    "backup": "Sauvegarde",
+    "info": "À propos",
+    "lang": {
+      "label": "Langue",
+      "sub": "Langue de l'interface"
+    },
+    "notif": {
+      "label": "Notifications système",
+      "sub": "Afficher une notification à la fin de chaque exécution"
+    },
+    "log": {
+      "section": "Journaux",
+      "label": "Journal de l'application",
+      "sub": "Événements, avertissements et erreurs enregistrés par l'application",
+      "open": "Ouvrir"
+    },
+    "about": {
+      "github": "Répertoire GitHub",
+      "githubSub": "Code source, problèmes et contributions",
+      "releases": "Mises à jour",
+      "releasesSub": "Vérifier les dernières versions disponibles",
+      "open": "Ouvrir"
+    }
+  },
+
+  "storeSelect": {
+    "disconnected": "Dépôt déconnecté — sélectionnez un dépôt pour continuer",
+    "title": "Sélectionner le dépôt",
+    "subtitle": "Choisissez où vos sauvegardes sont stockées",
+    "recent": "Récent",
+    "browse": "Parcourir…",
+    "opening": "Ouverture…"
+  },
+
+  "store": {
+    "title": "Dépôt",
+    "changeStore": "Changer de dépôt",
+    "extractFiles": "Extraire les fichiers",
+    "refresh": "Actualiser",
+    "clearStore": "Vider le dépôt",
+    "verifyIntegrity": "Vérifier l'intégrité",
+    "hdr": {
+      "hash": "Hachage",
+      "size": "Taille",
+      "lastModified": "Dernière modification"
+    },
+    "noFiles": "Aucun fichier dans le dépôt",
+    "clearing": {
+      "title": "Vidage en cours…",
+      "dontClose": "Ne fermez pas l'application",
+      "deleted": "{n} supprimés",
+      "total": "{n} au total",
+      "errors": "{n} erreurs"
+    },
+    "detail": {
+      "title": "Détail du fichier",
+      "hash": "Hachage",
+      "size": "Taille",
+      "created": "Créé le",
+      "modified": "Modifié le",
+      "sessions": "Sessions ({n})",
+      "noSessions": "Aucune session",
+      "copyHash": "Copier le hachage",
+      "copied": "Copié !",
+      "restoreFile": "Restaurer le fichier",
+      "operationInProgress": "Opération en cours"
+    },
+    "clearModal": {
+      "title": "Vider le Dépôt",
+      "irrev": "Opération irréversible",
+      "warning": "Tous les fichiers .vorn ({count}) dans le dépôt seront définitivement supprimés. Les manifestes de session ne sont pas affectés, mais les données de sauvegarde seront irrécupérables.",
+      "typeToConfirm": "Tapez {word} pour confirmer",
+      "confirmWord": "SUPPRIMER",
+      "deleteAll": "Tout supprimer"
+    },
+    "clearReport": {
+      "title": "Dépôt vidé",
+      "deleted": "Supprimés",
+      "errors": "Erreurs"
+    },
+    "integrityReport": {
+      "title": "Rapport d'intégrité",
+      "checked": "Vérifiés",
+      "ok": "OK",
+      "corrupt": "Corrompus",
+      "allOk": "Tous les fichiers sont intacts",
+      "noIssues": "Aucune anomalie détectée dans le dépôt.",
+      "corruptFiles": "Fichiers corrompus"
+    },
+    "prune": {
+      "button": "Nettoyer",
+      "confirmTitle": "Nettoyer les fichiers obsolètes",
+      "confirmBody": "Tous les fichiers .vorn qui ne sont plus référencés par aucune exécution d'aucune session seront définitivement supprimés. Les données actives ne seront pas touchées.",
+      "confirm": "Analyser et nettoyer",
+      "runningTitle": "Nettoyage en cours…",
+      "dontClose": "Ne fermez pas l'application",
+      "scanning": "Analyse des sessions… ({scanned}/{total})",
+      "computing": "Calcul des fichiers obsolètes…",
+      "deleting": "Suppression des fichiers obsolètes…",
+      "orphansFound": "{n} fichiers obsolètes trouvés",
+      "deleted": "{n} supprimés",
+      "failed": "{n} erreurs",
+      "pause": "Pause",
+      "resume": "Reprendre",
+      "pausedTitle": "Nettoyage en pause",
+      "pausedSub": "L'opération a été suspendue. Vous pouvez la reprendre à tout moment.",
+      "reportTitle": "Nettoyage terminé",
+      "reportTitleCancelled": "Nettoyage annulé",
+      "orphanCount": "Obsolètes trouvés",
+      "reportDeleted": "Supprimés",
+      "reportFailed": "Erreurs",
+      "allClean": "Dépôt déjà propre",
+      "allCleanSub": "Aucun fichier obsolète trouvé dans le dépôt."
+    },
+    "restoreModal": {
+      "title": "Restaurer le fichier",
+      "session": "Session :",
+      "originalPath": "Chemin d'origine",
+      "customDest": "Destination personnalisée",
+      "notAvailable": "Session plus disponible",
+      "savedDirectly": "Le fichier sera enregistré directement dans ce dossier.",
+      "placeholder": "C:\\Chemin\\Destination",
+      "confirm": "Confirmer la restauration",
+      "fileRestored": "Fichier restauré : {name}",
+      "restoreFailed": "Erreur lors de la restauration"
+    }
+  },
+
+  "sessions": {
+    "title": "Sessions",
+    "subtitle": "{sessions} sessions · {runs} exécutions",
+    "select": "Sélectionner",
+    "startAll": "Tout démarrer",
+    "deleteAll": "Tout supprimer",
+    "cancel": "Annuler",
+    "newSession": "Nouvelle session",
+    "startSelected": "Démarrer la sélection",
+    "startSelectedCount": "Démarrer la sélection ({n})",
+    "deleteSelected": "Supprimer la sélection",
+    "deleteSelectedCount": "Supprimer la sélection ({n})",
+    "neverRun": "Jamais exécuté",
+    "loading": "Chargement des sessions…",
+    "hdr": {
+      "session": "Session",
+      "lastRun": "Dernière exécution",
+      "status": "Statut",
+      "runs": "Exécutions",
+      "files": "Fichiers"
+    },
+    "sourcesCount": "{count} source | {count} sources",
+    "actions": {
+      "suspend": "Suspendre la sauvegarde",
+      "resume": "Reprendre la sauvegarde",
+      "start": "Démarrer la sauvegarde",
+      "delete": "Supprimer la session"
+    },
+    "confirmDelete": {
+      "title": "Confirmer la suppression",
+      "message": "Vous êtes sur le point de supprimer {count} session. | Vous êtes sur le point de supprimer {count} sessions."
+    },
+    "noSessions": "Aucune session",
+    "noSessionsHelp": "Créez votre première session pour commencer la sauvegarde",
+    "drop": {
+      "title": "Déposez pour créer une session",
+      "sub": "Les dossiers seront utilisés comme sources",
+      "errorDrives": "Impossible de créer une session à partir de différents lecteurs ({drives})"
+    },
+    "progress": {
+      "new": "+{n} nouveaux",
+      "dedup": "{n} dédup",
+      "errors": "{n} erreurs",
+      "written": "{n} écrits",
+      "total": "{n} au total"
+    }
+  },
+
+  "sessionDetail": {
+    "createdAt": "Créé le {date}",
+    "select": "Sélectionner",
+    "cancel": "Annuler",
+    "deleteSelectedRuns": "Supprimer la sélection ({n})",
+    "suspend": "Suspendre",
+    "suspending": "Suspension…",
+    "resume": "Reprendre",
+    "backup": "Sauvegarde",
+    "preparing": "Préparation…",
+    "restoring": "Restauration en cours…",
+    "restoreOk": "Restauration terminée : {restored} fichiers restaurés sur {total}",
+    "restorePartial": "{restored}/{total} restaurés — {errors} erreurs",
+    "fileNotFound": "fichier non trouvé dans le dépôt",
+    "noRuns": "Aucune exécution pour l'instant",
+    "hdr": {
+      "datetime": "Date / Heure",
+      "status": "Statut",
+      "files": "Fichiers",
+      "new": "Nouveaux",
+      "written": "Écrits",
+      "errors": "Erreurs"
+    },
+    "list": "Liste",
+    "timeline": "Chronologie",
+    "id": "ID",
+    "runs": "Exécutions",
+    "sources": "Sources",
+    "excludedPaths": "Chemins exclus",
+    "excludePatterns": "Modèles d'exclusion",
+    "runDetail": "Détail de l'exécution",
+    "loadingFiles": "Chargement des fichiers…",
+    "errorsInRun": "{n} erreurs enregistrées",
+    "tl": {
+      "total": "Total",
+      "new": "Nouveaux",
+      "dedup": "Dédup",
+      "written": "Écrits",
+      "totalBytes": "Total",
+      "duration": "Durée",
+      "new_legend": "nouveaux",
+      "dedup_legend": "dédup"
+    },
+    "deleteRun": "Supprimer cette exécution ?",
+    "confirmDeleteRuns": {
+      "title": "Confirmer la suppression",
+      "message": "Vous êtes sur le point de supprimer {count} exécutions."
+    },
+    "selectedFiles": "{n} sélectionnés",
+    "noFileSelected": "Aucun fichier sélectionné",
+    "deleteRun_btn": "Supprimer",
+    "restore": "Restaurer",
+    "restoreBtn": "Restaurer",
+    "progress": {
+      "new": "+{n} nouveaux",
+      "dedup": "{n} dédup",
+      "errors": "{n} erreurs",
+      "written": "{n} écrits",
+      "restored": "{n} restaurés"
+    }
+  },
+
+  "newSession": {
+    "title": "Nouvelle session",
+    "foldersLabel": "Dossiers à inclure",
+    "legend": {
+      "source": "source",
+      "excluded": "exclu"
+    },
+    "instructions": "Sélectionnez des dossiers. Développez et désélectionnez les sous-dossiers pour les exclure.",
+    "nameLabel": "Nom de la session",
+    "namePlaceholder": "ex: Documents, Projets, Photos…",
+    "patternsLabel": "Modèles d'exclusion",
+    "patternsHelp": "Appliqué au nom de fichier/dossier. Utilisez * comme joker.",
+    "patternPlaceholder": "ex: *.bak ou .cache",
+    "resetPatterns": "Réinitialiser tous les modèles",
+    "create": "Créer la session",
+    "sourcesCount": "{count} source sélectionnée | {count} sources sélectionnées",
+    "excludedCount": "· {count} exclus",
+    "errors": {
+      "noName": "Entrez un nom de session",
+      "duplicateName": "Une session avec ce nom existe déjà",
+      "noSource": "Sélectionnez au moins un dossier source",
+      "createFailed": "Erreur lors de la création de la session"
+    }
+  },
+
+  "editSession": {
+    "title": "Modifier la session",
+    "nameLabel": "Nom de la session",
+    "sources": {
+      "label": "Dossiers sources",
+      "origin": "(origine)",
+      "placeholder": "Chemin du dossier source"
+    },
+    "storeDir": {
+      "label": "Dossier du dépôt",
+      "destination": "(destination)",
+      "placeholder": "ex: D:\\VornStore ou /mnt/backup/vorn",
+      "help": "Le dossier où les fichiers .vorn seront enregistrés"
+    },
+    "saveChanges": "Enregistrer les modifications",
+    "errors": {
+      "noStore": "Entrez le chemin du dépôt",
+      "noSource": "Entrez au moins un dossier source",
+      "saveFailed": "Échec de l'enregistrement"
+    }
+  },
+
+  "restore": {
+    "title": "Restaurer la sauvegarde",
+    "description": "Sélectionnez l'endroit où vous souhaitez restaurer les fichiers pour l'exécution du {date}.",
+    "selective": "Restauration sélective :",
+    "files": "{n} fichiers",
+    "originalPath": "Chemin d'origine",
+    "customDest": "Destination personnalisée",
+    "customPlaceholder": "C:\\Chemin\\Destination",
+    "note": "Note : La structure des sous-dossiers sera recréée ici.",
+    "confirm": "Confirmer la restauration"
+  },
+
+  "extractModal": {
+    "title": "Extraire le fichier",
+    "fileLabel": "Fichier :",
+    "destLabel": "Dossier de destination",
+    "destPlaceholder": "Sélectionner un dossier…",
+    "extract": "Extraire"
+  },
+
+  "extractStore": {
+    "title": "Extraire des fichiers du dépôt",
+    "warning": {
+      "title": "Procédure de récupération de données",
+      "text1": "Utilisez cette fonction <strong>uniquement si vous avez perdu les références de session</strong>. Les fichiers extraits peuvent ne pas correspondre aux sessions d'origine : au fil du temps, les enregistrements ont pu être modifiés, les fichiers supprimés ou déplacés.",
+      "text2": "Si plusieurs sessions ont le même nom, des dossiers séparés seront créés au format <code>nom-id</code> — par exemple <code>Pippo-a1b2c3</code> et <code>Pippo-d4e5f6</code>."
+    },
+    "filterLabel": "Filtrer par session",
+    "filterHelp": "Laissez vide pour extraire tous les fichiers de toutes les sessions trouvées dans le dépôt.",
+    "filterPlaceholder": "ex: Pippo",
+    "destLabel": "Dossier de destination",
+    "destPlaceholder": "Sélectionner un dossier…",
+    "destHelp": "Les fichiers seront extraits dans destination/<session-id>/<chemin relatif>",
+    "analyzing": "Analyse…",
+    "extracted": "{n} extraits",
+    "fatalError": "Erreur : {msg}",
+    "empty": "Dépôt vide — aucun fichier à extraire",
+    "success": "{extracted} fichiers extraits sur {total} analysés",
+    "sessionsFound": "Sessions trouvées dans le dépôt",
+    "noRecords": {
+      "title": "Fichiers sans en-tête ({n})",
+      "sub": "Ces fichiers ne contiennent pas d'enregistrements de session et n'ont pas été extraits."
+    },
+    "errorsCount": "{n} erreurs",
+    "extracting": "Extraction…",
+    "extract": "Extraire",
+    "newExtraction": "Nouvelle extraction",
+    "closeOrCancel": {
+      "done": "Fermer",
+      "running": "Annuler"
+    },
+    "errors": {
+      "noDestination": "Sélectionnez un dossier de destination",
+      "extractFailed": "Erreur lors de l'extraction"
+    }
+  },
+
+  "fileTree": {
+    "title": "Fichiers dans l'exécution",
+    "exitSelection": "Quitter la sélection",
+    "selectForRestore": "Sélectionner des fichiers pour la restauration",
+    "collapseAll": "Tout réduire",
+    "expandAll": "Tout développer",
+    "loading": "Chargement…",
+    "noFiles": "Aucun fichier dans cette exécution"
+  },
+
+  "folderBrowser": {
+    "noSubfolders": "Aucun sous-dossier",
+    "add": "Ajouter",
+    "added": "Ajouté",
+    "addCurrent": "Ajouter le dossier actuel",
+    "currentAdded": "Dossier actuel ajouté"
+  },
+
+  "sourceTree": {
+    "changeRoot": "Changer la racine",
+    "storeError": "Le dossier du dépôt ne peut pas être utilisé comme source.",
+    "badgeSource": "source",
+    "badgeFile": "fichier",
+    "empty": "Aucun contenu"
+  }
+}
