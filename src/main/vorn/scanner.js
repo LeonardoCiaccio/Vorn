@@ -26,15 +26,23 @@ export function walk(dir, excludePaths = [], excludePatterns = [], _results = []
   return _results
 }
 
+const _patternCache = new Map()
+
+export function clearPatternCache() { _patternCache.clear() }
+
 export function matchPattern(name, pattern) {
   if (!pattern || pattern.length > 200) return false
-  const pat = pattern.endsWith('/') ? pattern.slice(0, -1) : pattern
-  const escaped = pat.replace(/[.+^${}()|[\]\\]/g, '\\$&')
-  // Collassa wildcards consecutive prima della conversione per prevenire ReDoS (*** → .*)
-  const reStr = escaped
-    .replace(/\*/g, '\x00')
-    .replace(/\x00+/g, '.*')
-    .replace(/\?/g, '.')
-  const re = new RegExp('^' + reStr + '$', 'i')
+  let re = _patternCache.get(pattern)
+  if (!re) {
+    const pat = pattern.endsWith('/') ? pattern.slice(0, -1) : pattern
+    const escaped = pat.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    // Collassa wildcards consecutive prima della conversione per prevenire ReDoS (*** → .*)
+    const reStr = escaped
+      .replace(/\*/g, '\x00')
+      .replace(/\x00+/g, '.*')
+      .replace(/\?/g, '.')
+    re = new RegExp('^' + reStr + '$', 'i')
+    _patternCache.set(pattern, re)
+  }
   return re.test(name)
 }

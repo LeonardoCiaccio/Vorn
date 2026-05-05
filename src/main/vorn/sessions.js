@@ -11,6 +11,15 @@ export function runsDir(storeDir, name)                  { return join(sessionDi
 export function tsToFilename(ts)                         { return ts.replace(/:/g, '-').replace(/\./g, '-') + '.json' }
 export function runPath(storeDir, name, ts)              { return join(runsDir(storeDir, name), tsToFilename(ts)) }
 
+// ── Validation ───────────────────────────────────────────────────────────────
+
+export function validateSessionName(name) {
+  if (!name || typeof name !== 'string') throw new Error('Nome sessione non valido')
+  if (name.length > 255) throw new Error('Nome sessione troppo lungo')
+  if (/[/\\]/.test(name) || name.includes('..') || name.includes('\x00'))
+    throw new Error(`Nome sessione non sicuro: "${name}"`)
+}
+
 // ── Sessions ──────────────────────────────────────────────────────────────────
 
 export function listSessions(storeDir) {
@@ -76,7 +85,8 @@ export function listRuns(storeDir, sessionName) {
     .filter(Boolean)
 
   if (runs.length > 0) {
-    session.runs_meta = runs.slice(0, 500)
+    session.runs_meta  = runs.slice(0, 500)
+    session.runs_total = runs.length
     saveSession(storeDir, session)
   }
   return runs
@@ -122,6 +132,8 @@ export function saveRun(storeDir, sessionName, run) {
     else          session.runs_meta.unshift(summary)
     session.runs_meta.sort((a, b) => b.ts.localeCompare(a.ts))
     if (session.runs_meta.length > 500) session.runs_meta = session.runs_meta.slice(0, 500)
+    const runsCount = readdirSync(dir).filter(f => f.endsWith('.json')).length
+    session.runs_total = runsCount
     saveSession(storeDir, session)
   }
 }
@@ -132,7 +144,8 @@ export function deleteRun(storeDir, sessionName, ts) {
 
   const session = getSession(storeDir, sessionName)
   if (session?.runs_meta) {
-    session.runs_meta = session.runs_meta.filter(r => r.ts !== ts)
+    session.runs_meta  = session.runs_meta.filter(r => r.ts !== ts)
+    session.runs_total = Math.max(0, (session.runs_total ?? session.runs_meta.length) - 1)
     saveSession(storeDir, session)
   }
 }

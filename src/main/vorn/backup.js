@@ -67,7 +67,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
     if (isCancelled?.()) break
 
     const filePath = allFiles[i]
-    const source   = sources.find(s => filePath === s || filePath.startsWith(s + '\\') || filePath.startsWith(s + '/')) ?? sources[0]
+    const source = sources.find(s => filePath === s || filePath.startsWith(s + '\\') || filePath.startsWith(s + '/'))
+    if (!source) { errors.push({ path: filePath, error: 'Sorgente non trovata per il file', phase: 'scan' }); continue }
     const relPath  = filePath === source ? basename(filePath) : relative(source, filePath).replace(/\\/g, '/')
 
     if (alreadyDone.has(relPath)) continue

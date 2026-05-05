@@ -18,7 +18,6 @@ function createWindow() {
     icon: join(__dirname, '../../build/icon.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
     }
   })
 

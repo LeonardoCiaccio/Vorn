@@ -1,15 +1,10 @@
 import { ipcMain }                                                          from 'electron'
 import { listSessions, getSession, createSession, deleteSession,
-         listRuns, loadRun, deleteRun }                                     from '../vorn/sessions.js'
+         listRuns, loadRun, deleteRun, validateSessionName }                from '../vorn/sessions.js'
 import { hasRunningTask }                                                   from '../vorn/taskManager.js'
 import { ctx }                                                              from '../workerManager.js'
 
-function _validateName(name) {
-  if (!name || typeof name !== 'string') throw new Error('Nome sessione non valido')
-  if (name.length > 255) throw new Error('Nome sessione troppo lungo')
-  if (/[/\\]/.test(name) || name.includes('..') || name.includes('\x00'))
-    throw new Error(`Nome sessione non sicuro: "${name}"`)
-}
+const _validateName = validateSessionName
 
 // Cache in-memory dell'ultima run letta — evita di rileggere il JSON per ogni chunk di file
 let _runCache = null

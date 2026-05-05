@@ -5,7 +5,7 @@ import { loadSettings, saveSettings, addRecentStore } from '../vorn/settings.js'
 import { ctx, startStoreWatch, stopStoreWatch }       from '../workerManager.js'
 import { listSessions, listRuns, loadRun, saveRun }   from '../vorn/sessions.js'
 
-function _cleanCrashedRuns(storeDir) {
+async function _cleanCrashedRuns(storeDir) {
   for (const session of listSessions(storeDir)) {
     for (const run of listRuns(storeDir, session.name)) {
       if (run.status !== 'running' && run.status !== 'paused') continue
@@ -15,6 +15,7 @@ function _cleanCrashedRuns(storeDir) {
         full.status = newStatus
         saveRun(storeDir, session.name, full)
       } catch { /* run corrotto, ignorato */ }
+      await new Promise(r => setImmediate(r)) // cede il controllo tra sessioni per non bloccare il main process
     }
   }
 }
@@ -28,7 +29,7 @@ export function registerStoreHandlers(mainWindow) {
     acquireLock(storeDir)
     ctx.activeStore = storeDir
     addRecentStore(storeDir)
-    _cleanCrashedRuns(storeDir)
+    _cleanCrashedRuns(storeDir) // non-blocking: fire-and-forget
     startStoreWatch(mainWindow)
     return { ok: true }
   })

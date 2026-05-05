@@ -97,6 +97,7 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
     if (!existsSync(p)) {
       const meta = { hash_vorn: hashVorn, bytes, records: [{ id: sessionId, session: sessionName, paths: [relPath] }] }
       await writeVornFromSource(p, meta, sourcePath)
+      _listCache = null
       return 'new'
     }
 

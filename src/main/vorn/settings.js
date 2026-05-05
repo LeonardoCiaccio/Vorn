@@ -10,22 +10,32 @@ const _defaults = {
   notifications: false,
 }
 
+const ALLOWED_KEYS = new Set(['theme', 'notifications', 'language', 'recentStores'])
+
+let _cache = null
+
 export function loadSettings() {
+  if (_cache) return { ..._cache }
   try {
-    return { ..._defaults, ...JSON.parse(readFileSync(_path, 'utf8')) }
+    _cache = { ..._defaults, ...JSON.parse(readFileSync(_path, 'utf8')) }
   } catch {
-    return { ..._defaults }
+    _cache = { ..._defaults }
   }
+  return { ..._cache }
 }
 
 export function saveSettings(patch) {
-  const updated = { ...loadSettings(), ...patch }
+  const filtered = Object.fromEntries(
+    Object.entries(patch).filter(([k]) => ALLOWED_KEYS.has(k))
+  )
+  const updated = { ...loadSettings(), ...filtered }
+  _cache = updated
   const dir = join(homedir(), '.vorn')
   mkdirSync(dir, { recursive: true })
   const tmp = _path + '.tmp'
   writeFileSync(tmp, JSON.stringify(updated, null, 2), 'utf8')
   renameSync(tmp, _path)
-  return updated
+  return { ..._cache }
 }
 
 export function addRecentStore(storeDir) {

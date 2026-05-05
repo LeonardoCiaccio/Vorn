@@ -40,7 +40,8 @@ async function run() {
         try {
           const run = JSON.parse(readFileSync(join(runsPath, runFile), 'utf8'))
           for (const fileInfo of Object.values(run.files ?? {})) {
-            if (fileInfo.hash_vorn) referenced.add(fileInfo.hash_vorn)
+            if (typeof fileInfo === 'string') referenced.add(fileInfo)
+            else if (fileInfo?.hash_vorn) referenced.add(fileInfo.hash_vorn)
           }
         } catch { /* run corrotto, ignorato */ }
       }

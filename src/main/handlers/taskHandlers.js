@@ -3,7 +3,7 @@ import { join }                                                    from 'path'
 import { createTask, cancelTask, listTasks, finishTask, failTask } from '../vorn/taskManager.js'
 import { extractByHash }                                           from '../vorn/restore.js'
 import { ctx, spawnWorker }                                        from '../workerManager.js'
-import { loadRun, saveRun }                                        from '../vorn/sessions.js'
+import { loadRun, saveRun, validateSessionName }                   from '../vorn/sessions.js'
 import { loadSettings }                                            from '../vorn/settings.js'
 
 let _icon = null
@@ -47,6 +47,7 @@ export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:task-list',   ()           => listTasks())
 
   ipcMain.handle('vorn:start-backup', (_, { sessionName, resumeTs = null }) => {
+    validateSessionName(sessionName)
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
       throw new Error(`Operazione già in corso: ${sessionName}`)
     // Scrivi il run su disco prima di avviare il worker — il watcher potrebbe
@@ -69,6 +70,7 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:start-restore', (_, { sessionName, runTs, destDir, selectedFiles = null }) => {
+    validateSessionName(sessionName)
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
       throw new Error(`Operazione già in corso: ${sessionName}`)
     const task = createTask('restore', sessionName)

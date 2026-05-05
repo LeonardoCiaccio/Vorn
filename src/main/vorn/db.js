@@ -45,6 +45,10 @@ export function dbUpsertFile(path, mtime, size, hash) {
 // Rimuove dal DB le path che non esistono più sul filesystem.
 // Campiona 1000 record per rowid casuale (O(log n), nessuna full table scan)
 // e raggruppa i DELETE in una transaction per efficienza.
+export function closeDb() {
+  if (_db) { _db.close(); _db = null }
+}
+
 export function dbPruneOrphans() {
   const db = getDb()
   const { maxId } = db.prepare('SELECT MAX(rowid) AS maxId FROM Files').get()

@@ -1,4 +1,4 @@
-import { openSync, readSync, writeSync, closeSync, truncateSync, createReadStream, createWriteStream, statSync, existsSync, readFileSync, unlinkSync, renameSync } from 'fs'
+import { openSync, readSync, writeSync, fsyncSync, closeSync, truncateSync, createReadStream, createWriteStream, statSync, existsSync, readFileSync, unlinkSync, renameSync } from 'fs'
 import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
 
@@ -62,7 +62,7 @@ export function readVornMeta(filePath) {
       truncateSync(filePath, truncateAt)
       const recBuf = Buffer.from(JSON.stringify(recovered), 'utf8')
       const fdw = openSync(filePath, 'a')
-      try { writeSync(fdw, recBuf) } finally { closeSync(fdw) }
+      try { writeSync(fdw, recBuf); fsyncSync(fdw) } finally { closeSync(fdw) }
       try { unlinkSync(tmpPath) } catch { /* non-critico */ }
       return readVornMeta(filePath)
     }
@@ -75,9 +75,13 @@ export function readVornMeta(filePath) {
 
 // ── Full read ─────────────────────────────────────────────────────────────────
 
+const READ_VORN_MAX_BYTES = 128 * 1024 * 1024 // 128 MB — prevenzione OOM
+
 export async function readVorn(filePath) {
   const { meta, contentLen } = readVornMeta(filePath)
   if (contentLen === 0n) return { meta, content: Buffer.alloc(0) }
+  if (contentLen > BigInt(READ_VORN_MAX_BYTES))
+    throw new Error(`readVorn: file troppo grande (${contentLen} byte). Usa contentStream per file grandi.`)
   const rs = createReadStream(filePath, { start: HEADER_SIZE, end: HEADER_SIZE + Number(contentLen) - 1 })
   const chunks = []
   return new Promise((resolve, reject) => {
