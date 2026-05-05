@@ -231,26 +231,24 @@ brew install git
 </details>
 
 <details>
-<summary><strong>Step 4 — Clone, install and build</strong></summary>
+<summary><strong>Step 4 — Download, install and build</strong></summary>
 
-```bash
-# Clone the repository
-git clone https://github.com/LeonardoCiaccio/Vorn.git
-cd Vorn
+1. Go to the **[Releases](https://github.com/LeonardoCiaccio/Vorn/releases)** page and download the **Source code (zip)** of the latest stable version.
+2. Extract the ZIP file and enter the `Vorn-x.y.z` folder.
+3. Open **PowerShell** inside that folder and run:
 
-# Install all dependencies and rebuild native modules for Electron
+```powershell
+# 1. Install dependencies and rebuild native modules
 npm install
 
-# Run in development mode (live reload, DevTools open automatically)
+# 2. Run in development mode (optional, to test)
 npm run dev
-```
 
-To produce a distributable `.dmg`:
-```bash
+# 3. Produce a distributable portable .exe
 npm run package
 ```
-The disk image will be in the `release/` folder.
-
+The executable will be in the `release/` folder.
+</details>
 > **Apple Silicon (M1/M2/M3):** Builds natively for `arm64`. No Rosetta needed.
 </details>
 
@@ -331,22 +329,20 @@ npm --version    # must be v10.x.x or higher
 </details>
 
 <details>
-<summary><strong>Step 3 — Clone, install and build</strong></summary>
+<summary><strong>Step 3 — Download, install and build</strong></summary>
+
+1. Go to the **[Releases](https://github.com/LeonardoCiaccio/Vorn/releases)** page and download the **Source code (tar.gz or zip)** of the latest stable version.
+2. Extract the archive and enter the `Vorn-x.y.z` folder.
+3. Open a **Terminal** inside that folder and run:
 
 ```bash
-# Clone the repository
-git clone https://github.com/LeonardoCiaccio/Vorn.git
-cd Vorn
-
-# Install all dependencies and rebuild native modules for Electron
+# 1. Install dependencies and rebuild native modules
 npm install
 
-# Run in development mode (live reload, DevTools open automatically)
+# 2. Run in development mode (optional, to test)
 npm run dev
-```
 
-To produce a distributable `.AppImage`:
-```bash
+# 3. Produce a distributable .AppImage
 npm run package
 ```
 The AppImage will be in the `release/` folder. Run it with:
