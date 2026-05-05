@@ -93,6 +93,9 @@ export async function startExtractStore(destDir, sessionFilter = null) {
 }
 
 export async function startPrune() {
+  for (const [id, t] of Object.entries(state.tasks)) {
+    if (t.type === 'prune' && (t.status === 'done' || t.status === 'error')) delete state.tasks[id]
+  }
   const { taskId } = await window.vorn.startPrune()
   _registerTask(taskId, 'prune', null)
   return taskId

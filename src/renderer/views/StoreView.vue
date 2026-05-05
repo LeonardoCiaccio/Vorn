@@ -878,7 +878,7 @@ const pruneProgressPct = computed(() => {
 })
 
 function handlePruneClick() {
-  if (pruneState.value.paused || pruneState.value.report) {
+  if (pruneState.value.paused) {
     showPruneStatus.value = true
     return
   }
