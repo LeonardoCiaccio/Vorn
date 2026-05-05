@@ -121,15 +121,20 @@ npm --version    # must be v10.x.x or higher
 <details>
 <summary><strong>Step 3 — Install C++ build tools (required for native modules)</strong></summary>
 
-Vorn's SQLite dependency must be compiled from source. The fastest way is via npm:
+Vorn's SQLite dependency must be compiled from source.
 
-```powershell
-npm install --global windows-build-tools
-```
+**Recommended: Manual Installation**
+1. Download **Visual Studio Build Tools** from [https://visualstudio.microsoft.com/visual-cpp-build-tools/](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+2. Run the installer.
+3. Select the **"Desktop development with C++"** workload.
+4. Ensure "MSVC v14x - VS 20xx C++ x64/x86 build tools" is checked in the optional components.
+5. Click **Install**.
 
-> If the above fails (it requires administrator rights), install manually:
-> download **Visual Studio Build Tools** from https://visualstudio.microsoft.com/visual-cpp-build-tools/,
-> run the installer, select the **"Desktop development with C++"** workload, and click Install.
+> **Alternative (Faster but sometimes unreliable):**
+> Open PowerShell as Administrator and run:
+> ```powershell
+> npm install --global windows-build-tools
+> ```
 
 Verify the compiler is available:
 ```powershell
@@ -139,22 +144,28 @@ You should see the MSVC compiler banner (errors about missing input files are no
 </details>
 
 <details>
-<summary><strong>Step 4 — Clone, install and build</strong></summary>
+<summary><strong>Step 4 — Download, install and build</strong></summary>
 
+**Option A — Download ZIP (Recommended)**
+1. Go to the **[Releases](https://github.com/LeonardoCiaccio/Vorn/releases)** page and download the **Source code (zip)** of the latest stable version.
+2. Right-click the downloaded file and select **Extract All...**.
+3. Open the folder, then **Shift + Right-click** on an empty space and select **"Open PowerShell window here"**.
+
+**Option B — Git Clone**
 ```powershell
-# Clone the repository
 git clone https://github.com/LeonardoCiaccio/Vorn.git
 cd Vorn
-
-# Install all dependencies and rebuild native modules for Electron
-npm install
-
-# Run in development mode (live reload, DevTools open automatically)
-npm run dev
 ```
 
-To produce a distributable portable `.exe`:
+**Then, run the build commands:**
 ```powershell
+# 1. Install dependencies and rebuild native modules
+npm install
+
+# 2. Run in development mode (optional, to test)
+npm run dev
+
+# 3. Produce a distributable portable .exe
 npm run package
 ```
 The executable will be in the `release/` folder.
@@ -234,20 +245,24 @@ brew install git
 <summary><strong>Step 4 — Download, install and build</strong></summary>
 
 1. Go to the **[Releases](https://github.com/LeonardoCiaccio/Vorn/releases)** page and download the **Source code (zip)** of the latest stable version.
-2. Extract the ZIP file and enter the `Vorn-x.y.z` folder.
-3. Open **PowerShell** inside that folder and run:
+2. Extract the ZIP file and enter the folder.
+3. Open **Terminal** and navigate to that folder:
+   - Type `cd ` (with a space) and drag the folder from Finder into the Terminal window.
+   - Press **Enter**.
 
-```powershell
+**Then, run the build commands:**
+
+```bash
 # 1. Install dependencies and rebuild native modules
 npm install
 
 # 2. Run in development mode (optional, to test)
 npm run dev
 
-# 3. Produce a distributable portable .exe
+# 3. Produce a distributable .dmg
 npm run package
 ```
-The executable will be in the `release/` folder.
+The `.dmg` file will be in the `release/` folder.
 </details>
 > **Apple Silicon (M1/M2/M3):** Builds natively for `arm64`. No Rosetta needed.
 </details>
