@@ -27,14 +27,14 @@
       <button
         @click="settingsOpen = true"
         class="p-2 rounded-md text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
-        title="Impostazioni"
+        :title="$t('topbar.settings')"
       >
         <Cog6ToothIcon class="w-4.5 h-4.5" />
       </button>
       <button
         @click="toggleTheme"
         class="p-2 rounded-md text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
-        :title="isDark ? 'Passa al tema chiaro' : 'Passa al tema scuro'"
+        :title="isDark ? $t('topbar.darkTheme') : $t('topbar.lightTheme')"
       >
         <SunIcon  v-if="isDark"  class="w-4.5 h-4.5" />
         <MoonIcon v-else         class="w-4.5 h-4.5" />
@@ -49,6 +49,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   RectangleStackIcon,
   CircleStackIcon,
@@ -59,12 +60,14 @@ import {
 import { state, goBack, navigateTo } from '../stores/vorn.js'
 import SettingsModal from './SettingsModal.vue'
 
+const { t } = useI18n()
+
 const currentView = computed(() => state.currentView)
 
-const navItems = [
-  { id: 'sessions', label: 'Sessioni', icon: RectangleStackIcon },
-  { id: 'store',    label: 'Store',    icon: CircleStackIcon },
-]
+const navItems = computed(() => [
+  { id: 'sessions', label: t('nav.sessions'), icon: RectangleStackIcon },
+  { id: 'store',    label: t('nav.store'),    icon: CircleStackIcon },
+])
 
 function navigate(id) {
   if (id === 'sessions') goBack()

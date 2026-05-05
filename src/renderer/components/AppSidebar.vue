@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <aside class="w-60 flex flex-col bg-gray-900 border-r border-gray-800 shrink-0">
 
     <!-- Brand -->
@@ -47,7 +47,7 @@
         class="text-[11px] text-gray-400 truncate font-mono"
         :title="s"
       >{{ s }}</p>
-      <p v-if="!storeList.length" class="text-[11px] text-gray-600 italic">Nessuno store configurato</p>
+      <p v-if="!storeList.length" class="text-[11px] text-gray-600 italic">{{ $t('sidebar.noStore') }}</p>
     </div>
 
   </aside>
@@ -61,18 +61,20 @@ import {
   ChartBarIcon,
 } from '@heroicons/vue/24/outline'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { state, goBack, navigateTo } from '../stores/vorn.js'
-import { t } from '../stores/i18n.js'
+
+const { t } = useI18n()
 
 const currentView   = computed(() => state.currentView)
 const storeList     = computed(() => [...new Set(state.sessions.map(s => s.store))])
 const runningTasks  = computed(() => Object.values(state.tasks).filter(t => t.status === 'running'))
 
 const navItems = computed(() => [
-  { id: 'sessions',  label: t.value.nav.sessions,  icon: RectangleStackIcon },
-  { id: 'store',     label: t.value.nav.store,      icon: CircleStackIcon },
-  { id: 'stats',     label: t.value.nav.stats,      icon: ChartBarIcon },
-  { id: 'settings',  label: t.value.nav.settings,   icon: Cog6ToothIcon },
+  { id: 'sessions',  label: t('nav.sessions'),  icon: RectangleStackIcon },
+  { id: 'store',     label: t('nav.store'),      icon: CircleStackIcon },
+  { id: 'stats',     label: t('nav.stats'),      icon: ChartBarIcon },
+  { id: 'settings',  label: t('nav.settings'),   icon: Cog6ToothIcon },
 ])
 
 function navigate(id) {

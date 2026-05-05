@@ -4,7 +4,7 @@
     <!-- Disconnected banner -->
     <div v-if="state.phase === 'disconnected'" class="mb-8 flex items-center gap-3 px-5 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-300">
       <ExclamationTriangleIcon class="w-5 h-5 shrink-0 text-amber-400" />
-      Store disconnesso — seleziona uno store per continuare
+      {{ $t('storeSelect.disconnected') }}
     </div>
 
     <!-- Brand -->
@@ -18,8 +18,8 @@
 
       <!-- Header -->
       <div class="px-6 py-5 border-b border-gray-800">
-        <p class="text-sm font-semibold text-white">Seleziona store</p>
-        <p class="text-xs text-gray-500 mt-0.5">Scegli dove sono archiviati i tuoi backup</p>
+        <p class="text-sm font-semibold text-white">{{ $t('storeSelect.title') }}</p>
+        <p class="text-xs text-gray-500 mt-0.5">{{ $t('storeSelect.subtitle') }}</p>
       </div>
 
       <!-- Error -->
@@ -30,7 +30,7 @@
       <!-- Store recenti -->
       <div class="px-6 py-4">
         <div v-if="state.recentStores.length" class="space-y-2 mb-4">
-          <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Recenti</p>
+          <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">{{ $t('storeSelect.recent') }}</p>
           <button
             v-for="s in state.recentStores"
             :key="s.path"
@@ -54,14 +54,14 @@
           class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-700 hover:border-gray-600 hover:bg-gray-800/60 text-sm text-gray-400 hover:text-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FolderOpenIcon class="w-4 h-4" />
-          Sfoglia…
+          {{ $t('storeSelect.browse') }}
         </button>
       </div>
 
       <!-- Loading -->
       <div v-if="loading" class="px-6 pb-5 flex items-center gap-2 text-xs text-gray-500">
         <ArrowPathIcon class="w-3.5 h-3.5 animate-spin text-indigo-500" />
-        Apertura in corso…
+        {{ $t('storeSelect.opening') }}
       </div>
 
     </div>

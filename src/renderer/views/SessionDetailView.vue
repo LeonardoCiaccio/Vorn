@@ -12,7 +12,7 @@
         </div>
         <div>
           <h1 class="text-lg font-bold text-white">{{ session.name }}</h1>
-          <p class="text-xs text-gray-500">Creata il {{ formatTs(session.ts) }}</p>
+          <p class="text-xs text-gray-500">{{ $t('sessionDetail.createdAt', { date: formatTs(session.ts) }) }}</p>
         </div>
       </div>
       <!-- Actions -->
@@ -22,14 +22,14 @@
           <button
             @click="exitRunSelection"
             class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-400 border border-gray-700 hover:text-white hover:bg-gray-800 transition-colors"
-          >Annulla</button>
+          >{{ $t('sessionDetail.cancel') }}</button>
           <button
             @click="askDeleteSelectedRuns"
             :disabled="!selectedRuns.size"
             class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-red-400 border border-red-600/40 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <TrashIcon class="w-4 h-4" />
-            Elimina selezionati{{ selectedRuns.size ? ` (${selectedRuns.size})` : '' }}
+            {{ $t('sessionDetail.deleteSelectedRuns', { n: selectedRuns.size }) }}
           </button>
         </template>
         <template v-else>
@@ -39,7 +39,7 @@
             class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-400 border border-gray-700 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <CheckCircleIcon class="w-4 h-4" />
-            Seleziona
+            {{ $t('sessionDetail.select') }}
           </button>
         </template>
         <!-- Backup / Sospendi -->
@@ -51,7 +51,7 @@
         >
           <ArrowPathIcon v-if="cancelling" class="w-4 h-4 animate-spin" />
           <StopIcon v-else class="w-4 h-4" />
-          {{ cancelling ? 'Sospensione…' : 'Sospendi' }}
+          {{ cancelling ? $t('sessionDetail.suspending') : $t('sessionDetail.suspend') }}
         </button>
         <button
           v-else
@@ -60,7 +60,7 @@
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
         >
           <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': isRestoring }" />
-          {{ hasPaused ? 'Riprendi' : 'Backup' }}
+          {{ hasPaused ? $t('sessionDetail.resume') : $t('sessionDetail.backup') }}
         </button>
       </div>
     </div>
@@ -69,7 +69,7 @@
     <div v-if="isRunning && backupProgress" class="px-8 py-3 bg-gray-900/60 border-b border-gray-800 shrink-0">
       <div class="flex items-center justify-between mb-1.5">
         <span class="text-xs text-gray-400">
-          {{ backupProgress.file ? backupProgress.file.split(/[\\/]/).at(-1) : 'Preparazione…' }}
+          {{ backupProgress.file ? backupProgress.file.split(/[\\/]/).at(-1) : $t('sessionDetail.preparing') }}
         </span>
         <span class="text-xs text-gray-500 font-mono">
           {{ backupProgress.current ?? 0 }} / {{ backupProgress.total ?? '…' }}
@@ -82,17 +82,17 @@
         />
       </div>
       <div class="flex items-center gap-4 mt-1.5 text-[10px] text-gray-600">
-        <span class="text-emerald-500">+{{ backupProgress.files_new ?? 0 }} nuovi</span>
-        <span>{{ backupProgress.files_dedup ?? 0 }} dedup</span>
-        <span v-if="backupProgress.errors">{{ backupProgress.errors }} errori</span>
-        <span>{{ formatBytes(backupProgress.bytes_new ?? 0) }} scritti</span>
+        <span class="text-emerald-500">{{ $t('sessionDetail.progress.new', { n: backupProgress.files_new ?? 0 }) }}</span>
+        <span>{{ $t('sessionDetail.progress.dedup', { n: backupProgress.files_dedup ?? 0 }) }}</span>
+        <span v-if="backupProgress.errors">{{ $t('sessionDetail.progress.errors', { n: backupProgress.errors }) }}</span>
+        <span>{{ $t('sessionDetail.progress.written', { n: formatBytes(backupProgress.bytes_new ?? 0) }) }}</span>
       </div>
     </div>
 
     <!-- Restore progress bar -->
     <div v-if="isRestoring && restoreProgress" class="px-8 py-3 bg-amber-950/30 border-b border-amber-900/40 shrink-0">
       <div class="flex items-center justify-between mb-1.5">
-        <span class="text-xs text-amber-400 font-medium">Restore in corso…</span>
+        <span class="text-xs text-amber-400 font-medium">{{ $t('sessionDetail.restoring') }}</span>
         <span class="text-xs text-gray-500 font-mono">
           {{ restoreProgress.current ?? 0 }} / {{ restoreProgress.total ?? '…' }}
         </span>
@@ -104,17 +104,17 @@
         />
       </div>
       <div class="flex items-center gap-4 mt-1.5 text-[10px] text-gray-600">
-        <span class="text-emerald-500">{{ restoreProgress.restored ?? 0 }} ripristinati</span>
-        <span v-if="restoreProgress.errors" class="text-red-400">{{ restoreProgress.errors }} errori</span>
+        <span class="text-emerald-500">{{ $t('sessionDetail.progress.restored', { n: restoreProgress.restored ?? 0 }) }}</span>
+        <span v-if="restoreProgress.errors" class="text-red-400">{{ $t('sessionDetail.progress.errors', { n: restoreProgress.errors }) }}</span>
         <span class="font-mono truncate">{{ restoreProgress.file?.split(/[\\/]/).at(-1) }}</span>
       </div>
     </div>
 
-    <!-- Restore result (errori) -->
+    <!-- Restore result -->
     <div v-if="restoreResult && !isRestoring" class="px-8 py-3 border-b border-gray-800 shrink-0">
       <div v-if="restoreResult.errors.length === 0" class="flex items-center gap-2 text-xs text-emerald-400">
         <CheckCircleIcon class="w-4 h-4 shrink-0" />
-        Restore completato: {{ restoreResult.restored }} file ripristinati su {{ restoreResult.total }}
+        {{ $t('sessionDetail.restoreOk', { restored: restoreResult.restored, total: restoreResult.total }) }}
         <button @click="clearRestoreResult" class="ml-auto text-gray-600 hover:text-gray-400">
           <XMarkIcon class="w-3.5 h-3.5" />
         </button>
@@ -122,7 +122,7 @@
       <div v-else>
         <div class="flex items-center gap-2 text-xs text-amber-400 mb-2">
           <ExclamationTriangleIcon class="w-4 h-4 shrink-0" />
-          {{ restoreResult.restored }}/{{ restoreResult.total }} ripristinati — {{ restoreResult.errors.length }} errori
+          {{ $t('sessionDetail.restorePartial', { restored: restoreResult.restored, total: restoreResult.total, errors: restoreResult.errors.length }) }}
           <button @click="clearRestoreResult" class="ml-auto text-gray-600 hover:text-gray-400">
             <XMarkIcon class="w-3.5 h-3.5" />
           </button>
@@ -136,7 +136,7 @@
             <div class="flex gap-2">
               <span class="text-red-400 shrink-0">ERR</span>
               <span class="text-gray-400 truncate flex-1">{{ err.path }}</span>
-              <span v-if="err.error === 'not_found'" class="text-amber-400 shrink-0">file non trovato nello store</span>
+              <span v-if="err.error === 'not_found'" class="text-amber-400 shrink-0">{{ $t('sessionDetail.fileNotFound') }}</span>
               <span v-else class="text-red-300 shrink-0">{{ err.error }}</span>
             </div>
             <div v-if="err.hash" class="text-gray-600 pl-7">hash: {{ err.hash }}</div>
@@ -154,7 +154,7 @@
 
           <!-- Empty state -->
           <div v-if="session.runs.length === 0" class="flex flex-col items-center justify-center h-32 text-gray-600 text-sm">
-            Nessuna run ancora
+            {{ $t('sessionDetail.noRuns') }}
           </div>
 
           <!-- Vista tabella -->
@@ -164,12 +164,12 @@
                 <th v-if="runSelectionMode" class="pb-3 w-10 pl-4">
                   <input type="checkbox" :checked="allRunsSelected" @change="toggleAllRuns" class="accent-indigo-500 cursor-pointer" />
                 </th>
-                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Data / Ora</th>
-                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Stato</th>
-                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">File</th>
-                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Nuovi</th>
-                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Scritti</th>
-                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Errori</th>
+                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">{{ $t('sessionDetail.hdr.datetime') }}</th>
+                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">{{ $t('sessionDetail.hdr.status') }}</th>
+                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">{{ $t('sessionDetail.hdr.files') }}</th>
+                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">{{ $t('sessionDetail.hdr.new') }}</th>
+                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">{{ $t('sessionDetail.hdr.written') }}</th>
+                <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">{{ $t('sessionDetail.hdr.errors') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -222,7 +222,7 @@
                   <span v-else-if="run.errors_count" class="text-red-400">{{ run.errors_count }}</span>
                   <span v-else class="text-gray-700">—</span>
                 </td>
-                <!-- Overlay azioni: assoluto sul <tr>, gradient + sfondo solido -->
+                <!-- Overlay azioni -->
                 <td v-if="run.status !== 'running'" class="w-0 p-0 overflow-visible" @click.stop>
                   <div
                     class="absolute right-0 inset-y-0 z-10 flex items-center transition-opacity"
@@ -232,8 +232,8 @@
                     <div class="w-16 h-full" style="background: linear-gradient(to right, transparent, var(--bg-base))" />
                     <div class="flex items-center gap-1.5 px-3 h-full" style="background-color: var(--bg-base)">
                       <template v-if="pendingDeleteRun?.ts === run.ts">
-                        <button @click.stop="pendingDeleteRun = null" class="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Annulla</button>
-                        <button @click.stop="confirmDeleteRun(run)" class="px-2 py-1 rounded text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+                        <button @click.stop="pendingDeleteRun = null" class="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">{{ $t('common.cancel') }}</button>
+                        <button @click.stop="confirmDeleteRun(run)" class="px-2 py-1 rounded text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">{{ $t('common.delete') }}</button>
                       </template>
                       <button v-else @click.stop="pendingDeleteRun = run" class="p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors">
                         <TrashIcon class="w-3.5 h-3.5" />
@@ -247,7 +247,6 @@
 
           <!-- Vista timeline -->
           <div v-else-if="runsView === 'timeline'" class="relative">
-            <!-- Linea verticale -->
             <div class="absolute left-3.5 top-2 bottom-2 w-px bg-gray-800" />
 
             <div class="space-y-4">
@@ -305,35 +304,35 @@
 
                   <!-- Conferma eliminazione inline -->
                   <div v-if="pendingDeleteRun?.ts === run.ts" class="px-4 py-2.5 flex items-center gap-2 bg-red-950/20 border-b border-red-900/30">
-                    <span class="text-xs text-gray-400 flex-1">Eliminare questo run?</span>
-                    <button @click.stop="pendingDeleteRun = null" class="px-2 py-1 rounded text-xs text-gray-500 hover:text-gray-200 transition-colors">Annulla</button>
-                    <button @click.stop="confirmDeleteRun(run)" class="px-2 py-1 rounded text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+                    <span class="text-xs text-gray-400 flex-1">{{ $t('sessionDetail.deleteRun') }}</span>
+                    <button @click.stop="pendingDeleteRun = null" class="px-2 py-1 rounded text-xs text-gray-500 hover:text-gray-200 transition-colors">{{ $t('common.cancel') }}</button>
+                    <button @click.stop="confirmDeleteRun(run)" class="px-2 py-1 rounded text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">{{ $t('common.delete') }}</button>
                   </div>
 
                   <!-- Stats grid -->
                   <div class="px-4 py-3 grid grid-cols-3 gap-x-4 gap-y-2.5">
                     <div>
-                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Totale</p>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">{{ $t('sessionDetail.tl.total') }}</p>
                       <p class="text-sm font-mono font-medium text-gray-300">{{ run.files_total?.toLocaleString('it-IT') ?? '—' }}</p>
                     </div>
                     <div>
-                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Nuovi</p>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">{{ $t('sessionDetail.tl.new') }}</p>
                       <p class="text-sm font-mono font-medium text-emerald-400">{{ run.files_new?.toLocaleString('it-IT') ?? '—' }}</p>
                     </div>
                     <div>
-                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Dedup</p>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">{{ $t('sessionDetail.tl.dedup') }}</p>
                       <p class="text-sm font-mono font-medium text-indigo-400">{{ run.files_dedup?.toLocaleString('it-IT') ?? '—' }}</p>
                     </div>
                     <div>
-                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Scritti</p>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">{{ $t('sessionDetail.tl.written') }}</p>
                       <p class="text-sm font-mono font-medium text-gray-300">{{ run.bytes_new != null ? formatBytes(run.bytes_new) : '—' }}</p>
                     </div>
                     <div>
-                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Totale</p>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">{{ $t('sessionDetail.tl.totalBytes') }}</p>
                       <p class="text-sm font-mono font-medium text-gray-500">{{ run.bytes_total != null ? formatBytes(run.bytes_total) : '—' }}</p>
                     </div>
                     <div>
-                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Durata</p>
+                      <p class="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">{{ $t('sessionDetail.tl.duration') }}</p>
                       <p class="text-sm font-mono font-medium text-gray-300">{{ run.duration_sec != null ? formatDuration(run.duration_sec) : '—' }}</p>
                     </div>
                   </div>
@@ -345,9 +344,9 @@
                       <div class="h-full bg-indigo-500/60 transition-all" :style="{ width: ((run.files_dedup ?? 0) / run.files_total * 100) + '%' }" />
                     </div>
                     <div class="flex items-center gap-3 mt-1.5 text-[10px] text-gray-600">
-                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> nuovi</span>
-                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-indigo-500/60 inline-block" /> dedup</span>
-                      <span v-if="run.errors_count" class="text-red-400 ml-auto">{{ run.errors_count }} errori</span>
+                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> {{ $t('sessionDetail.tl.new_legend') }}</span>
+                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-indigo-500/60 inline-block" /> {{ $t('sessionDetail.tl.dedup_legend') }}</span>
+                      <span v-if="run.errors_count" class="text-red-400 ml-auto">{{ $t('sessionDetail.hdr.errors') }}: {{ run.errors_count }}</span>
                     </div>
                   </div>
                 </div>
@@ -368,7 +367,7 @@
               :class="runsView === 'table' ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'"
             >
               <TableCellsIcon class="w-3.5 h-3.5" />
-              Lista
+              {{ $t('sessionDetail.list') }}
             </button>
             <button
               @click="runsView = 'timeline'"
@@ -376,7 +375,7 @@
               :class="runsView === 'timeline' ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'"
             >
               <ClockIcon class="w-3.5 h-3.5" />
-              Timeline
+              {{ $t('sessionDetail.timeline') }}
             </button>
           </div>
 
@@ -392,11 +391,11 @@
               </div>
             </div>
             <div v-if="session.id" class="px-4 py-2.5 border-b border-gray-800/60 flex items-center gap-2">
-              <span class="text-[10px] text-gray-600 uppercase tracking-wider font-semibold w-8 shrink-0">ID</span>
+              <span class="text-[10px] text-gray-600 uppercase tracking-wider font-semibold w-8 shrink-0">{{ $t('sessionDetail.id') }}</span>
               <span class="text-[10px] font-mono text-gray-500 truncate">{{ session.id }}</span>
             </div>
             <div class="px-4 py-2.5 flex items-center gap-2">
-              <span class="text-[10px] text-gray-600 uppercase tracking-wider font-semibold shrink-0">Run</span>
+              <span class="text-[10px] text-gray-600 uppercase tracking-wider font-semibold shrink-0">{{ $t('sessionDetail.runs') }}</span>
               <span class="text-[10px] font-mono text-gray-400 ml-auto">{{ session.runs.length }}</span>
             </div>
           </div>
@@ -404,7 +403,7 @@
           <!-- Sorgenti -->
           <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
             <div class="px-4 py-2.5 border-b border-gray-800/60">
-              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Sorgenti</p>
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('sessionDetail.sources') }}</p>
             </div>
             <div class="px-4 py-3 space-y-2">
               <div
@@ -422,7 +421,7 @@
           <!-- Percorsi esclusi -->
           <div v-if="session.excludes?.paths?.length" class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
             <div class="px-4 py-2.5 border-b border-gray-800/60">
-              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Percorsi esclusi</p>
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('sessionDetail.excludedPaths') }}</p>
             </div>
             <div class="px-4 py-3 space-y-1.5">
               <div
@@ -439,7 +438,7 @@
           <!-- Pattern esclusioni -->
           <div v-if="session.excludes?.patterns?.length" class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
             <div class="px-4 py-2.5 border-b border-gray-800/60">
-              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Pattern esclusioni</p>
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('sessionDetail.excludePatterns') }}</p>
             </div>
             <div class="px-4 py-3 flex flex-wrap gap-1.5">
               <span
@@ -455,7 +454,7 @@
       </div>
     </div>
 
-    <!-- Sidebar dettaglio run — drawer modale a tutta altezza -->
+    <!-- Sidebar dettaglio run -->
     <transition name="slide">
       <div v-if="selectedRun" class="fixed inset-0 z-40 flex justify-end">
         <div class="backdrop absolute inset-0 bg-black/30 backdrop-blur-[2px]" @click="closeRunDetail" />
@@ -463,7 +462,7 @@
           <!-- Header sidebar -->
           <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-gray-900/90 backdrop-blur-md z-10">
             <div>
-              <p class="text-sm font-bold text-white">Dettaglio run</p>
+              <p class="text-sm font-bold text-white">{{ $t('sessionDetail.runDetail') }}</p>
               <p class="text-[10px] text-gray-500 font-mono mt-0.5">{{ formatTs(selectedRun.ts) }}</p>
             </div>
             <button @click="closeRunDetail" class="p-1 rounded-md text-gray-600 hover:text-white transition-colors">
@@ -480,7 +479,7 @@
             >
               <ArrowPathIcon class="w-3 h-3 text-indigo-400 animate-spin shrink-0" />
               <span class="text-[10px] text-gray-500">
-                Caricamento file…
+                {{ $t('sessionDetail.loadingFiles') }}
                 {{ state.selectedRunFull._filesLoaded.toLocaleString('it-IT') }}
                 / {{ state.selectedRunFull._filesTotal.toLocaleString('it-IT') }}
               </span>
@@ -497,7 +496,7 @@
               >
                 <ExclamationTriangleIcon class="w-3.5 h-3.5 text-red-400 shrink-0" />
                 <span class="text-[11px] font-semibold text-red-400 flex-1">
-                  {{ state.selectedRunFull.errors.length }} errori registrati
+                  {{ $t('sessionDetail.errorsInRun', { n: state.selectedRunFull.errors.length }) }}
                 </span>
                 <ChevronDownIcon
                   class="w-3.5 h-3.5 text-gray-500 transition-transform"
@@ -544,15 +543,15 @@
             <!-- Conferma eliminazione -->
             <div v-if="confirmingDelete" class="flex items-center gap-2">
               <ExclamationTriangleIcon class="w-4 h-4 text-amber-400 shrink-0" />
-              <span class="text-xs text-gray-400 flex-1">Eliminare questo run?</span>
-              <button @click="confirmDeleteSelectedRun" class="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
-              <button @click="confirmingDelete = false" class="px-3 py-1.5 rounded-md text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">Annulla</button>
+              <span class="text-xs text-gray-400 flex-1">{{ $t('sessionDetail.deleteRun') }}</span>
+              <button @click="confirmDeleteSelectedRun" class="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">{{ $t('common.delete') }}</button>
+              <button @click="confirmingDelete = false" class="px-3 py-1.5 rounded-md text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">{{ $t('common.cancel') }}</button>
             </div>
             <!-- Selezione attiva -->
             <div v-else-if="inSelectionMode" class="flex items-center gap-3">
               <span class="text-[11px] text-gray-500 flex-1">
-                <template v-if="selectedFiles.length">{{ selectedFiles.length }} selezionati</template>
-                <template v-else>Nessun file selezionato</template>
+                <template v-if="selectedFiles.length">{{ $t('sessionDetail.selectedFiles', { n: selectedFiles.length }) }}</template>
+                <template v-else>{{ $t('sessionDetail.noFileSelected') }}</template>
               </span>
               <button
                 @click="selectedFiles.length ? handleRestore() : null"
@@ -560,7 +559,7 @@
                 class="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
               >
                 <ArrowDownTrayIcon class="w-3.5 h-3.5" />
-                Ripristina
+                {{ $t('sessionDetail.restore') }}
               </button>
             </div>
             <!-- Azioni normali -->
@@ -571,7 +570,7 @@
                 class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-md text-xs font-medium text-red-400 border border-red-900/50 hover:bg-red-950/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <TrashIcon class="w-3.5 h-3.5" />
-                Cancella
+                {{ $t('sessionDetail.deleteRun_btn') }}
               </button>
               <button
                 @click="handleRestore"
@@ -579,7 +578,7 @@
                 class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-md text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
               >
                 <ArrowDownTrayIcon class="w-3.5 h-3.5" />
-                Restore
+                {{ $t('sessionDetail.restoreBtn') }}
               </button>
             </div>
           </div>
@@ -605,18 +604,17 @@
             <div class="w-8 h-8 rounded-md bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
               <TrashIcon class="w-4 h-4 text-red-400" />
             </div>
-            <h3 class="text-sm font-bold text-white">Conferma eliminazione</h3>
+            <h3 class="text-sm font-bold text-white">{{ $t('sessionDetail.confirmDeleteRuns.title') }}</h3>
           </div>
           <div class="px-6 py-5">
             <p class="text-sm text-gray-300">
-              Stai per eliminare
-              <span class="font-semibold text-white">{{ selectedRuns.size }} run</span>.
-              Questa operazione non può essere annullata.
+              {{ $t('sessionDetail.confirmDeleteRuns.message', { count: selectedRuns.size }) }}
+              {{ $t('common.cannotUndo') }}
             </p>
           </div>
           <div class="px-6 py-4 bg-gray-800/30 flex justify-end gap-3">
-            <button @click="runDeleteConfirm = false" class="px-4 py-2 rounded-md text-sm text-gray-400 hover:text-white transition-colors">Annulla</button>
-            <button @click="confirmDeleteSelectedRuns" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+            <button @click="runDeleteConfirm = false" class="px-4 py-2 rounded-md text-sm text-gray-400 hover:text-white transition-colors">{{ $t('common.cancel') }}</button>
+            <button @click="confirmDeleteSelectedRuns" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">{{ $t('common.delete') }}</button>
           </div>
         </div>
       </div>
@@ -625,7 +623,6 @@
 </template>
 
 <style scoped>
-/* Backdrop: fade indipendente */
 .slide-enter-active .backdrop,
 .slide-leave-active .backdrop {
   transition: opacity 0.25s ease;
@@ -635,7 +632,6 @@
   opacity: 0;
 }
 
-/* Drawer panel: slide da destra */
 .slide-enter-active .drawer-panel,
 .slide-leave-active .drawer-panel {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -684,20 +680,14 @@ const selectedRun = computed(() => state.selectedRun)
 const pausedRun   = computed(() => session.value?.runs[0]?.status === 'paused' ? session.value.runs[0] : null)
 const hasPaused   = computed(() => !!pausedRun.value)
 
-// Task attivo per questa sessione (backup o restore in corso)
 const activeTask      = computed(() => getActiveTask(session.value?.name))
-
-// Sessione occupata: c'è un task attivamente in esecuzione
 const sessionBusy = computed(() => !!getActiveTask(session.value?.name))
-
-// Cancella disabilitato solo se il run selezionato è quello attivamente in scrittura
 const cannotDeleteRun = computed(() => selectedRun.value?.status === 'running')
 const isRunning       = computed(() => activeTask.value?.type === 'backup')
 const isRestoring     = computed(() => activeTask.value?.type === 'restore')
 const backupProgress  = computed(() => isRunning.value   ? activeTask.value?.progress : null)
 const restoreProgress = computed(() => isRestoring.value ? activeTask.value?.progress : null)
 
-// Ultimo task completato di restore per questa sessione
 const lastRestoreTask = computed(() => getLastTask(session.value?.name, 'restore'))
 const restoreResult   = computed(() => lastRestoreTask.value?.status !== 'running' ? lastRestoreTask.value?.result : null)
 
@@ -731,7 +721,6 @@ const inSelectionMode  = ref(false)
 const pendingDeleteRun = ref(null)
 const errorsExpanded   = ref(false)
 
-// ── Selezione bulk runs ───────────────────────────────────────────────────────
 const runSelectionMode = ref(false)
 const selectedRuns     = ref(new Set())
 const runDeleteConfirm = ref(false)

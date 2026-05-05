@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { syncThemeFromSettings } from './settings.js'
+import { setLocale } from './i18n.js'
 import { refreshSession } from './sessions.js'
 
 export const state = reactive({
@@ -38,6 +39,7 @@ export async function boot() {
   state.appInfo      = appInfo
   state.recentStores = settings.recentStores ?? []
   syncThemeFromSettings(settings.theme)
+  setLocale(settings.language)
   for (const t of tasks) state.tasks[t.id] = t
 
   window.vorn.onTaskProgress(({ taskId, ...progress }) => {
@@ -51,7 +53,7 @@ export async function boot() {
     t.result   = result ?? null
     t.error    = error  ?? null
     t.progress = null
-    if (t.type !== 'integrity' && t.type !== 'clear' && t.type !== 'extract-store') {
+    if (t.type !== 'integrity' && t.type !== 'clear' && t.type !== 'extract-store' && t.type !== 'prune') {
       await refreshSession(t.sessionName)
     }
   })
@@ -129,7 +131,8 @@ export {
   deleteRun, selectRun, loadFullRun,
 }                                                  from './sessions.js'
 export {
-  integrityState, clearState, extractState,
+  integrityState, clearState, extractState, pruneState,
   startBackup, startRestore, startIntegrity, startClearStore, startExtractStore,
+  startPrune, resumePrune, pausePrune,
   cancelTask, getActiveTask, getLastTask,
 }                                                  from './tasks.js'

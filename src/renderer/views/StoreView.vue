@@ -4,56 +4,69 @@
     <!-- Header -->
     <div class="px-8 py-6 border-b border-gray-800 flex items-center justify-between shrink-0">
       <div>
-        <h1 class="text-xl font-semibold text-white">Store</h1>
+        <h1 class="text-xl font-semibold text-white">{{ $t('store.title') }}</h1>
         <p class="text-sm text-gray-500 mt-0.5 font-mono">
           {{ state.activeStore }}
-          <span v-if="storeFileCount !== null" class="text-gray-600"> · {{ storeFileCount.toLocaleString('it-IT') }} vorn</span>
+          <span v-if="storeFileCount !== null" class="text-gray-600"> · {{ storeFileCount.toLocaleString() }} vorn</span>
         </p>
       </div>
       <div class="flex items-center gap-2">
         <button
           @click="closeStore"
           :disabled="anyTaskRunning"
-          :title="anyTaskRunning ? 'Operazione in corso — attendere il completamento' : ''"
+          :title="anyTaskRunning ? $t('common.operationWait') : ''"
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <ArrowRightStartOnRectangleIcon class="w-4 h-4" />
-          Cambia store
+          {{ $t('store.changeStore') }}
         </button>
         <button
           @click="showExtractModal = true"
           :disabled="anyTaskRunning"
-          :title="anyTaskRunning ? 'Operazione in corso — attendere il completamento' : ''"
+          :title="anyTaskRunning ? $t('common.operationWait') : ''"
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-indigo-500/50 hover:text-indigo-300 hover:bg-indigo-500/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <ArchiveBoxArrowDownIcon class="w-4 h-4" />
-          Estrai files
+          {{ $t('store.extractFiles') }}
         </button>
         <button @click="refreshStore" class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 transition-colors">
           <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': state.loading }" />
-          Aggiorna
+          {{ $t('store.refresh') }}
         </button>
         <button
           @click="showClearModal = true"
           :disabled="clearState.running || anyTaskRunning"
-          :title="anyTaskRunning && !clearState.running ? 'Operazione in corso — attendere il completamento' : ''"
+          :title="anyTaskRunning && !clearState.running ? $t('common.operationWait') : ''"
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-red-600/50 hover:text-red-400 hover:bg-red-500/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <ArrowPathIcon v-if="clearState.running" class="w-4 h-4 animate-spin" />
           <TrashIcon v-else class="w-4 h-4" />
           <span v-if="clearState.running">{{ clearState.progress?.deleted ?? 0 }}/{{ clearState.progress?.total ?? 0 }}</span>
-          <span v-else>Svuota store</span>
+          <span v-else>{{ $t('store.clearStore') }}</span>
         </button>
         <button
           @click="runIntegrity"
           :disabled="integrityState.running || anyTaskRunning"
-          :title="anyTaskRunning && !integrityState.running ? 'Operazione in corso — attendere il completamento' : ''"
+          :title="anyTaskRunning && !integrityState.running ? $t('common.operationWait') : ''"
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <ArrowPathIcon v-if="integrityState.running" class="w-4 h-4 animate-spin" />
           <WrenchScrewdriverIcon v-else class="w-4 h-4" />
           <span v-if="integrityState.running">{{ integrityState.progress?.current ?? 0 }}/{{ integrityState.progress?.total ?? 0 }}</span>
-          <span v-else>Verifica integrità</span>
+          <span v-else>{{ $t('store.verifyIntegrity') }}</span>
+        </button>
+        <button
+          @click="handlePruneClick"
+          :disabled="pruneState.running || anyTaskRunning"
+          :title="anyTaskRunning && !pruneState.running ? $t('common.operationWait') : ''"
+          class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-indigo-500/50 hover:text-indigo-300 hover:bg-indigo-500/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          :class="pruneState.paused ? 'border-amber-500/30! text-amber-300!' : ''"
+        >
+          <ArrowPathIcon v-if="pruneState.running" class="w-4 h-4 animate-spin" />
+          <PlayIcon      v-else-if="pruneState.paused" class="w-4 h-4" />
+          <ScissorsIcon  v-else class="w-4 h-4" />
+          <span v-if="pruneState.running">{{ pruneState.progress?.deleted ?? 0 }}/{{ pruneState.progress?.orphanCount ?? '…' }}</span>
+          <span v-else>{{ $t('store.prune.button') }}</span>
         </button>
       </div>
     </div>
@@ -66,14 +79,14 @@
             <ArrowPathIcon class="w-4 h-4 text-red-400 animate-spin" />
           </div>
           <div>
-            <p class="text-sm font-bold text-white">Svuotamento in corso…</p>
-            <p class="text-xs text-gray-500 mt-0.5">Non chiudere l'applicazione</p>
+            <p class="text-sm font-bold text-white">{{ $t('store.clearing.title') }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">{{ $t('store.clearing.dontClose') }}</p>
           </div>
         </div>
         <div class="px-6 py-5 space-y-4">
           <div class="flex items-center justify-between text-xs font-mono mb-1">
-            <span class="text-red-400">{{ (clearState.progress?.deleted ?? 0).toLocaleString('it-IT') }} eliminati</span>
-            <span class="text-gray-500">{{ (clearState.progress?.total ?? 0).toLocaleString('it-IT') }} totali</span>
+            <span class="text-red-400">{{ $t('store.clearing.deleted', { n: (clearState.progress?.deleted ?? 0).toLocaleString() }) }}</span>
+            <span class="text-gray-500">{{ $t('store.clearing.total', { n: (clearState.progress?.total ?? 0).toLocaleString() }) }}</span>
           </div>
           <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
             <div
@@ -82,7 +95,7 @@
             />
           </div>
           <p v-if="clearState.progress?.failed" class="text-xs text-amber-400">
-            {{ clearState.progress.failed }} errori
+            {{ $t('store.clearing.errors', { n: clearState.progress.failed }) }}
           </p>
         </div>
         <div class="px-6 py-4 bg-gray-800/30 flex justify-end">
@@ -90,7 +103,67 @@
             @click="stopClear"
             class="px-4 py-2 rounded-md text-xs font-semibold text-white bg-red-700 hover:bg-red-600 transition-colors"
           >
-            Stop
+            {{ $t('common.stop') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal bloccante: pulizia in corso -->
+    <div v-if="pruneState.running" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-[2px]">
+      <div class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center shrink-0">
+            <ArrowPathIcon class="w-4 h-4 text-indigo-400 animate-spin" />
+          </div>
+          <div>
+            <p class="text-sm font-bold text-white">{{ $t('store.prune.runningTitle') }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">{{ $t('store.prune.dontClose') }}</p>
+          </div>
+        </div>
+        <div class="px-6 py-5 space-y-3">
+          <!-- fase scanning / computing -->
+          <template v-if="!pruneState.progress || pruneState.progress.phase !== 'deleting'">
+            <p class="text-xs text-gray-400">
+              <span v-if="pruneState.progress?.phase === 'scanning'">
+                {{ $t('store.prune.scanning', { scanned: pruneState.progress.scanned, total: pruneState.progress.totalSessions }) }}
+              </span>
+              <span v-else>{{ $t('store.prune.computing') }}</span>
+            </p>
+            <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+              <div class="h-full w-2/5 bg-indigo-400 rounded-full animate-pulse" />
+            </div>
+          </template>
+          <!-- fase deleting -->
+          <template v-else>
+            <p class="text-xs text-gray-400">{{ $t('store.prune.deleting') }}</p>
+            <div class="flex items-center justify-between text-xs font-mono mb-1">
+              <span class="text-indigo-400">{{ $t('store.prune.deleted', { n: pruneState.progress.deleted }) }}</span>
+              <span class="text-gray-500">{{ $t('store.prune.orphansFound', { n: pruneState.progress.orphanCount }) }}</span>
+            </div>
+            <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+              <div
+                class="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                :style="{ width: pruneProgressPct + '%' }"
+              />
+            </div>
+            <p v-if="pruneState.progress.failed" class="text-xs text-amber-400">
+              {{ $t('store.prune.failed', { n: pruneState.progress.failed }) }}
+            </p>
+          </template>
+        </div>
+        <div class="px-6 py-4 bg-gray-800/30 flex justify-end gap-2">
+          <button
+            @click="doPausePrune"
+            class="px-4 py-2 rounded-md text-xs font-semibold text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition-colors"
+          >
+            {{ $t('store.prune.pause') }}
+          </button>
+          <button
+            @click="doStopPrune"
+            class="px-4 py-2 rounded-md text-xs font-semibold text-white bg-red-700 hover:bg-red-600 transition-colors"
+          >
+            {{ $t('common.stop') }}
           </button>
         </div>
       </div>
@@ -109,9 +182,9 @@
           </colgroup>
           <thead>
             <tr>
-              <th class="py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pr-5">Hash</th>
-              <th class="py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider pr-5">Dimensione</th>
-              <th class="py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Ultima modifica</th>
+              <th class="py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider pr-5">{{ $t('store.hdr.hash') }}</th>
+              <th class="py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider pr-5">{{ $t('store.hdr.size') }}</th>
+              <th class="py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.hdr.lastModified') }}</th>
             </tr>
           </thead>
         </table>
@@ -159,7 +232,7 @@
 
         <div v-if="state.storeEntries.length === 0 && !state.loading" class="flex flex-col items-center justify-center h-48 text-center">
           <ArchiveBoxIcon class="w-8 h-8 text-gray-700 mb-3" />
-          <p class="text-gray-500 text-sm">Nessun file nel cassetto</p>
+          <p class="text-gray-500 text-sm">{{ $t('store.noFiles') }}</p>
         </div>
       </div>
     </div>
@@ -173,7 +246,7 @@
           <!-- Header -->
           <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-gray-900/90 backdrop-blur-md z-10">
             <div>
-              <p class="text-sm font-bold text-white">Dettaglio file</p>
+              <p class="text-sm font-bold text-white">{{ $t('store.detail.title') }}</p>
               <p class="text-[10px] text-gray-500 font-mono mt-0.5">{{ selectedEntry.hash_vorn.slice(0, 16) }}…</p>
             </div>
             <button @click="selectedEntry = null" class="p-1 rounded-md text-gray-600 hover:text-white transition-colors">
@@ -204,14 +277,14 @@
 
             <!-- Hash -->
             <div class="space-y-1.5">
-              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Hash</p>
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.detail.hash') }}</p>
               <div class="flex items-start gap-2">
                 <p class="font-mono text-[11px] text-indigo-400 bg-indigo-500/10 px-2 py-1.5 rounded-md break-all flex-1 leading-relaxed">
                   {{ selectedEntry.hash_vorn }}
                 </p>
                 <button
                   @click="copyHash"
-                  :title="hashCopied ? 'Copiato!' : 'Copia hash'"
+                  :title="hashCopied ? $t('store.detail.copied') : $t('store.detail.copyHash')"
                   class="p-1.5 rounded-md transition-colors shrink-0 mt-0.5"
                   :class="hashCopied ? 'text-emerald-400 bg-emerald-500/10' : 'text-gray-500 hover:text-white hover:bg-gray-800'"
                 >
@@ -223,18 +296,18 @@
 
             <!-- Dimensione -->
             <div class="space-y-1">
-              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Dimensione</p>
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.detail.size') }}</p>
               <p class="text-sm font-mono text-gray-300">{{ formatBytes(selectedEntry.bytes_file) }}</p>
             </div>
 
             <!-- Date -->
             <div class="grid grid-cols-2 gap-3">
               <div class="space-y-1">
-                <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Creato il</p>
+                <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.detail.created') }}</p>
                 <p class="text-xs text-gray-400">{{ formatTs(selectedEntry.ctime) }}</p>
               </div>
               <div class="space-y-1">
-                <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Modificato il</p>
+                <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.detail.modified') }}</p>
                 <p class="text-xs text-gray-400">{{ formatTs(selectedEntry.mtime) }}</p>
               </div>
             </div>
@@ -242,9 +315,9 @@
             <!-- Sessioni / Record -->
             <div class="space-y-2">
               <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-                Sessioni ({{ selectedEntry.records?.length ?? 0 }})
+                {{ $t('store.detail.sessions', { n: selectedEntry.records?.length ?? 0 }) }}
               </p>
-              <p v-if="!selectedEntry.records?.length" class="text-xs text-gray-600">Nessuna sessione</p>
+              <p v-if="!selectedEntry.records?.length" class="text-xs text-gray-600">{{ $t('store.detail.noSessions') }}</p>
               <div
                 v-for="record in selectedEntry.records"
                 :key="record.id"
@@ -255,7 +328,7 @@
                   <button
                     @click.stop="openExtractModal(record)"
                     :disabled="anyTaskRunning"
-                    :title="anyTaskRunning ? 'Operazione in corso' : 'Ripristina file'"
+                    :title="anyTaskRunning ? $t('store.detail.operationInProgress') : $t('store.detail.restoreFile')"
                     class="opacity-0 group-hover:opacity-100 p-1 rounded-md text-gray-500 hover:text-indigo-300 hover:bg-indigo-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all shrink-0"
                   >
                     <ArrowDownTrayIcon class="w-3.5 h-3.5" />
@@ -290,7 +363,7 @@
             <div class="w-8 h-8 rounded-md bg-red-500/15 border border-red-500/30 flex items-center justify-center">
               <TrashIcon class="w-4 h-4 text-red-400" />
             </div>
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Svuota Store</h3>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">{{ $t('store.clearModal.title') }}</h3>
           </div>
           <button @click="closeClearModal" class="text-gray-500 hover:text-white transition-colors">
             <XMarkIcon class="w-5 h-5" />
@@ -298,32 +371,31 @@
         </div>
         <div class="p-6 space-y-4">
           <div class="rounded-md bg-red-950/30 border border-red-900/40 px-4 py-3 space-y-2">
-            <p class="text-xs font-semibold text-red-300 uppercase tracking-wider">Operazione irreversibile</p>
-            <p class="text-xs text-gray-400">
-              Tutti i <span class="text-white font-semibold">{{ storeFileCount ?? '?' }} file .vorn</span> nello store verranno eliminati definitivamente.
-              I manifest delle sessioni non vengono toccati, ma i dati di backup saranno irrecuperabili.
-            </p>
+            <p class="text-xs font-semibold text-red-300 uppercase tracking-wider">{{ $t('store.clearModal.irrev') }}</p>
+            <p class="text-xs text-gray-400">{{ $t('store.clearModal.warning', { count: storeFileCount ?? '?' }) }}</p>
           </div>
           <div>
-            <p class="text-xs text-gray-400 mb-2">Digita <span class="font-mono font-bold text-white">ELIMINA</span> per confermare</p>
+            <p class="text-xs text-gray-400 mb-2">
+              {{ $t('store.clearModal.typeToConfirm', { word: $t('store.clearModal.confirmWord') }) }}
+            </p>
             <input
               v-model="clearConfirmText"
               type="text"
-              placeholder="ELIMINA"
+              :placeholder="$t('store.clearModal.confirmWord')"
               class="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-500/50 transition-colors"
             />
           </div>
         </div>
         <div class="px-6 py-4 bg-gray-800/30 flex items-center justify-end gap-3">
           <button @click="closeClearModal" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
-            Annulla
+            {{ $t('common.cancel') }}
           </button>
           <button
             @click="confirmClearStore"
-            :disabled="clearConfirmText !== 'ELIMINA'"
+            :disabled="clearConfirmText !== $t('store.clearModal.confirmWord')"
             class="px-5 py-2 rounded-md text-xs font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-lg shadow-red-500/20"
           >
-            Elimina tutto
+            {{ $t('store.clearModal.deleteAll') }}
           </button>
         </div>
       </div>
@@ -341,7 +413,7 @@
             <div class="w-8 h-8 rounded-md bg-red-500/15 border border-red-500/30 flex items-center justify-center">
               <TrashIcon class="w-4 h-4 text-red-400" />
             </div>
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Store svuotato</h3>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">{{ $t('store.clearReport.title') }}</h3>
           </div>
           <button @click="showClearReport = false" class="text-gray-500 hover:text-white transition-colors">
             <XMarkIcon class="w-5 h-5" />
@@ -350,18 +422,18 @@
         <div class="px-6 py-5 grid grid-cols-2 gap-4 border-b border-gray-800">
           <div class="text-center">
             <p class="text-2xl font-bold text-white">{{ clearState.report.deleted ?? 0 }}</p>
-            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Eliminati</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.clearReport.deleted') }}</p>
           </div>
           <div class="text-center">
             <p class="text-2xl font-bold" :class="(clearState.report.failed ?? 0) > 0 ? 'text-red-400' : 'text-gray-500'">
               {{ clearState.report.failed ?? 0 }}
             </p>
-            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Errori</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.clearReport.errors') }}</p>
           </div>
         </div>
         <div class="px-6 py-4 flex justify-end">
           <button @click="showClearReport = false" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
-            Chiudi
+            {{ $t('common.close') }}
           </button>
         </div>
       </div>
@@ -383,7 +455,7 @@
               <ExclamationTriangleIcon v-if="integrityState.report.errors.length" class="w-4 h-4 text-red-400" />
               <CheckCircleIcon v-else class="w-4 h-4 text-emerald-400" />
             </div>
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Report Integrità</h3>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">{{ $t('store.integrityReport.title') }}</h3>
           </div>
           <button @click="showIntegrityReport = false" class="text-gray-500 hover:text-white transition-colors">
             <XMarkIcon class="w-5 h-5" />
@@ -392,27 +464,27 @@
         <div class="px-6 py-4 border-b border-gray-800 grid grid-cols-3 gap-4 shrink-0">
           <div class="text-center">
             <p class="text-2xl font-bold text-white">{{ integrityState.report.total }}</p>
-            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Controllati</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.integrityReport.checked') }}</p>
           </div>
           <div class="text-center">
             <p class="text-2xl font-bold text-emerald-400">{{ integrityState.report.ok }}</p>
-            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Integri</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.integrityReport.ok') }}</p>
           </div>
           <div class="text-center">
             <p class="text-2xl font-bold" :class="integrityState.report.errors.length ? 'text-red-400' : 'text-gray-500'">
               {{ integrityState.report.errors.length }}
             </p>
-            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">Corrotti</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.integrityReport.corrupt') }}</p>
           </div>
         </div>
         <div class="flex-1 overflow-auto">
           <div v-if="integrityState.report.errors.length === 0" class="flex flex-col items-center justify-center py-12 text-center gap-3">
             <CheckCircleIcon class="w-10 h-10 text-emerald-500" />
-            <p class="text-sm text-gray-300 font-medium">Tutti i file sono integri</p>
-            <p class="text-xs text-gray-500">Nessuna anomalia rilevata nello store.</p>
+            <p class="text-sm text-gray-300 font-medium">{{ $t('store.integrityReport.allOk') }}</p>
+            <p class="text-xs text-gray-500">{{ $t('store.integrityReport.noIssues') }}</p>
           </div>
           <div v-else class="px-6 py-4 space-y-3">
-            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">File corrotti</p>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{{ $t('store.integrityReport.corruptFiles') }}</p>
             <div
               v-for="(entry, i) in integrityState.report.errors"
               :key="i"
@@ -430,7 +502,7 @@
         </div>
         <div class="px-6 py-4 bg-gray-800/30 flex justify-end shrink-0">
           <button @click="showIntegrityReport = false" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
-            Chiudi
+            {{ $t('common.close') }}
           </button>
         </div>
       </div>
@@ -451,7 +523,7 @@
             <ArrowDownTrayIcon class="w-4 h-4 text-indigo-400" />
           </div>
           <div>
-            <h3 class="text-sm font-bold text-white">Ripristina file</h3>
+            <h3 class="text-sm font-bold text-white">{{ $t('store.restoreModal.title') }}</h3>
             <p class="text-[10px] text-gray-500 font-mono mt-0.5">{{ selectedEntry?.hash_vorn.slice(0, 16) }}…</p>
           </div>
         </div>
@@ -462,7 +534,7 @@
 
       <div class="p-6 space-y-3">
         <p class="text-xs text-gray-400 mb-1">
-          Sessione: <span class="text-white font-semibold">{{ restoreRecord.session }}</span>
+          {{ $t('store.restoreModal.session') }} <span class="text-white font-semibold">{{ restoreRecord.session }}</span>
         </p>
 
         <!-- Opzione: percorso originale -->
@@ -472,9 +544,9 @@
         >
           <input type="radio" v-model="extractMode" value="original" class="mt-1 accent-indigo-500" :disabled="!extractOriginalInfo" />
           <div class="min-w-0">
-            <p class="text-sm font-semibold" :class="extractOriginalInfo ? 'text-white' : 'text-gray-600'">Percorso Originale</p>
+            <p class="text-sm font-semibold" :class="extractOriginalInfo ? 'text-white' : 'text-gray-600'">{{ $t('store.restoreModal.originalPath') }}</p>
             <p v-if="extractOriginalInfo" class="text-[10px] text-gray-500 break-all mt-1 font-mono leading-relaxed">{{ extractOriginalInfo.displayPath }}</p>
-            <p v-else class="text-[10px] text-amber-500/80 mt-1">Sessione non più disponibile</p>
+            <p v-else class="text-[10px] text-amber-500/80 mt-1">{{ $t('store.restoreModal.notAvailable') }}</p>
           </div>
         </label>
 
@@ -485,20 +557,20 @@
         >
           <input type="radio" v-model="extractMode" value="custom" class="mt-1 accent-indigo-500" />
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-white">Destinazione Personalizzata</p>
+            <p class="text-sm font-semibold text-white">{{ $t('store.restoreModal.customDest') }}</p>
             <div v-if="extractMode === 'custom'" class="mt-3 space-y-2">
               <div class="flex items-center gap-2">
                 <input
                   type="text"
                   v-model="extractCustomPath"
-                  placeholder="C:\Percorso\Destinazione"
+                  :placeholder="$t('store.restoreModal.placeholder')"
                   class="flex-1 bg-gray-950 border border-gray-700 rounded-md px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-indigo-500 transition-colors"
                 />
                 <button @click="pickExtractDest" class="p-2 rounded-md bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-colors shrink-0">
                   <FolderOpenIcon class="w-4 h-4" />
                 </button>
               </div>
-              <p class="text-[9px] text-amber-500/80">Il file verrà salvato direttamente in questa cartella.</p>
+              <p class="text-[9px] text-amber-500/80">{{ $t('store.restoreModal.savedDirectly') }}</p>
             </div>
           </div>
         </label>
@@ -506,16 +578,153 @@
 
       <div class="px-6 py-4 bg-gray-800/30 flex items-center justify-end gap-3">
         <button @click="restoreRecord = null" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
-          Annulla
+          {{ $t('common.cancel') }}
         </button>
         <button
           @click="confirmExtract"
           :disabled="(extractMode === 'original' && !extractOriginalInfo) || (extractMode === 'custom' && !extractCustomPath)"
           class="px-5 py-2 rounded-md text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-500/20"
         >
-          Conferma Ripristino
+          {{ $t('store.restoreModal.confirm') }}
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal: conferma pulizia -->
+  <div
+    v-if="showPruneConfirm"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
+    @click.self="showPruneConfirm = false"
+  >
+    <div class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
+            <ScissorsIcon class="w-4 h-4 text-indigo-400" />
+          </div>
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider">{{ $t('store.prune.confirmTitle') }}</h3>
+        </div>
+        <button @click="showPruneConfirm = false" class="text-gray-500 hover:text-white transition-colors">
+          <XMarkIcon class="w-5 h-5" />
+        </button>
+      </div>
+      <div class="p-6">
+        <div class="rounded-md bg-red-950/30 border border-red-900/40 px-4 py-3 space-y-1.5">
+          <p class="text-xs font-semibold text-red-300 uppercase tracking-wider">{{ $t('common.cannotUndo') }}</p>
+          <p class="text-xs text-gray-400">{{ $t('store.prune.confirmBody') }}</p>
+        </div>
+      </div>
+      <div class="px-6 py-4 bg-gray-800/30 flex items-center justify-end gap-3">
+        <button @click="showPruneConfirm = false" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
+          {{ $t('common.cancel') }}
+        </button>
+        <button
+          @click="confirmPrune"
+          class="px-5 py-2 rounded-md text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20"
+        >
+          {{ $t('store.prune.confirm') }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: report / pausa pulizia -->
+  <div
+    v-if="showPruneStatus"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
+    @click.self="showPruneStatus = false"
+  >
+    <div class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
+      <!-- Paused -->
+      <template v-if="pruneState.paused && pruneState.pausedData">
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-md bg-amber-500/15 border border-amber-500/30 flex items-center justify-center">
+              <PauseIcon class="w-4 h-4 text-amber-400" />
+            </div>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">{{ $t('store.prune.pausedTitle') }}</h3>
+          </div>
+          <button @click="showPruneStatus = false" class="text-gray-500 hover:text-white transition-colors">
+            <XMarkIcon class="w-5 h-5" />
+          </button>
+        </div>
+        <div class="px-6 py-5 grid grid-cols-2 gap-4 border-b border-gray-800">
+          <div class="text-center">
+            <p class="text-2xl font-bold text-white">{{ pruneState.pausedData.orphanCount }}</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.prune.orphanCount') }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-2xl font-bold text-indigo-400">{{ pruneState.pausedData.deleted }}</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.prune.reportDeleted') }}</p>
+          </div>
+        </div>
+        <p class="px-6 pt-4 text-xs text-gray-500">{{ $t('store.prune.pausedSub') }}</p>
+        <div class="px-6 py-4 flex justify-end gap-2">
+          <button @click="showPruneStatus = false" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
+            {{ $t('common.cancel') }}
+          </button>
+          <button
+            @click="doStopPrune(); showPruneStatus = false"
+            class="px-4 py-2 rounded-md text-xs font-semibold text-white bg-red-700 hover:bg-red-600 transition-colors"
+          >
+            {{ $t('common.stop') }}
+          </button>
+          <button
+            @click="doResumePrune"
+            :disabled="anyTaskRunning"
+            class="px-4 py-2 rounded-md text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-500/20"
+          >
+            {{ $t('store.prune.resume') }}
+          </button>
+        </div>
+      </template>
+      <!-- Done -->
+      <template v-else-if="pruneState.report">
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-md bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
+              <CheckCircleIcon class="w-4 h-4 text-emerald-400" />
+            </div>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">
+              {{ pruneState.report.status === 'cancelled'
+                ? $t('store.prune.reportTitleCancelled')
+                : $t('store.prune.reportTitle') }}
+            </h3>
+          </div>
+          <button @click="showPruneStatus = false" class="text-gray-500 hover:text-white transition-colors">
+            <XMarkIcon class="w-5 h-5" />
+          </button>
+        </div>
+        <!-- Store già pulito -->
+        <div v-if="pruneState.report.orphanCount === 0 && pruneState.report.status !== 'cancelled'" class="flex flex-col items-center justify-center py-10 text-center gap-3">
+          <CheckCircleIcon class="w-10 h-10 text-emerald-500" />
+          <p class="text-sm text-gray-300 font-medium">{{ $t('store.prune.allClean') }}</p>
+          <p class="text-xs text-gray-500">{{ $t('store.prune.allCleanSub') }}</p>
+        </div>
+        <!-- Con risultati -->
+        <div v-else class="px-6 py-5 grid grid-cols-3 gap-4 border-b border-gray-800">
+          <div class="text-center">
+            <p class="text-2xl font-bold text-white">{{ pruneState.report.orphanCount ?? 0 }}</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.prune.orphanCount') }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-2xl font-bold text-emerald-400">{{ pruneState.report.deleted ?? 0 }}</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.prune.reportDeleted') }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-2xl font-bold" :class="(pruneState.report.failed ?? 0) > 0 ? 'text-red-400' : 'text-gray-500'">
+              {{ pruneState.report.failed ?? 0 }}
+            </p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.prune.reportFailed') }}</p>
+          </div>
+        </div>
+        <div class="px-6 py-4 flex justify-end">
+          <button @click="showPruneStatus = false" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
+            {{ $t('common.close') }}
+          </button>
+        </div>
+      </template>
     </div>
   </div>
 
@@ -553,6 +762,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   WrenchScrewdriverIcon,
   XMarkIcon,
@@ -566,11 +776,16 @@ import {
   DocumentDuplicateIcon,
   ArrowDownTrayIcon,
   FolderOpenIcon,
+  ScissorsIcon,
+  PauseIcon,
+  PlayIcon,
 } from '@heroicons/vue/24/outline'
-import { state, clearState, integrityState, fetchStorePage, startIntegrity, startClearStore, cancelTask, formatTs, formatBytes, closeStore } from '../stores/vorn.js'
-
-const anyTaskRunning = computed(() => Object.values(state.tasks).some(t => t.status === 'running'))
+import { state, clearState, integrityState, pruneState, fetchStorePage, startIntegrity, startClearStore, startPrune, resumePrune, pausePrune, cancelTask, formatTs, formatBytes, closeStore } from '../stores/vorn.js'
 import ExtractFromStoreModal from '../components/ExtractFromStoreModal.vue'
+
+const { t } = useI18n()
+
+const anyTaskRunning = computed(() => Object.values(state.tasks).some(task => task.status === 'running'))
 
 const ITEMS_PER_PAGE = 20
 
@@ -618,7 +833,6 @@ const extractOriginalInfo = computed(() => {
 
 function openExtractModal(record) {
   restoreRecord.value     = record
-  // extractOriginalInfo dipende da restoreRecord — leggo dopo averlo settato
   const hasOriginal       = !!state.sessions.find(s => s.name === record.session)?.sources?.length
   extractMode.value       = hasOriginal ? 'original' : 'custom'
   extractCustomPath.value = ''
@@ -641,9 +855,9 @@ async function confirmExtract() {
   restoreRecord.value = null
   try {
     await window.vorn.extractHash(hashVorn, destDir, filename)
-    _showExtractResult(true, `File ripristinato: ${filename}`)
+    _showExtractResult(true, t('store.restoreModal.fileRestored', { name: filename }))
   } catch (e) {
-    _showExtractResult(false, e?.message ?? 'Errore durante il ripristino')
+    _showExtractResult(false, e?.message ?? t('store.restoreModal.restoreFailed'))
   }
 }
 
@@ -651,6 +865,49 @@ function _showExtractResult(ok, message) {
   extractResult.value = { ok, message }
   clearTimeout(_extractTimer)
   _extractTimer = setTimeout(() => { extractResult.value = null }, 4000)
+}
+
+// Prune store
+const showPruneConfirm = ref(false)
+const showPruneStatus  = ref(false)
+
+const pruneProgressPct = computed(() => {
+  const p = pruneState.value.progress
+  if (!p || p.phase !== 'deleting' || !p.total) return 0
+  return Math.round((p.current / p.total) * 100)
+})
+
+function handlePruneClick() {
+  if (pruneState.value.paused || pruneState.value.report) {
+    showPruneStatus.value = true
+    return
+  }
+  showPruneConfirm.value = true
+}
+
+async function confirmPrune() {
+  showPruneConfirm.value = false
+  await startPrune()
+}
+
+function doPausePrune() {
+  if (pruneState.value.activeTaskId) pausePrune(pruneState.value.activeTaskId)
+}
+
+function doStopPrune() {
+  for (const [id, t] of Object.entries(state.tasks)) {
+    if (t.type === 'prune') {
+      if (t.status === 'running') cancelTask(t.id)
+      if (t.status === 'paused') delete state.tasks[id]
+    }
+  }
+}
+
+async function doResumePrune() {
+  const d = pruneState.value.pausedData
+  if (!d) return
+  showPruneStatus.value = false
+  await resumePrune(d.orphanList, d.nextIndex)
 }
 
 // Clear store
@@ -672,13 +929,13 @@ const showClearReport     = ref(false)
 const showIntegrityReport = ref(false)
 
 async function confirmClearStore() {
-  if (clearConfirmText.value !== 'ELIMINA') return
+  if (clearConfirmText.value !== t('store.clearModal.confirmWord')) return
   closeClearModal()
   await startClearStore()
 }
 
 function stopClear() {
-  const task = Object.values(state.tasks).find(t => t.type === 'clear' && t.status === 'running')
+  const task = Object.values(state.tasks).find(task => task.type === 'clear' && task.status === 'running')
   if (task) cancelTask(task.id)
 }
 
@@ -719,6 +976,17 @@ function setupObserver() {
   )
   observer.observe(sentinel.value)
 }
+
+watch(() => pruneState.value.running, (running, wasRunning) => {
+  if (wasRunning && !running) {
+    if (pruneState.value.paused || pruneState.value.report) {
+      showPruneStatus.value = true
+    }
+    if (pruneState.value.report && pruneState.value.report.status !== 'cancelled' && !pruneState.value.report.fatalError) {
+      refreshStore()
+    }
+  }
+})
 
 watch(() => clearState.value.running, (running, wasRunning) => {
   if (wasRunning && !running) {

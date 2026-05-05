@@ -9,7 +9,7 @@
             <div class="w-8 h-8 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
               <Cog6ToothIcon class="w-4 h-4 text-indigo-400" />
             </div>
-            <h2 class="text-base font-semibold text-white">Impostazioni</h2>
+            <h2 class="text-base font-semibold text-white">{{ $t('settings.title') }}</h2>
           </div>
           <button @click="$emit('close')" class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors">
             <XMarkIcon class="w-4 h-4" />
@@ -21,10 +21,10 @@
 
           <!-- Sezione: Interfaccia -->
           <div>
-            <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Interfaccia</p>
+            <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-4">{{ $t('settings.interface') }}</p>
             <div class="space-y-5">
 
-              <SettingRow label="Lingua" sub="Lingua dell'interfaccia utente">
+              <SettingRow :label="$t('settings.lang.label')" :sub="$t('settings.lang.sub')">
                 <select
                   v-model="draft.language"
                   class="bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
@@ -38,14 +38,13 @@
             </div>
           </div>
 
-          <!-- Divider placeholder (future sections) -->
           <div class="border-t border-gray-800" />
 
           <!-- Sezione: Backup -->
           <div>
-            <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Backup</p>
+            <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-4">{{ $t('settings.backup') }}</p>
             <div class="space-y-5">
-              <SettingRow label="Notifiche di sistema" sub="Mostra una notifica al termine di ogni run">
+              <SettingRow :label="$t('settings.notif.label')" :sub="$t('settings.notif.sub')">
                 <Toggle v-model="draft.notifications" />
               </SettingRow>
             </div>
@@ -56,10 +55,10 @@
         <!-- Footer -->
         <div class="px-6 py-4 border-t border-gray-800 flex justify-end gap-2">
           <button @click="$emit('close')" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors rounded-md hover:bg-gray-800">
-            Annulla
+            {{ $t('common.cancel') }}
           </button>
           <button @click="save" class="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-md transition-colors">
-            Salva
+            {{ $t('common.save') }}
           </button>
         </div>
 
@@ -73,17 +72,13 @@ import { reactive, onMounted } from 'vue'
 import { Cog6ToothIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import SettingRow from './SettingRow.vue'
 import Toggle from './Toggle.vue'
+import { setLocale } from '../stores/i18n.js'
 
 const emit = defineEmits(['close'])
 
 const languages = [
   { code: 'it', label: 'Italiano' },
   { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español' },
-  { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'pt', label: 'Português' },
-  { code: 'zh', label: '中文' },
 ]
 
 const draft = reactive({
@@ -98,7 +93,8 @@ onMounted(async () => {
 })
 
 async function save() {
-  await window.vorn.saveSettings({ notifications: draft.notifications })
+  await window.vorn.saveSettings({ language: draft.language, notifications: draft.notifications })
+  setLocale(draft.language)
   emit('close')
 }
 </script>

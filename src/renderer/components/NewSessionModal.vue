@@ -9,7 +9,7 @@
             <div class="w-8 h-8 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
               <FolderPlusIcon class="w-4 h-4 text-indigo-400" />
             </div>
-            <h2 class="text-sm font-bold text-white">Nuova sessione</h2>
+            <h2 class="text-sm font-bold text-white">{{ $t('newSession.title') }}</h2>
           </div>
           <button @click="$emit('close')" class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors">
             <XMarkIcon class="w-4 h-4" />
@@ -23,13 +23,13 @@
           <div class="flex flex-col w-1/2 overflow-hidden">
             <div class="px-6 pt-6 pb-3 shrink-0">
               <div class="flex items-center justify-between mb-1">
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Cartelle da includere</p>
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ $t('newSession.foldersLabel') }}</p>
                 <div class="flex items-center gap-3 text-[10px] text-gray-600">
-                  <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded border bg-indigo-500 border-indigo-400"></span> sorgente</span>
-                  <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded border bg-gray-900 border-red-600/60"></span> esclusa</span>
+                  <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded border bg-indigo-500 border-indigo-400"></span> {{ $t('newSession.legend.source') }}</span>
+                  <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded border bg-gray-900 border-red-600/60"></span> {{ $t('newSession.legend.excluded') }}</span>
                 </div>
               </div>
-              <p class="text-[11px] text-gray-600">Seleziona le cartelle. Espandi e deseleziona le sottocartelle da escludere.</p>
+              <p class="text-[11px] text-gray-600">{{ $t('newSession.instructions') }}</p>
             </div>
             <div class="flex-1 min-h-0 px-6 pb-6 flex flex-col">
               <SessionSourceTree class="flex-1 min-h-0"
@@ -39,9 +39,9 @@
                 @update:excludePaths="form.excludePaths = $event"
               />
               <p v-if="form.sources.length" class="text-[11px] text-gray-500 mt-2">
-                {{ form.sources.length }} sorgente{{ form.sources.length !== 1 ? 'i' : '' }} selezionate
+                {{ $t('newSession.sourcesCount', form.sources.length, { count: form.sources.length }) }}
                 <span v-if="form.excludePaths.length" class="text-gray-600">
-                  · {{ form.excludePaths.length }} esclusi
+                  {{ $t('newSession.excludedCount', { count: form.excludePaths.length }) }}
                 </span>
               </p>
             </div>
@@ -52,10 +52,10 @@
 
             <!-- Nome -->
             <div>
-              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nome sessione</label>
+              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ $t('newSession.nameLabel') }}</label>
               <input
                 v-model="form.name"
-                placeholder="es. Documenti, Progetti, Foto…"
+                :placeholder="$t('newSession.namePlaceholder')"
                 class="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
               />
             </div>
@@ -63,17 +63,17 @@
             <!-- Pattern esclusioni -->
             <div>
               <div class="flex items-center justify-between mb-1">
-                <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Pattern esclusioni</label>
+                <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ $t('newSession.patternsLabel') }}</label>
                 <button
                   v-if="form.patterns.length"
                   @click="form.patterns = []"
-                  title="Azzera tutti i pattern"
+                  :title="$t('newSession.resetPatterns')"
                   class="p-1 rounded text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                 >
                   <ArrowPathIcon class="w-3 h-3" />
                 </button>
               </div>
-              <p class="text-[11px] text-gray-600 mb-3">Applicati su nome file/cartella. Usa <span class="font-mono text-gray-500">*</span> come wildcard.</p>
+              <p class="text-[11px] text-gray-600 mb-3">{{ $t('newSession.patternsHelp') }}</p>
               <div class="flex flex-wrap gap-2 mb-3">
                 <div
                   v-for="pat in form.patterns"
@@ -90,7 +90,7 @@
                 <input
                   v-model="newPattern"
                   @keydown.enter.prevent="addPattern"
-                  placeholder="es. *.bak oppure .cache"
+                  :placeholder="$t('newSession.patternPlaceholder')"
                   class="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-xs font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
                 />
                 <button
@@ -112,7 +112,7 @@
             <!-- Azioni -->
             <div class="flex gap-3">
               <button @click="$emit('close')" class="flex-1 px-4 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors">
-                Annulla
+                {{ $t('common.cancel') }}
               </button>
               <button
                 @click="submit"
@@ -120,7 +120,7 @@
                 class="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors"
               >
                 <ArrowPathIcon v-if="saving" class="w-4 h-4 animate-spin" />
-                Crea sessione
+                {{ $t('newSession.create') }}
               </button>
             </div>
 
@@ -134,9 +134,12 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { FolderPlusIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { createSession, state } from '../stores/vorn.js'
 import SessionSourceTree from './SessionSourceTree.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   initialRoot: { type: String, default: '' },
@@ -168,9 +171,9 @@ function removePattern(pat) {
 
 async function submit() {
   error.value = ''
-  if (!form.name.trim())    { error.value = 'Inserisci un nome per la sessione'; return }
-  if (state.sessions.some(s => s.name === form.name.trim())) { error.value = 'Esiste già una sessione con questo nome'; return }
-  if (!form.sources.length) { error.value = 'Seleziona almeno una cartella sorgente'; return }
+  if (!form.name.trim())    { error.value = t('newSession.errors.noName'); return }
+  if (state.sessions.some(s => s.name === form.name.trim())) { error.value = t('newSession.errors.duplicateName'); return }
+  if (!form.sources.length) { error.value = t('newSession.errors.noSource'); return }
 
   saving.value = true
   try {
@@ -183,7 +186,7 @@ async function submit() {
     emit('created')
     emit('close')
   } catch (e) {
-    error.value = e.message ?? 'Errore nella creazione della sessione'
+    error.value = e.message ?? t('newSession.errors.createFailed')
   } finally {
     saving.value = false
   }

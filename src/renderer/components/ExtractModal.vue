@@ -4,7 +4,7 @@
 
       <!-- Header -->
       <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
-        <h3 class="text-sm font-bold text-white uppercase tracking-wider">Estrai File</h3>
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider">{{ $t('extractModal.title') }}</h3>
         <button @click="$emit('close')" class="text-gray-500 hover:text-white transition-colors">
           <XMarkIcon class="w-5 h-5" />
         </button>
@@ -13,15 +13,15 @@
       <!-- Body -->
       <div class="p-6">
         <p class="text-xs text-gray-400 mb-5">
-          File: <span class="text-indigo-400 font-mono">{{ filename }}</span>
+          {{ $t('extractModal.fileLabel') }} <span class="text-indigo-400 font-mono">{{ filename }}</span>
         </p>
 
-        <label class="block text-xs font-medium text-gray-400 mb-1.5">Cartella destinazione</label>
+        <label class="block text-xs font-medium text-gray-400 mb-1.5">{{ $t('extractModal.destLabel') }}</label>
         <div class="flex items-center gap-2">
           <input
             type="text"
             v-model="destDir"
-            placeholder="Seleziona cartella…"
+            :placeholder="$t('extractModal.destPlaceholder')"
             class="flex-1 bg-gray-950 border border-gray-700 rounded-md px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
           />
           <button @click="pickDest" class="p-2 rounded-md bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-colors shrink-0">
@@ -36,14 +36,14 @@
           @click="$emit('close')"
           class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors"
         >
-          Annulla
+          {{ $t('common.cancel') }}
         </button>
         <button
           @click="handleConfirm"
           :disabled="!destDir.trim()"
           class="px-5 py-2 rounded-md text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-500/20"
         >
-          Estrai
+          {{ $t('extractModal.extract') }}
         </button>
       </div>
 

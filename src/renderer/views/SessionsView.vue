@@ -11,8 +11,8 @@
     <!-- Header -->
     <div class="px-8 py-6 border-b border-gray-800 flex items-center justify-between shrink-0">
       <div>
-        <h1 class="text-xl font-semibold text-white">Sessioni</h1>
-        <p class="text-sm text-gray-500 mt-0.5">{{ sessions.length }} sessioni · {{ totalRuns }} run</p>
+        <h1 class="text-xl font-semibold text-white">{{ $t('sessions.title') }}</h1>
+        <p class="text-sm text-gray-500 mt-0.5">{{ $t('sessions.subtitle', { sessions: sessions.length, runs: totalRuns }) }}</p>
       </div>
       <div class="flex items-center gap-2">
         <!-- Modalità normale -->
@@ -23,7 +23,7 @@
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 hover:bg-gray-800 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <CheckCircleIcon class="w-4 h-4" />
-            Seleziona
+            {{ $t('sessions.select') }}
           </button>
           <button
             @click="startAll"
@@ -31,7 +31,7 @@
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 hover:bg-gray-800 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <PlayIcon class="w-4 h-4" />
-            Avvia tutti
+            {{ $t('sessions.startAll') }}
           </button>
           <button
             @click="askDeleteAll"
@@ -39,7 +39,7 @@
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-300 hover:text-red-400 hover:border-red-600/50 hover:bg-red-500/5 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <TrashIcon class="w-4 h-4" />
-            Elimina tutti
+            {{ $t('sessions.deleteAll') }}
           </button>
         </template>
         <!-- Modalità selezione -->
@@ -48,7 +48,7 @@
             @click="exitSelection"
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800 text-sm font-medium transition-colors"
           >
-            Annulla
+            {{ $t('sessions.cancel') }}
           </button>
           <button
             @click="startSelected"
@@ -56,7 +56,7 @@
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <PlayIcon class="w-4 h-4" />
-            Avvia selezionati{{ selected.size ? ` (${selected.size})` : '' }}
+            {{ selected.size ? $t('sessions.startSelectedCount', { n: selected.size }) : $t('sessions.startSelected') }}
           </button>
           <button
             @click="askDeleteSelected"
@@ -64,7 +64,7 @@
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-red-600/40 text-red-400 hover:bg-red-500/10 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <TrashIcon class="w-4 h-4" />
-            Elimina selezionati{{ selected.size ? ` (${selected.size})` : '' }}
+            {{ selected.size ? $t('sessions.deleteSelectedCount', { n: selected.size }) : $t('sessions.deleteSelected') }}
           </button>
         </template>
         <div class="w-px h-5 bg-gray-700 mx-1" />
@@ -73,7 +73,7 @@
           class="flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors shadow-lg shadow-indigo-500/20"
         >
           <PlusIcon class="w-4 h-4" />
-          Nuova sessione
+          {{ $t('sessions.newSession') }}
         </button>
       </div>
     </div>
@@ -91,8 +91,8 @@
           <div class="w-14 h-14 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center">
             <ArrowDownTrayIcon class="w-7 h-7 text-indigo-400" />
           </div>
-          <p class="text-sm font-semibold text-indigo-300">Rilascia per creare una sessione</p>
-          <p class="text-xs text-gray-500">Verranno usate le cartelle come sorgenti</p>
+          <p class="text-sm font-semibold text-indigo-300">{{ $t('sessions.drop.title') }}</p>
+          <p class="text-xs text-gray-500">{{ $t('sessions.drop.sub') }}</p>
         </div>
       </div>
     </Transition>
@@ -112,7 +112,7 @@
     <div v-if="state.loading" class="flex-1 flex items-center justify-center">
       <div class="flex items-center gap-3 text-gray-500">
         <ArrowPathIcon class="w-5 h-5 animate-spin" />
-        <span class="text-sm">Caricamento sessioni…</span>
+        <span class="text-sm">{{ $t('sessions.loading') }}</span>
       </div>
     </div>
 
@@ -124,11 +124,11 @@
             <th v-if="selectionMode" class="pb-3 w-10 pl-4">
               <input type="checkbox" :checked="allSelected" @change="toggleAll" class="accent-indigo-500 cursor-pointer" />
             </th>
-            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Sessione</th>
-            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Ultima run</th>
-            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">Stato</th>
-            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">Run</th>
-            <th class="pb-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">File</th>
+            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">{{ $t('sessions.hdr.session') }}</th>
+            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">{{ $t('sessions.hdr.lastRun') }}</th>
+            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4">{{ $t('sessions.hdr.status') }}</th>
+            <th class="pb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 text-right">{{ $t('sessions.hdr.runs') }}</th>
+            <th class="pb-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">{{ $t('sessions.hdr.files') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -154,7 +154,7 @@
                   </div>
                   <div>
                     <p class="font-semibold text-gray-100">{{ session.name }}</p>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ session.sources.length }} sorgente{{ session.sources.length !== 1 ? 'i' : '' }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ $t('sessions.sourcesCount', session.sources.length, { count: session.sources.length }) }}</p>
                   </div>
                 </div>
               </td>
@@ -162,7 +162,7 @@
               <!-- Last run -->
               <td class="py-3.5 px-4">
                 <span v-if="session.runs.length" class="text-gray-300">{{ formatTs(session.runs[0].ts) }}</span>
-                <span v-else class="text-gray-600 italic">Mai eseguita</span>
+                <span v-else class="text-gray-600 italic">{{ $t('sessions.neverRun') }}</span>
               </td>
 
               <!-- Status -->
@@ -192,11 +192,11 @@
                     <button
                       @click="confirmDelete($event, session.name)"
                       class="px-2 py-1 rounded text-[11px] font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors"
-                    >Elimina</button>
+                    >{{ $t('common.delete') }}</button>
                     <button
                       @click="cancelDelete($event)"
                       class="px-2 py-1 rounded text-[11px] text-gray-400 hover:text-white transition-colors"
-                    >Annulla</button>
+                    >{{ $t('common.cancel') }}</button>
                   </div>
                   <!-- Tasti azione (visibili su hover) -->
                   <div v-else class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
@@ -204,7 +204,7 @@
                       v-if="activeTask(session.name)"
                       @click.stop="cancelTask(activeTask(session.name).id)"
                       class="p-1.5 rounded-md text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
-                      title="Sospendi backup"
+                      :title="$t('sessions.actions.suspend')"
                     >
                       <PauseIcon class="w-3.5 h-3.5" />
                     </button>
@@ -212,7 +212,7 @@
                       v-else
                       @click.stop="startBackup(session.name, _resumeTs(session))"
                       class="p-1.5 rounded-md text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
-                      :title="_resumeTs(session) ? 'Riprendi backup' : 'Avvia backup'"
+                      :title="_resumeTs(session) ? $t('sessions.actions.resume') : $t('sessions.actions.start')"
                     >
                       <PlayIcon class="w-3.5 h-3.5" />
                     </button>
@@ -220,7 +220,7 @@
                       @click="askDelete($event, session.name)"
                       :disabled="!!activeTask(session.name)"
                       class="p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-                      title="Elimina sessione"
+                      :title="$t('sessions.actions.delete')"
                     >
                       <TrashIcon class="w-3.5 h-3.5" />
                     </button>
@@ -238,34 +238,31 @@
               </td>
             </tr>
 
-            <!-- Sub-row progresso — visibile solo quando il backup è in corso -->
+            <!-- Sub-row progresso -->
             <tr v-if="activeTask(session.name)" @click="selectSession(session)" class="cursor-pointer bg-indigo-950/10 hover:bg-indigo-950/20 transition-colors">
               <td colspan="6" class="px-6 pb-3 pt-0">
                 <div class="pl-11">
-                  <!-- Barra di avanzamento -->
                   <div class="w-full h-1 bg-gray-800 rounded-full overflow-hidden mb-2">
                     <div
                       class="h-full bg-indigo-500 rounded-full transition-all duration-300"
                       :style="{ width: progressPct(session.name) + '%' }"
                     />
                   </div>
-
-                  <!-- Stats inline -->
                   <div class="flex items-center gap-5 text-[11px]">
                     <span class="text-emerald-400 font-medium">
-                      +{{ (activeTask(session.name).progress?.files_new ?? 0).toLocaleString('it-IT') }} nuovi
+                      {{ $t('sessions.progress.new', { n: (activeTask(session.name).progress?.files_new ?? 0).toLocaleString('it-IT') }) }}
                     </span>
                     <span class="text-gray-500">
-                      {{ (activeTask(session.name).progress?.files_dedup ?? 0).toLocaleString('it-IT') }} dedup
+                      {{ $t('sessions.progress.dedup', { n: (activeTask(session.name).progress?.files_dedup ?? 0).toLocaleString('it-IT') }) }}
                     </span>
                     <span class="text-gray-400">
-                      {{ formatBytes(activeTask(session.name).progress?.bytes_new ?? 0) }} scritti
+                      {{ $t('sessions.progress.written', { n: formatBytes(activeTask(session.name).progress?.bytes_new ?? 0) }) }}
                     </span>
                     <span class="text-gray-500">
-                      {{ formatBytes(activeTask(session.name).progress?.bytes_total ?? 0) }} totali
+                      {{ $t('sessions.progress.total', { n: formatBytes(activeTask(session.name).progress?.bytes_total ?? 0) }) }}
                     </span>
                     <span v-if="activeTask(session.name).progress?.errors" class="text-red-400">
-                      {{ activeTask(session.name).progress.errors }} errori
+                      {{ $t('sessions.progress.errors', { n: activeTask(session.name).progress.errors }) }}
                     </span>
                     <span v-if="activeTask(session.name).progress?.file" class="text-gray-600 font-mono truncate max-w-72 ml-auto">
                       {{ activeTask(session.name).progress.file.split(/[\\/]/).at(-1) }}
@@ -283,8 +280,8 @@
         <div class="w-16 h-16 rounded-md bg-gray-900 border border-gray-800 flex items-center justify-center mb-4">
           <ArchiveBoxIcon class="w-8 h-8 text-gray-600" />
         </div>
-        <p class="text-gray-400 font-medium">Nessuna sessione</p>
-        <p class="text-gray-600 text-sm mt-1">Crea la tua prima sessione per iniziare a fare backup</p>
+        <p class="text-gray-400 font-medium">{{ $t('sessions.noSessions') }}</p>
+        <p class="text-gray-600 text-sm mt-1">{{ $t('sessions.noSessionsHelp') }}</p>
       </div>
     </div>
 
@@ -306,21 +303,20 @@
           <div class="w-8 h-8 rounded-md bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
             <TrashIcon class="w-4 h-4 text-red-400" />
           </div>
-          <h3 class="text-sm font-bold text-white">Conferma eliminazione</h3>
+          <h3 class="text-sm font-bold text-white">{{ $t('sessions.confirmDelete.title') }}</h3>
         </div>
         <div class="px-6 py-5">
           <p class="text-sm text-gray-300">
-            Stai per eliminare
-            <span class="font-semibold text-white">{{ deleteConfirm.names.length }} sessione{{ deleteConfirm.names.length !== 1 ? 'i' : '' }}</span>.
-            Questa operazione non può essere annullata.
+            {{ $t('sessions.confirmDelete.message', deleteConfirm.names.length, { count: deleteConfirm.names.length }) }}
+            {{ $t('common.cannotUndo') }}
           </p>
           <ul class="mt-3 space-y-1 max-h-32 overflow-y-auto">
             <li v-for="n in deleteConfirm.names" :key="n" class="text-xs text-gray-500 font-mono truncate">· {{ n }}</li>
           </ul>
         </div>
         <div class="px-6 py-4 bg-gray-800/30 flex justify-end gap-3">
-          <button @click="deleteConfirm.show = false" class="px-4 py-2 rounded-md text-sm text-gray-400 hover:text-white transition-colors">Annulla</button>
-          <button @click="confirmDeleteBulk" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">Elimina</button>
+          <button @click="deleteConfirm.show = false" class="px-4 py-2 rounded-md text-sm text-gray-400 hover:text-white transition-colors">{{ $t('common.cancel') }}</button>
+          <button @click="confirmDeleteBulk" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-red-600 hover:bg-red-500 transition-colors">{{ $t('common.delete') }}</button>
         </div>
       </div>
     </div>
@@ -329,10 +325,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, PauseIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon } from '@heroicons/vue/24/outline'
 import { state, selectSession, deleteSession, getActiveTask, startBackup, cancelTask, formatTs, formatBytes } from '../stores/vorn.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
+
+const { t } = useI18n()
 
 // ── Path utilities ────────────────────────────────────────────────────────────
 
@@ -385,7 +384,7 @@ function onDrop(e) {
   const roots = [...new Set(paths.map(pathRoot))]
   if (roots.length > 1) {
     clearTimeout(dropErrorTimer)
-    dropError.value  = `Non puoi creare una sessione da unità diverse (${roots.map(r => r.toUpperCase()).join(', ')})`
+    dropError.value  = t('sessions.drop.errorDrives', { drives: roots.map(r => r.toUpperCase()).join(', ') })
     dropErrorTimer   = setTimeout(() => { dropError.value = '' }, 5000)
     return
   }

@@ -1,0 +1,394 @@
+{
+  "nav": {
+    "sessions": "Sessions",
+    "store": "Store",
+    "stats": "Statistics",
+    "settings": "Settings"
+  },
+
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "delete": "Delete",
+    "add": "Add",
+    "stop": "Stop",
+    "operationWait": "Operation in progress — please wait",
+    "cannotUndo": "This operation cannot be undone."
+  },
+
+  "status": {
+    "done": "Completed",
+    "running": "Running",
+    "paused": "Paused",
+    "crashed": "Interrupted",
+    "aborted": "Aborted"
+  },
+
+  "sidebar": {
+    "noStore": "No store configured"
+  },
+
+  "topbar": {
+    "settings": "Settings",
+    "lightTheme": "Switch to light theme",
+    "darkTheme": "Switch to dark theme"
+  },
+
+  "settings": {
+    "title": "Settings",
+    "interface": "Interface",
+    "backup": "Backup",
+    "lang": {
+      "label": "Language",
+      "sub": "Interface language"
+    },
+    "notif": {
+      "label": "System notifications",
+      "sub": "Show a notification at the end of each run"
+    }
+  },
+
+  "storeSelect": {
+    "disconnected": "Store disconnected — select a store to continue",
+    "title": "Select store",
+    "subtitle": "Choose where your backups are stored",
+    "recent": "Recent",
+    "browse": "Browse…",
+    "opening": "Opening…"
+  },
+
+  "store": {
+    "title": "Store",
+    "changeStore": "Change store",
+    "extractFiles": "Extract files",
+    "refresh": "Refresh",
+    "clearStore": "Clear store",
+    "verifyIntegrity": "Verify integrity",
+    "hdr": {
+      "hash": "Hash",
+      "size": "Size",
+      "lastModified": "Last modified"
+    },
+    "noFiles": "No files in the store",
+    "clearing": {
+      "title": "Clearing in progress…",
+      "dontClose": "Do not close the application",
+      "deleted": "{n} deleted",
+      "total": "{n} total",
+      "errors": "{n} errors"
+    },
+    "detail": {
+      "title": "File detail",
+      "hash": "Hash",
+      "size": "Size",
+      "created": "Created on",
+      "modified": "Modified on",
+      "sessions": "Sessions ({n})",
+      "noSessions": "No sessions",
+      "copyHash": "Copy hash",
+      "copied": "Copied!",
+      "restoreFile": "Restore file",
+      "operationInProgress": "Operation in progress"
+    },
+    "clearModal": {
+      "title": "Clear Store",
+      "irrev": "Irreversible operation",
+      "warning": "All {count} .vorn files in the store will be permanently deleted. Session manifests are not affected, but backup data will be unrecoverable.",
+      "typeToConfirm": "Type {word} to confirm",
+      "confirmWord": "DELETE",
+      "deleteAll": "Delete all"
+    },
+    "clearReport": {
+      "title": "Store cleared",
+      "deleted": "Deleted",
+      "errors": "Errors"
+    },
+    "integrityReport": {
+      "title": "Integrity Report",
+      "checked": "Checked",
+      "ok": "OK",
+      "corrupt": "Corrupted",
+      "allOk": "All files are intact",
+      "noIssues": "No anomalies detected in the store.",
+      "corruptFiles": "Corrupted files"
+    },
+    "prune": {
+      "button": "Clean",
+      "confirmTitle": "Clean obsolete files",
+      "confirmBody": "All .vorn files no longer referenced by any run of any session will be permanently deleted. Active data will not be touched.",
+      "confirm": "Analyze and clean",
+      "runningTitle": "Cleaning in progress…",
+      "dontClose": "Do not close the application",
+      "scanning": "Scanning sessions… ({scanned}/{total})",
+      "computing": "Computing obsolete files…",
+      "deleting": "Deleting obsolete files…",
+      "orphansFound": "{n} obsolete files found",
+      "deleted": "{n} deleted",
+      "failed": "{n} errors",
+      "pause": "Pause",
+      "resume": "Resume",
+      "pausedTitle": "Cleaning paused",
+      "pausedSub": "The operation has been suspended. You can resume at any time.",
+      "reportTitle": "Cleaning completed",
+      "reportTitleCancelled": "Cleaning cancelled",
+      "orphanCount": "Obsolete found",
+      "reportDeleted": "Deleted",
+      "reportFailed": "Errors",
+      "allClean": "Store already clean",
+      "allCleanSub": "No obsolete files found in the store."
+    },
+    "restoreModal": {
+      "title": "Restore file",
+      "session": "Session:",
+      "originalPath": "Original Path",
+      "customDest": "Custom Destination",
+      "notAvailable": "Session no longer available",
+      "savedDirectly": "The file will be saved directly to this folder.",
+      "placeholder": "C:\\Path\\Destination",
+      "confirm": "Confirm Restore",
+      "fileRestored": "File restored: {name}",
+      "restoreFailed": "Error during restore"
+    }
+  },
+
+  "sessions": {
+    "title": "Sessions",
+    "subtitle": "{sessions} sessions · {runs} runs",
+    "select": "Select",
+    "startAll": "Start all",
+    "deleteAll": "Delete all",
+    "cancel": "Cancel",
+    "newSession": "New session",
+    "startSelected": "Start selected",
+    "startSelectedCount": "Start selected ({n})",
+    "deleteSelected": "Delete selected",
+    "deleteSelectedCount": "Delete selected ({n})",
+    "neverRun": "Never run",
+    "loading": "Loading sessions…",
+    "hdr": {
+      "session": "Session",
+      "lastRun": "Last run",
+      "status": "Status",
+      "runs": "Runs",
+      "files": "Files"
+    },
+    "sourcesCount": "{count} source | {count} sources",
+    "actions": {
+      "suspend": "Suspend backup",
+      "resume": "Resume backup",
+      "start": "Start backup",
+      "delete": "Delete session"
+    },
+    "confirmDelete": {
+      "title": "Confirm deletion",
+      "message": "You are about to delete {count} session. | You are about to delete {count} sessions."
+    },
+    "noSessions": "No sessions",
+    "noSessionsHelp": "Create your first session to start backing up",
+    "drop": {
+      "title": "Drop to create a session",
+      "sub": "Folders will be used as sources",
+      "errorDrives": "Cannot create a session from different drives ({drives})"
+    },
+    "progress": {
+      "new": "+{n} new",
+      "dedup": "{n} dedup",
+      "errors": "{n} errors",
+      "written": "{n} written",
+      "total": "{n} total"
+    }
+  },
+
+  "sessionDetail": {
+    "createdAt": "Created on {date}",
+    "select": "Select",
+    "cancel": "Cancel",
+    "deleteSelectedRuns": "Delete selected ({n})",
+    "suspend": "Suspend",
+    "suspending": "Suspending…",
+    "resume": "Resume",
+    "backup": "Backup",
+    "preparing": "Preparing…",
+    "restoring": "Restore in progress…",
+    "restoreOk": "Restore completed: {restored} files restored out of {total}",
+    "restorePartial": "{restored}/{total} restored — {errors} errors",
+    "fileNotFound": "file not found in store",
+    "noRuns": "No runs yet",
+    "hdr": {
+      "datetime": "Date / Time",
+      "status": "Status",
+      "files": "Files",
+      "new": "New",
+      "written": "Written",
+      "errors": "Errors"
+    },
+    "list": "List",
+    "timeline": "Timeline",
+    "id": "ID",
+    "runs": "Runs",
+    "sources": "Sources",
+    "excludedPaths": "Excluded paths",
+    "excludePatterns": "Exclusion patterns",
+    "runDetail": "Run detail",
+    "loadingFiles": "Loading files…",
+    "errorsInRun": "{n} errors recorded",
+    "tl": {
+      "total": "Total",
+      "new": "New",
+      "dedup": "Dedup",
+      "written": "Written",
+      "totalBytes": "Total",
+      "duration": "Duration",
+      "new_legend": "new",
+      "dedup_legend": "dedup"
+    },
+    "deleteRun": "Delete this run?",
+    "confirmDeleteRuns": {
+      "title": "Confirm deletion",
+      "message": "You are about to delete {count} runs."
+    },
+    "selectedFiles": "{n} selected",
+    "noFileSelected": "No file selected",
+    "deleteRun_btn": "Delete",
+    "restore": "Restore",
+    "restoreBtn": "Restore",
+    "progress": {
+      "new": "+{n} new",
+      "dedup": "{n} dedup",
+      "errors": "{n} errors",
+      "written": "{n} written",
+      "restored": "{n} restored"
+    }
+  },
+
+  "newSession": {
+    "title": "New session",
+    "foldersLabel": "Folders to include",
+    "legend": {
+      "source": "source",
+      "excluded": "excluded"
+    },
+    "instructions": "Select folders. Expand and deselect subfolders to exclude.",
+    "nameLabel": "Session name",
+    "namePlaceholder": "e.g. Documents, Projects, Photos…",
+    "patternsLabel": "Exclusion patterns",
+    "patternsHelp": "Applied to file/folder name. Use * as wildcard.",
+    "patternPlaceholder": "e.g. *.bak or .cache",
+    "resetPatterns": "Reset all patterns",
+    "create": "Create session",
+    "sourcesCount": "{count} source selected | {count} sources selected",
+    "excludedCount": "· {count} excluded",
+    "errors": {
+      "noName": "Enter a session name",
+      "duplicateName": "A session with this name already exists",
+      "noSource": "Select at least one source folder",
+      "createFailed": "Error creating the session"
+    }
+  },
+
+  "editSession": {
+    "title": "Edit session",
+    "nameLabel": "Session name",
+    "sources": {
+      "label": "Source folders",
+      "origin": "(origin)",
+      "placeholder": "Source folder path"
+    },
+    "storeDir": {
+      "label": "Store folder",
+      "destination": "(destination)",
+      "placeholder": "e.g. D:\\VornStore or /mnt/backup/vorn",
+      "help": "The folder where .vorn files will be saved"
+    },
+    "saveChanges": "Save changes",
+    "errors": {
+      "noStore": "Enter the store path",
+      "noSource": "Enter at least one source folder",
+      "saveFailed": "Save failed"
+    }
+  },
+
+  "restore": {
+    "title": "Restore Backup",
+    "description": "Select where you want to restore files for the run of {date}.",
+    "selective": "Selective restore:",
+    "files": "{n} files",
+    "originalPath": "Original Path",
+    "customDest": "Custom Destination",
+    "customPlaceholder": "C:\\Path\\Destination",
+    "note": "Note: The subfolder structure will be recreated here.",
+    "confirm": "Confirm Restore"
+  },
+
+  "extractModal": {
+    "title": "Extract File",
+    "fileLabel": "File:",
+    "destLabel": "Destination folder",
+    "destPlaceholder": "Select folder…",
+    "extract": "Extract"
+  },
+
+  "extractStore": {
+    "title": "Extract files from store",
+    "warning": {
+      "title": "Data recovery procedure",
+      "text1": "Use this function <strong>only if you have lost the session references</strong>. Extracted files may not match the original sessions: over time records may have been modified, files deleted or moved.",
+      "text2": "If multiple sessions have the same name, separate folders will be created in the format <code>name-id</code> — for example <code>Pippo-a1b2c3</code> and <code>Pippo-d4e5f6</code>."
+    },
+    "filterLabel": "Filter by session",
+    "filterHelp": "Leave empty to extract all files from all sessions found in the store.",
+    "filterPlaceholder": "e.g. Pippo",
+    "destLabel": "Destination folder",
+    "destPlaceholder": "Select a folder…",
+    "destHelp": "Files will be extracted to destination/<session-id>/<relative path>",
+    "analyzing": "Analyzing…",
+    "extracted": "{n} extracted",
+    "fatalError": "Error: {msg}",
+    "empty": "Store empty — no files to extract",
+    "success": "{extracted} files extracted out of {total} analyzed",
+    "sessionsFound": "Sessions found in the store",
+    "noRecords": {
+      "title": "Files without header ({n})",
+      "sub": "These files do not contain session records and were not extracted."
+    },
+    "errorsCount": "{n} errors",
+    "extracting": "Extracting…",
+    "extract": "Extract",
+    "newExtraction": "New extraction",
+    "closeOrCancel": {
+      "done": "Close",
+      "running": "Cancel"
+    },
+    "errors": {
+      "noDestination": "Select a destination folder",
+      "extractFailed": "Error during extraction"
+    }
+  },
+
+  "fileTree": {
+    "title": "Files in run",
+    "exitSelection": "Exit selection",
+    "selectForRestore": "Select files for restore",
+    "collapseAll": "Collapse all",
+    "expandAll": "Expand all",
+    "loading": "Loading…",
+    "noFiles": "No files in this run"
+  },
+
+  "folderBrowser": {
+    "noSubfolders": "No subfolders",
+    "add": "Add",
+    "added": "Added",
+    "addCurrent": "Add current folder",
+    "currentAdded": "Current folder added"
+  },
+
+  "sourceTree": {
+    "changeRoot": "Change root",
+    "storeError": "The store folder cannot be used as a source.",
+    "badgeSource": "source",
+    "badgeFile": "file",
+    "empty": "No content"
+  }
+}

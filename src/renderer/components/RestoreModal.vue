@@ -1,10 +1,10 @@
 <template>
   <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
     <div class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
-      
+
       <!-- Header -->
       <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
-        <h3 class="text-sm font-bold text-white uppercase tracking-wider">Ripristina Backup</h3>
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider">{{ $t('restore.title') }}</h3>
         <button @click="$emit('close')" class="text-gray-500 hover:text-white transition-colors">
           <XMarkIcon class="w-5 h-5" />
         </button>
@@ -13,48 +13,47 @@
       <!-- Body -->
       <div class="p-6">
         <p class="text-xs text-gray-400 mb-4">
-          Seleziona dove vuoi ripristinare i file per la run del
-          <span class="text-indigo-400 font-mono">{{ formatTs(runTs) }}</span>.
+          {{ $t('restore.description', { date: formatTs(runTs) }) }}
         </p>
         <div v-if="selectedFiles?.length" class="flex items-center gap-2 mb-5 px-3 py-2 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-300">
-          <span>Ripristino selettivo:</span>
-          <span class="font-semibold">{{ selectedFiles.length }} file</span>
+          <span>{{ $t('restore.selective') }}</span>
+          <span class="font-semibold">{{ $t('restore.files', { n: selectedFiles.length }) }}</span>
         </div>
 
         <div class="space-y-4">
           <!-- Option: Original Path -->
-          <label 
+          <label
             class="flex items-start gap-4 p-4 rounded-md border cursor-pointer transition-all"
             :class="mode === 'original' ? 'bg-indigo-500/10 border-indigo-500/50' : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'"
           >
             <input type="radio" v-model="mode" value="original" class="mt-1 accent-indigo-500" />
             <div class="min-w-0">
-              <p class="text-sm font-semibold text-white">Percorso Originale</p>
+              <p class="text-sm font-semibold text-white">{{ $t('restore.originalPath') }}</p>
               <p class="text-[10px] text-gray-500 truncate mt-1 font-mono">{{ originalPath }}</p>
             </div>
           </label>
 
           <!-- Option: Custom Path -->
-          <label 
+          <label
             class="flex items-start gap-4 p-4 rounded-md border cursor-pointer transition-all"
             :class="mode === 'custom' ? 'bg-indigo-500/10 border-indigo-500/50' : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'"
           >
             <input type="radio" v-model="mode" value="custom" class="mt-1 accent-indigo-500" />
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-white">Destinazione Personalizzata</p>
+              <p class="text-sm font-semibold text-white">{{ $t('restore.customDest') }}</p>
               <div v-if="mode === 'custom'" class="mt-3 space-y-2">
                 <div class="flex items-center gap-2">
                   <input
                     type="text"
                     v-model="customPath"
-                    placeholder="C:\Percorso\Destinazione"
+                    :placeholder="$t('restore.customPlaceholder')"
                     class="flex-1 bg-gray-950 border border-gray-700 rounded-md px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-indigo-500 transition-colors"
                   />
                   <button @click="pickDest" class="p-2 rounded-md bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-colors shrink-0">
                     <FolderOpenIcon class="w-4 h-4" />
                   </button>
                 </div>
-                <p class="text-[9px] text-amber-500/80">Nota: La struttura delle sottocartelle verrà ricreata qui.</p>
+                <p class="text-[9px] text-amber-500/80">{{ $t('restore.note') }}</p>
               </div>
             </div>
           </label>
@@ -63,18 +62,18 @@
 
       <!-- Footer -->
       <div class="px-6 py-4 bg-gray-800/30 flex items-center justify-end gap-3">
-        <button 
+        <button
           @click="$emit('close')"
           class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors"
         >
-          Annulla
+          {{ $t('common.cancel') }}
         </button>
-        <button 
+        <button
           @click="handleConfirm"
           :disabled="mode === 'custom' && !customPath"
           class="px-5 py-2 rounded-md text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-500/20"
         >
-          Conferma Ripristino
+          {{ $t('restore.confirm') }}
         </button>
       </div>
 

@@ -3,7 +3,7 @@
 
     <!-- Breadcrumb -->
     <div class="flex items-center gap-1 px-2 py-1.5 bg-gray-800/60 border border-gray-700 rounded-md overflow-x-auto whitespace-nowrap scrollbar-none">
-      <button @click="goHome" class="shrink-0 text-gray-500 hover:text-indigo-400 transition-colors" title="Home">
+      <button @click="goHome" class="shrink-0 text-gray-500 hover:text-indigo-400 transition-colors" :title="'Home'">
         <HomeIcon class="w-3.5 h-3.5" />
       </button>
       <template v-for="(seg, i) in pathSegments" :key="i">
@@ -35,7 +35,7 @@
         </div>
 
         <div v-else-if="dirs.length === 0" class="py-6 text-center text-xs text-gray-600 italic">
-          Nessuna sottocartella
+          {{ $t('folderBrowser.noSubfolders') }}
         </div>
 
         <div
@@ -60,7 +60,7 @@
           >
             <CheckIcon v-if="selected.includes(dir.path)" class="w-3 h-3" />
             <PlusIcon v-else class="w-3 h-3" />
-            {{ selected.includes(dir.path) ? 'Aggiunta' : 'Aggiungi' }}
+            {{ selected.includes(dir.path) ? $t('folderBrowser.added') : $t('folderBrowser.add') }}
           </button>
         </div>
       </div>
@@ -77,7 +77,7 @@
     >
       <CheckIcon v-if="selected.includes(currentPath)" class="w-3.5 h-3.5" />
       <FolderPlusIcon v-else class="w-3.5 h-3.5" />
-      {{ selected.includes(currentPath) ? 'Cartella corrente aggiunta' : 'Aggiungi cartella corrente' }}
+      {{ selected.includes(currentPath) ? $t('folderBrowser.currentAdded') : $t('folderBrowser.addCurrent') }}
     </button>
 
   </div>

@@ -15,6 +15,7 @@ export default defineConfig({
           integrityWorker: resolve(__dirname, 'src/main/vorn/integrityWorker.js'),
           clearWorker:        resolve(__dirname, 'src/main/vorn/clearWorker.js'),
           extractStoreWorker: resolve(__dirname, 'src/main/vorn/extractStoreWorker.js'),
+          pruneWorker:        resolve(__dirname, 'src/main/vorn/pruneWorker.js'),
         }
       }
     }

@@ -2,13 +2,13 @@
   <div>
     <!-- Header -->
     <div class="flex items-center justify-between px-2 mb-1">
-      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">File nel run</p>
+      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ $t('fileTree.title') }}</p>
       <div class="flex items-center gap-0.5">
         <!-- Selezione toggle -->
         <button
           v-if="tree.length"
           @click="toggleSelectionMode"
-          :title="selectionMode ? 'Esci dalla selezione' : 'Seleziona file per il ripristino'"
+          :title="selectionMode ? $t('fileTree.exitSelection') : $t('fileTree.selectForRestore')"
           :class="[
             'p-1 rounded transition-colors',
             selectionMode
@@ -22,7 +22,7 @@
         <button
           v-if="tree.length"
           @click="toggleAll"
-          :title="allExpanded ? 'Comprimi tutto' : 'Espandi tutto'"
+          :title="allExpanded ? $t('fileTree.collapseAll') : $t('fileTree.expandAll')"
           class="p-1 rounded text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
         >
           <ArrowsPointingInIcon v-if="allExpanded" class="w-3.5 h-3.5" />
@@ -34,12 +34,12 @@
     <!-- Loading -->
     <div v-if="!files" class="flex items-center gap-1.5 text-xs text-gray-600 py-4 justify-center">
       <ArrowPathIcon class="w-3.5 h-3.5 animate-spin" />
-      Caricamento…
+      {{ $t('fileTree.loading') }}
     </div>
 
     <!-- Empty -->
     <div v-else-if="tree.length === 0" class="text-xs text-gray-600 italic py-4 text-center">
-      Nessun file in questa run
+      {{ $t('fileTree.noFiles') }}
     </div>
 
     <!-- Tree -->

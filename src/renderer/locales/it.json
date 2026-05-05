@@ -1,0 +1,394 @@
+{
+  "nav": {
+    "sessions": "Sessioni",
+    "store": "Store",
+    "stats": "Statistiche",
+    "settings": "Impostazioni"
+  },
+
+  "common": {
+    "cancel": "Annulla",
+    "save": "Salva",
+    "close": "Chiudi",
+    "delete": "Elimina",
+    "add": "Aggiungi",
+    "stop": "Stop",
+    "operationWait": "Operazione in corso — attendere il completamento",
+    "cannotUndo": "Questa operazione non può essere annullata."
+  },
+
+  "status": {
+    "done": "Completata",
+    "running": "In corso",
+    "paused": "In pausa",
+    "crashed": "Interrotta",
+    "aborted": "Annullata"
+  },
+
+  "sidebar": {
+    "noStore": "Nessuno store configurato"
+  },
+
+  "topbar": {
+    "settings": "Impostazioni",
+    "lightTheme": "Passa al tema chiaro",
+    "darkTheme": "Passa al tema scuro"
+  },
+
+  "settings": {
+    "title": "Impostazioni",
+    "interface": "Interfaccia",
+    "backup": "Backup",
+    "lang": {
+      "label": "Lingua",
+      "sub": "Lingua dell'interfaccia utente"
+    },
+    "notif": {
+      "label": "Notifiche di sistema",
+      "sub": "Mostra una notifica al termine di ogni run"
+    }
+  },
+
+  "storeSelect": {
+    "disconnected": "Store disconnesso — seleziona uno store per continuare",
+    "title": "Seleziona store",
+    "subtitle": "Scegli dove sono archiviati i tuoi backup",
+    "recent": "Recenti",
+    "browse": "Sfoglia…",
+    "opening": "Apertura in corso…"
+  },
+
+  "store": {
+    "title": "Store",
+    "changeStore": "Cambia store",
+    "extractFiles": "Estrai files",
+    "refresh": "Aggiorna",
+    "clearStore": "Svuota store",
+    "verifyIntegrity": "Verifica integrità",
+    "hdr": {
+      "hash": "Hash",
+      "size": "Dimensione",
+      "lastModified": "Ultima modifica"
+    },
+    "noFiles": "Nessun file nel cassetto",
+    "clearing": {
+      "title": "Svuotamento in corso…",
+      "dontClose": "Non chiudere l'applicazione",
+      "deleted": "{n} eliminati",
+      "total": "{n} totali",
+      "errors": "{n} errori"
+    },
+    "detail": {
+      "title": "Dettaglio file",
+      "hash": "Hash",
+      "size": "Dimensione",
+      "created": "Creato il",
+      "modified": "Modificato il",
+      "sessions": "Sessioni ({n})",
+      "noSessions": "Nessuna sessione",
+      "copyHash": "Copia hash",
+      "copied": "Copiato!",
+      "restoreFile": "Ripristina file",
+      "operationInProgress": "Operazione in corso"
+    },
+    "clearModal": {
+      "title": "Svuota Store",
+      "irrev": "Operazione irreversibile",
+      "warning": "Tutti i {count} file .vorn nello store verranno eliminati definitivamente. I manifest delle sessioni non vengono toccati, ma i dati di backup saranno irrecuperabili.",
+      "typeToConfirm": "Digita {word} per confermare",
+      "confirmWord": "ELIMINA",
+      "deleteAll": "Elimina tutto"
+    },
+    "clearReport": {
+      "title": "Store svuotato",
+      "deleted": "Eliminati",
+      "errors": "Errori"
+    },
+    "integrityReport": {
+      "title": "Report Integrità",
+      "checked": "Controllati",
+      "ok": "Integri",
+      "corrupt": "Corrotti",
+      "allOk": "Tutti i file sono integri",
+      "noIssues": "Nessuna anomalia rilevata nello store.",
+      "corruptFiles": "File corrotti"
+    },
+    "prune": {
+      "button": "Pulisci",
+      "confirmTitle": "Pulisci file obsoleti",
+      "confirmBody": "Verranno eliminati definitivamente tutti i file .vorn non più referenziati da nessun run di nessuna sessione. I dati ancora attivi non verranno toccati.",
+      "confirm": "Analizza e pulisci",
+      "runningTitle": "Pulizia in corso…",
+      "dontClose": "Non chiudere l'applicazione",
+      "scanning": "Scansione sessioni… ({scanned}/{total})",
+      "computing": "Calcolo file obsoleti…",
+      "deleting": "Eliminazione file obsoleti…",
+      "orphansFound": "{n} file obsoleti trovati",
+      "deleted": "{n} eliminati",
+      "failed": "{n} errori",
+      "pause": "Pausa",
+      "resume": "Riprendi",
+      "pausedTitle": "Pulizia in pausa",
+      "pausedSub": "L'operazione è stata sospesa. Puoi riprendere in qualsiasi momento.",
+      "reportTitle": "Pulizia completata",
+      "reportTitleCancelled": "Pulizia annullata",
+      "orphanCount": "Obsoleti trovati",
+      "reportDeleted": "Eliminati",
+      "reportFailed": "Errori",
+      "allClean": "Store già pulito",
+      "allCleanSub": "Nessun file obsoleto trovato nello store."
+    },
+    "restoreModal": {
+      "title": "Ripristina file",
+      "session": "Sessione:",
+      "originalPath": "Percorso Originale",
+      "customDest": "Destinazione Personalizzata",
+      "notAvailable": "Sessione non più disponibile",
+      "savedDirectly": "Il file verrà salvato direttamente in questa cartella.",
+      "placeholder": "C:\\Percorso\\Destinazione",
+      "confirm": "Conferma Ripristino",
+      "fileRestored": "File ripristinato: {name}",
+      "restoreFailed": "Errore durante il ripristino"
+    }
+  },
+
+  "sessions": {
+    "title": "Sessioni",
+    "subtitle": "{sessions} sessioni · {runs} run",
+    "select": "Seleziona",
+    "startAll": "Avvia tutti",
+    "deleteAll": "Elimina tutti",
+    "cancel": "Annulla",
+    "newSession": "Nuova sessione",
+    "startSelected": "Avvia selezionati",
+    "startSelectedCount": "Avvia selezionati ({n})",
+    "deleteSelected": "Elimina selezionati",
+    "deleteSelectedCount": "Elimina selezionati ({n})",
+    "neverRun": "Mai eseguita",
+    "loading": "Caricamento sessioni…",
+    "hdr": {
+      "session": "Sessione",
+      "lastRun": "Ultima run",
+      "status": "Stato",
+      "runs": "Run",
+      "files": "File"
+    },
+    "sourcesCount": "{count} sorgente | {count} sorgenti",
+    "actions": {
+      "suspend": "Sospendi backup",
+      "resume": "Riprendi backup",
+      "start": "Avvia backup",
+      "delete": "Elimina sessione"
+    },
+    "confirmDelete": {
+      "title": "Conferma eliminazione",
+      "message": "Stai per eliminare {count} sessione. | Stai per eliminare {count} sessioni."
+    },
+    "noSessions": "Nessuna sessione",
+    "noSessionsHelp": "Crea la tua prima sessione per iniziare a fare backup",
+    "drop": {
+      "title": "Rilascia per creare una sessione",
+      "sub": "Verranno usate le cartelle come sorgenti",
+      "errorDrives": "Non puoi creare una sessione da unità diverse ({drives})"
+    },
+    "progress": {
+      "new": "+{n} nuovi",
+      "dedup": "{n} dedup",
+      "errors": "{n} errori",
+      "written": "{n} scritti",
+      "total": "{n} totali"
+    }
+  },
+
+  "sessionDetail": {
+    "createdAt": "Creata il {date}",
+    "select": "Seleziona",
+    "cancel": "Annulla",
+    "deleteSelectedRuns": "Elimina selezionati ({n})",
+    "suspend": "Sospendi",
+    "suspending": "Sospensione…",
+    "resume": "Riprendi",
+    "backup": "Backup",
+    "preparing": "Preparazione…",
+    "restoring": "Restore in corso…",
+    "restoreOk": "Restore completato: {restored} file ripristinati su {total}",
+    "restorePartial": "{restored}/{total} ripristinati — {errors} errori",
+    "fileNotFound": "file non trovato nello store",
+    "noRuns": "Nessuna run ancora",
+    "hdr": {
+      "datetime": "Data / Ora",
+      "status": "Stato",
+      "files": "File",
+      "new": "Nuovi",
+      "written": "Scritti",
+      "errors": "Errori"
+    },
+    "list": "Lista",
+    "timeline": "Timeline",
+    "id": "ID",
+    "runs": "Run",
+    "sources": "Sorgenti",
+    "excludedPaths": "Percorsi esclusi",
+    "excludePatterns": "Pattern esclusioni",
+    "runDetail": "Dettaglio run",
+    "loadingFiles": "Caricamento file…",
+    "errorsInRun": "{n} errori registrati",
+    "tl": {
+      "total": "Totale",
+      "new": "Nuovi",
+      "dedup": "Dedup",
+      "written": "Scritti",
+      "totalBytes": "Totale",
+      "duration": "Durata",
+      "new_legend": "nuovi",
+      "dedup_legend": "dedup"
+    },
+    "deleteRun": "Eliminare questo run?",
+    "confirmDeleteRuns": {
+      "title": "Conferma eliminazione",
+      "message": "Stai per eliminare {count} run."
+    },
+    "selectedFiles": "{n} selezionati",
+    "noFileSelected": "Nessun file selezionato",
+    "deleteRun_btn": "Cancella",
+    "restore": "Ripristina",
+    "restoreBtn": "Restore",
+    "progress": {
+      "new": "+{n} nuovi",
+      "dedup": "{n} dedup",
+      "errors": "{n} errori",
+      "written": "{n} scritti",
+      "restored": "{n} ripristinati"
+    }
+  },
+
+  "newSession": {
+    "title": "Nuova sessione",
+    "foldersLabel": "Cartelle da includere",
+    "legend": {
+      "source": "sorgente",
+      "excluded": "esclusa"
+    },
+    "instructions": "Seleziona le cartelle. Espandi e deseleziona le sottocartelle da escludere.",
+    "nameLabel": "Nome sessione",
+    "namePlaceholder": "es. Documenti, Progetti, Foto…",
+    "patternsLabel": "Pattern esclusioni",
+    "patternsHelp": "Applicati su nome file/cartella. Usa * come wildcard.",
+    "patternPlaceholder": "es. *.bak oppure .cache",
+    "resetPatterns": "Azzera tutti i pattern",
+    "create": "Crea sessione",
+    "sourcesCount": "{count} sorgente selezionate | {count} sorgenti selezionate",
+    "excludedCount": "· {count} esclusi",
+    "errors": {
+      "noName": "Inserisci un nome per la sessione",
+      "duplicateName": "Esiste già una sessione con questo nome",
+      "noSource": "Seleziona almeno una cartella sorgente",
+      "createFailed": "Errore nella creazione della sessione"
+    }
+  },
+
+  "editSession": {
+    "title": "Modifica sessione",
+    "nameLabel": "Nome sessione",
+    "sources": {
+      "label": "Cartelle sorgente",
+      "origin": "(origine)",
+      "placeholder": "Percorso cartella sorgente"
+    },
+    "storeDir": {
+      "label": "Cartella store",
+      "destination": "(destinazione)",
+      "placeholder": "es. D:\\VornStore o /mnt/backup/vorn",
+      "help": "La cartella dove verranno salvati i file .vorn"
+    },
+    "saveChanges": "Salva modifiche",
+    "errors": {
+      "noStore": "Inserisci il percorso dello store",
+      "noSource": "Inserisci almeno una cartella sorgente",
+      "saveFailed": "Errore nel salvataggio"
+    }
+  },
+
+  "restore": {
+    "title": "Ripristina Backup",
+    "description": "Seleziona dove vuoi ripristinare i file per la run del {date}.",
+    "selective": "Ripristino selettivo:",
+    "files": "{n} file",
+    "originalPath": "Percorso Originale",
+    "customDest": "Destinazione Personalizzata",
+    "customPlaceholder": "C:\\Percorso\\Destinazione",
+    "note": "Nota: La struttura delle sottocartelle verrà ricreata qui.",
+    "confirm": "Conferma Ripristino"
+  },
+
+  "extractModal": {
+    "title": "Estrai File",
+    "fileLabel": "File:",
+    "destLabel": "Cartella destinazione",
+    "destPlaceholder": "Seleziona cartella…",
+    "extract": "Estrai"
+  },
+
+  "extractStore": {
+    "title": "Estrai files dallo store",
+    "warning": {
+      "title": "Procedura di recupero dati",
+      "text1": "Usa questa funzione <strong>solo se hai perso i riferimenti delle sessioni</strong>. I file estratti potrebbero non corrispondere alle sessioni originali: nel tempo i record potrebbero essere stati modificati, file eliminati o spostati.",
+      "text2": "Se esistono più sessioni con lo stesso nome, verranno create cartelle separate nel formato <code>nome-id</code> — ad esempio <code>Pippo-a1b2c3</code> e <code>Pippo-d4e5f6</code>."
+    },
+    "filterLabel": "Filtra per sessione",
+    "filterHelp": "Lascia vuoto per estrarre tutti i file da tutte le sessioni trovate nello store.",
+    "filterPlaceholder": "es. Pippo",
+    "destLabel": "Cartella di destinazione",
+    "destPlaceholder": "Seleziona una cartella…",
+    "destHelp": "I file saranno estratti in destinazione/<sessione-id>/<percorso relativo>",
+    "analyzing": "Analisi in corso…",
+    "extracted": "{n} estratti",
+    "fatalError": "Errore: {msg}",
+    "empty": "Store vuoto — nessun file da estrarre",
+    "success": "{extracted} file estratti su {total} analizzati",
+    "sessionsFound": "Sessioni trovate nello store",
+    "noRecords": {
+      "title": "File senza intestazione ({n})",
+      "sub": "Questi file non contengono records di sessione e non sono stati estratti."
+    },
+    "errorsCount": "{n} errori",
+    "extracting": "Estrazione…",
+    "extract": "Estrai",
+    "newExtraction": "Nuova estrazione",
+    "closeOrCancel": {
+      "done": "Chiudi",
+      "running": "Annulla"
+    },
+    "errors": {
+      "noDestination": "Seleziona una cartella di destinazione",
+      "extractFailed": "Errore durante l'estrazione"
+    }
+  },
+
+  "fileTree": {
+    "title": "File nel run",
+    "exitSelection": "Esci dalla selezione",
+    "selectForRestore": "Seleziona file per il ripristino",
+    "collapseAll": "Comprimi tutto",
+    "expandAll": "Espandi tutto",
+    "loading": "Caricamento…",
+    "noFiles": "Nessun file in questa run"
+  },
+
+  "folderBrowser": {
+    "noSubfolders": "Nessuna sottocartella",
+    "add": "Aggiungi",
+    "added": "Aggiunta",
+    "addCurrent": "Aggiungi cartella corrente",
+    "currentAdded": "Cartella corrente aggiunta"
+  },
+
+  "sourceTree": {
+    "changeRoot": "Cambia radice",
+    "storeError": "La cartella dello store non può essere usata come sorgente.",
+    "badgeSource": "sorgente",
+    "badgeFile": "file",
+    "empty": "Nessun contenuto"
+  }
+}

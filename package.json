@@ -1,6 +1,6 @@
 {
   "name": "vorn",
-  "version": "0.4.0",
+  "version": "0.7.0",
   "description": "Vorn — backup content-addressable",
   "main": "out/main/index.js",
   "scripts": {
@@ -23,7 +23,8 @@
     "@heroicons/vue": "^2.2.0",
     "@noble/hashes": "^2.2.0",
     "better-sqlite3": "^12.9.0",
-    "vue": "^3.5.13"
+    "vue": "^3.5.13",
+    "vue-i18n": "^11.4.0"
   },
   "build": {
     "appId": "com.vorn.app",

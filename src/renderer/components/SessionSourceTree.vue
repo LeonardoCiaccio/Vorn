@@ -8,7 +8,7 @@
         <span class="flex-1 text-[11px] font-mono text-gray-400 truncate" :title="rootPath">{{ rootPath }}</span>
         <button
           @click="pickRoot"
-          title="Cambia radice"
+          :title="$t('sourceTree.changeRoot')"
           class="p-1 rounded text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
         >
           <FolderOpenIcon class="w-3.5 h-3.5" />
@@ -36,9 +36,12 @@
 
 <script setup>
 import { ref, reactive, computed, provide, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ArrowPathIcon, FolderIcon, FolderOpenIcon, ExclamationCircleIcon } from '@heroicons/vue/24/outline'
 import SessionSourceTreeNode from './SessionSourceTreeNode.vue'
 import { state } from '../stores/vorn.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   initialRoot: { type: String, default: '' },
@@ -49,14 +52,13 @@ const emit = defineEmits(['update:sources', 'update:excludePaths'])
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-const sources  = reactive(new Set())   // paths checked as source
-const excluded = reactive(new Set())   // paths explicitly unchecked inside a source
+const sources  = reactive(new Set())
+const excluded = reactive(new Set())
 const rootNodes  = ref([])
 const rootPath    = ref('')
 const rootError   = ref('')
 const loadingRoot = ref(false)
 
-// Exclude store dir from visible tree
 const visibleNodes = computed(() =>
   rootNodes.value.filter(n => n.path !== state.activeStore)
 )
@@ -134,7 +136,7 @@ async function pickRoot() {
   const picked = await window.vorn.pickFolder(rootPath.value)
   if (!picked) return
   if (picked === state.activeStore) {
-    rootError.value = 'La cartella dello store non può essere usata come sorgente.'
+    rootError.value = t('sourceTree.storeError')
     return
   }
   rootError.value = ''

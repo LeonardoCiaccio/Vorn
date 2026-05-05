@@ -35,7 +35,7 @@
 
       <!-- Badge sorgente -->
       <span v-if="isSource" class="ml-auto shrink-0 text-[9px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">
-        {{ isDir ? 'sorgente' : 'file' }}
+        {{ isDir ? $t('sourceTree.badgeSource') : $t('sourceTree.badgeFile') }}
       </span>
     </div>
 
@@ -48,7 +48,7 @@
         :depth="depth + 1"
       />
       <div v-if="node.children.length === 0" class="text-[10px] text-gray-600 italic py-1" :style="{ paddingLeft: ((depth + 1) * 16 + 28) + 'px' }">
-        Nessun contenuto
+        {{ $t('sourceTree.empty') }}
       </div>
     </template>
   </div>

@@ -101,6 +101,28 @@ export function registerTaskHandlers(mainWindow) {
     return { taskId: task.id }
   })
 
+  ipcMain.handle('vorn:start-prune', () => {
+    if (listTasks().some(t => t.status === 'running'))
+      throw new Error('Impossibile pulire: operazioni in corso')
+    const task = createTask('prune', null)
+    spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, _onDone(task, mainWindow))
+    return { taskId: task.id }
+  })
+
+  ipcMain.handle('vorn:resume-prune', (_, { orphanList, nextIndex }) => {
+    if (listTasks().some(t => t.status === 'running'))
+      throw new Error('Impossibile riprendere: operazioni in corso')
+    const task = createTask('prune', null)
+    spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore, orphanList, startIndex: nextIndex }, task.id, mainWindow, _onDone(task, mainWindow))
+    return { taskId: task.id }
+  })
+
+  ipcMain.handle('vorn:pause-prune', (_, taskId) => {
+    const entry = ctx.activeWorkers.get(taskId)
+    if (entry) Atomics.store(entry.cancelFlag, 0, 2)
+    return true
+  })
+
   ipcMain.handle('vorn:extract-hash', async (_, { hashVorn, destDir, filename }) =>
     extractByHash(ctx.activeStore, hashVorn, destDir, filename)
   )

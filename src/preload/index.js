@@ -67,6 +67,9 @@ contextBridge.exposeInMainWorld('vorn', {
   listStoreFiles:   (offset, limit, query)            => ipcRenderer.invoke('vorn:list-store-files', { offset, limit, query }),
   countStoreFiles:  ()                                => ipcRenderer.invoke('vorn:count-store-files'),
   startClearStore:  ()                                => ipcRenderer.invoke('vorn:start-clear-store'),
+  startPrune:       ()                                => ipcRenderer.invoke('vorn:start-prune'),
+  resumePrune:      (data)                            => ipcRenderer.invoke('vorn:resume-prune', data),
+  pausePrune:       (taskId)                          => ipcRenderer.invoke('vorn:pause-prune', taskId),
 
   // Settings
   getSettings:  ()        => ipcRenderer.invoke('vorn:get-settings'),

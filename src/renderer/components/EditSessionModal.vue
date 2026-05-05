@@ -9,7 +9,7 @@
             <div class="w-8 h-8 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
               <PencilSquareIcon class="w-4 h-4 text-indigo-400" />
             </div>
-            <h2 class="text-base font-semibold text-white">Modifica sessione</h2>
+            <h2 class="text-base font-semibold text-white">{{ $t('editSession.title') }}</h2>
           </div>
           <button @click="$emit('close')" class="p-1 rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors">
             <XMarkIcon class="w-4 h-4" />
@@ -21,7 +21,7 @@
 
           <!-- Name (immutabile) -->
           <div>
-            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nome sessione</label>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ $t('editSession.nameLabel') }}</label>
             <input
               :value="session.name"
               disabled
@@ -32,17 +32,20 @@
           <!-- Sources -->
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Cartelle sorgente <span class="normal-case font-normal text-gray-600">(origine)</span></label>
+              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                {{ $t('editSession.sources.label') }}
+                <span class="normal-case font-normal text-gray-600">{{ $t('editSession.sources.origin') }}</span>
+              </label>
               <button @click="addSource" class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
                 <PlusIcon class="w-3.5 h-3.5" />
-                Aggiungi
+                {{ $t('common.add') }}
               </button>
             </div>
             <div class="space-y-2">
               <div v-for="(src, i) in form.sources" :key="i" class="flex items-center gap-2">
                 <input
                   v-model="form.sources[i]"
-                  placeholder="Percorso cartella sorgente"
+                  :placeholder="$t('editSession.sources.placeholder')"
                   class="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
                 />
                 <button @click="pickSource(i)" class="p-2 rounded-md bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-colors shrink-0">
@@ -61,18 +64,21 @@
 
           <!-- Store path -->
           <div>
-            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Cartella store <span class="normal-case font-normal text-gray-600">(destinazione)</span></label>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              {{ $t('editSession.storeDir.label') }}
+              <span class="normal-case font-normal text-gray-600">{{ $t('editSession.storeDir.destination') }}</span>
+            </label>
             <div class="flex items-center gap-2">
               <input
                 v-model="form.store"
-                placeholder="es. D:\VornStore o /mnt/backup/vorn"
+                :placeholder="$t('editSession.storeDir.placeholder')"
                 class="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-2.5 text-sm font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-colors"
               />
               <button @click="pickStore" class="p-2.5 rounded-md bg-gray-800 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 transition-colors shrink-0">
                 <FolderOpenIcon class="w-4 h-4" />
               </button>
             </div>
-            <p class="text-[11px] text-gray-600 mt-1.5">La cartella dove verranno salvati i file .vorn</p>
+            <p class="text-[11px] text-gray-600 mt-1.5">{{ $t('editSession.storeDir.help') }}</p>
           </div>
 
           <!-- Error -->
@@ -85,7 +91,7 @@
             @click="$emit('close')"
             class="px-4 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors"
           >
-            Annulla
+            {{ $t('common.cancel') }}
           </button>
           <button
             @click="submit"
@@ -93,7 +99,7 @@
             class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors"
           >
             <ArrowPathIcon v-if="saving" class="w-4 h-4 animate-spin" />
-            Salva modifiche
+            {{ $t('editSession.saveChanges') }}
           </button>
         </div>
       </div>
@@ -103,8 +109,11 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { PencilSquareIcon, FolderOpenIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { updateSession } from '../stores/vorn.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   session: { type: Object, required: true },
@@ -135,9 +144,9 @@ async function pickSource(i) {
 
 async function submit() {
   error.value = ''
-  if (!form.store.trim()) { error.value = 'Inserisci il percorso dello store'; return }
+  if (!form.store.trim()) { error.value = t('editSession.errors.noStore'); return }
   const sources = form.sources.map(s => s.trim()).filter(Boolean)
-  if (!sources.length) { error.value = 'Inserisci almeno una cartella sorgente'; return }
+  if (!sources.length) { error.value = t('editSession.errors.noSource'); return }
 
   saving.value = true
   try {
@@ -145,7 +154,7 @@ async function submit() {
     emit('saved')
     emit('close')
   } catch (e) {
-    error.value = e.message ?? 'Errore nel salvataggio'
+    error.value = e.message ?? t('editSession.errors.saveFailed')
   } finally {
     saving.value = false
   }
