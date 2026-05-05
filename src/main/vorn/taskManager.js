@@ -1,9 +1,9 @@
+import { randomUUID } from 'crypto'
+
 const tasks = new Map()
 const MAX_COMPLETED = 20
 
-function makeId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
-}
+function makeId() { return randomUUID() }
 
 export function createTask(type, sessionName) {
   const task = {

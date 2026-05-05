@@ -10,7 +10,8 @@ export function checkLock(storeDir) {
   try {
     const lock = JSON.parse(readFileSync(lp, 'utf8'))
     try   { process.kill(lock.pid, 0); return `Store in uso (PID ${lock.pid}) su ${lock.machine}` }
-    catch {
+    catch (e) {
+      if (e.code !== 'ESRCH') return `Store in uso (PID ${lock.pid}) su ${lock.machine}`
       try { unlinkSync(lp) } catch { /* già rimosso */ }
       return null
     }

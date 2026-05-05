@@ -13,6 +13,7 @@ export function getDb() {
   mkdirSync(_dir, { recursive: true })
   _db = new Database(_path)
   _db.pragma('journal_mode = WAL')
+  _db.pragma('busy_timeout = 3000')
   _db.pragma('synchronous = NORMAL')
   _db.exec(`
     CREATE TABLE IF NOT EXISTS Files (

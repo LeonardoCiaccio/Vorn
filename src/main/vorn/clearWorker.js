@@ -30,7 +30,7 @@ async function run() {
       }
     }
 
-    parentPort.postMessage({ type: 'progress', progress: { current: i + BATCH, total, deleted, failed } })
+    parentPort.postMessage({ type: 'progress', progress: { current: i + batch.length, total, deleted, failed } })
   }
 
   parentPort.postMessage({ type: 'done', result: { total, deleted, failed } })

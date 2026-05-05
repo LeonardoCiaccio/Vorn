@@ -1,10 +1,10 @@
 import { workerData, parentPort } from 'worker_threads'
-import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync, unlinkSync, statSync } from 'fs'
 import { unlink } from 'fs/promises'
 import { join } from 'path'
 import { PRUNE_BATCH } from './constants.js'
 
-const { storeDir, cancelBuffer, orphanList = null, startIndex = 0 } = workerData
+const { storeDir, cancelBuffer, orphanListPath = null, startIndex = 0 } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
 const BATCH = PRUNE_BATCH
@@ -13,7 +13,17 @@ async function run() {
   // Segnale immediato che il worker è partito
   parentPort.postMessage({ type: 'progress', progress: { phase: 'scanning', scanned: 0, totalSessions: 0 } })
 
-  let orphans = orphanList
+  let orphans = null
+
+  if (orphanListPath) {
+    try {
+      orphans = JSON.parse(readFileSync(orphanListPath, 'utf8'))
+      try { unlinkSync(orphanListPath) } catch { /* non-critico */ }
+    } catch {
+      parentPort.postMessage({ type: 'error', error: 'File di pausa non leggibile — riavviare il prune' })
+      return
+    }
+  }
 
   if (!orphans) {
     // Phase 1: scan tutti i run per raccogliere gli hash referenziati
@@ -73,7 +83,12 @@ async function run() {
     }
     if (flag === 2) {
       const nextIndex = startIndex + i
-      parentPort.postMessage({ type: 'done', result: { status: 'paused', orphanCount, deleted, failed, orphanList: orphans, nextIndex } })
+      const pausePath = join(storeDir, 'vorn', 'prune-pause.json')
+      try { writeFileSync(pausePath, JSON.stringify(orphans), 'utf8') } catch (e) {
+        parentPort.postMessage({ type: 'error', error: `Impossibile salvare stato pausa: ${e.message}` })
+        return
+      }
+      parentPort.postMessage({ type: 'done', result: { status: 'paused', orphanCount, deleted, failed, orphanListPath: pausePath, nextIndex } })
       return
     }
 

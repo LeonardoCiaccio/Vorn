@@ -15,22 +15,22 @@ export function readVornContentLen(filePath) {
   finally { closeSync(fd) }
 }
 
-// ── Internal: Get content info from the 12-byte header ────────────────────────
+// ── Interno: legge le informazioni di contenuto dall'header a 12 byte ─────────
 
 function _getContentInfo(fd) {
   const headerBuf = Buffer.alloc(HEADER_SIZE)
   const n = readSync(fd, headerBuf, 0, HEADER_SIZE, 0)
-  if (n < HEADER_SIZE) throw new Error('File too small for VORN header')
-  
+  if (n < HEADER_SIZE) throw new Error('File troppo piccolo per header VORN')
+
   const magic = headerBuf.subarray(0, 4)
-  if (!magic.equals(MAGIC)) throw new Error('Invalid VORN signature')
-  
-  // Read 64-bit Big-Endian length
+  if (!magic.equals(MAGIC)) throw new Error('Firma VORN non valida')
+
+  // Lunghezza a 64 bit Big-Endian
   const contentLen = headerBuf.readBigUInt64BE(4)
   return contentLen
 }
 
-// ── Read metadata (from the tail) ─────────────────────────────────────────────
+// ── Lettura metadati (in coda al file) ────────────────────────────────────────
 
 export function readVornMeta(filePath) {
   let fd = openSync(filePath, 'r')
@@ -40,7 +40,7 @@ export function readVornMeta(filePath) {
 
     const sepBuf = Buffer.alloc(SEPARATOR.length)
     readSync(fd, sepBuf, 0, SEPARATOR.length, metaOffset)
-    if (!sepBuf.equals(SEPARATOR)) throw new Error('Separator not found at expected position')
+    if (!sepBuf.equals(SEPARATOR)) throw new Error('Separatore non trovato nella posizione attesa')
 
     const fileSize = statSync(filePath).size
     const metaSize = fileSize - Number(metaOffset) - SEPARATOR.length
@@ -55,7 +55,7 @@ export function readVornMeta(filePath) {
     if (!meta) {
       // Metadati assenti o corrotti: tenta recovery dal file WAL
       const tmpPath = filePath + '.mtmp'
-      if (!existsSync(tmpPath)) throw new Error('Metadata corrupted and no recovery file found')
+      if (!existsSync(tmpPath)) throw new Error('Metadati corrotti e nessun file di recovery trovato')
       const recovered = JSON.parse(readFileSync(tmpPath, 'utf8'))
       closeSync(fd); fd = null
       const truncateAt = HEADER_SIZE + Number(contentLen) + SEPARATOR.length
@@ -73,7 +73,7 @@ export function readVornMeta(filePath) {
   }
 }
 
-// ── Full read ─────────────────────────────────────────────────────────────────
+// ── Lettura completa ──────────────────────────────────────────────────────────
 
 const READ_VORN_MAX_BYTES = 128 * 1024 * 1024 // 128 MB — prevenzione OOM
 
@@ -91,7 +91,7 @@ export async function readVorn(filePath) {
   })
 }
 
-// ── Write .vorn from source (initial creation) ───────────────────────────────
+// ── Scrittura .vorn da sorgente (creazione iniziale) ─────────────────────────
 
 export async function writeVornFromSource(destPath, meta, sourcePath) {
   const stats      = statSync(sourcePath)
@@ -122,7 +122,7 @@ export async function writeVornFromSource(destPath, meta, sourcePath) {
   }
 }
 
-// ── Content stream (used by restore) ─────────────────────────────────────────
+// ── Stream del contenuto (usato dal restore) ──────────────────────────────────
 
 export function contentStream(filePath) {
   const { contentLen } = readVornMeta(filePath)

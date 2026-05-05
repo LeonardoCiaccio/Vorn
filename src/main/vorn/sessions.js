@@ -20,6 +20,13 @@ export function validateSessionName(name) {
     throw new Error(`Nome sessione non sicuro: "${name}"`)
 }
 
+// Formato atteso: ISO-8601 prodotto da new Date().toISOString() (es. 2024-01-15T10:30:00.000Z)
+const _RUN_TS_RE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$/
+export function validateRunTs(ts) {
+  if (!ts || typeof ts !== 'string') throw new Error('runTs non valido')
+  if (!_RUN_TS_RE.test(ts)) throw new Error(`runTs non sicuro: "${ts}"`)
+}
+
 // ── Sessions ──────────────────────────────────────────────────────────────────
 
 export function listSessions(storeDir) {
@@ -137,8 +144,7 @@ export function saveRun(storeDir, sessionName, run) {
     else          session.runs_meta.unshift(summary)
     session.runs_meta.sort((a, b) => b.ts.localeCompare(a.ts))
     if (session.runs_meta.length > 500) session.runs_meta = session.runs_meta.slice(0, 500)
-    const runsCount = readdirSync(dir).filter(f => f.endsWith('.json')).length
-    session.runs_total = runsCount
+    if (idx < 0) session.runs_total = (session.runs_total ?? session.runs_meta.length - 1) + 1
     saveSession(storeDir, session)
   }
 }

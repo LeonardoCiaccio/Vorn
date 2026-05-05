@@ -1,12 +1,17 @@
-import { ipcMain, Notification, nativeImage, app }                  from 'electron'
-import { logger }                                                  from '../vorn/logger.js'
-import { join }                                                    from 'path'
-import { createTask, cancelTask, listTasks, finishTask, failTask } from '../vorn/taskManager.js'
-import { extractByHash }                                           from '../vorn/restore.js'
-import { invalidateListCache }                                     from '../vorn/store.js'
-import { ctx, spawnWorker }                                        from '../workerManager.js'
-import { loadRun, saveRun, validateSessionName }                   from '../vorn/sessions.js'
-import { loadSettings }                                            from '../vorn/settings.js'
+import { ipcMain, Notification, nativeImage, app }                          from 'electron'
+import { logger }                                                          from '../vorn/logger.js'
+import { isAbsolute, join, resolve }                                       from 'path'
+import { createTask, cancelTask, listTasks, finishTask, failTask }         from '../vorn/taskManager.js'
+import { extractByHash }                                                   from '../vorn/restore.js'
+import { invalidateListCache }                                             from '../vorn/store.js'
+import { ctx, spawnWorker }                                                from '../workerManager.js'
+import { loadRun, saveRun, validateSessionName, validateRunTs }            from '../vorn/sessions.js'
+import { loadSettings }                                                    from '../vorn/settings.js'
+
+const _HASH_RE = /^[0-9a-f]{64}$/
+function _assertHash(h) {
+  if (!h || !_HASH_RE.test(h)) throw new Error('Hash non valido')
+}
 
 let _icon = null
 function _getIcon() {
@@ -57,6 +62,7 @@ export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:task-list',   ()           => listTasks())
 
   ipcMain.handle('vorn:start-backup', (_, { sessionName, resumeTs = null }) => {
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
     validateSessionName(sessionName)
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
       throw new Error(`Operazione già in corso: ${sessionName}`)
@@ -81,12 +87,17 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:start-restore', (_, { sessionName, runTs, destDir, selectedFiles = null }) => {
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
     validateSessionName(sessionName)
+    validateRunTs(runTs)
+    if (!destDir || typeof destDir !== 'string') throw new Error('destDir non valido')
+    const resolvedDest = resolve(destDir)
+    if (!isAbsolute(resolvedDest)) throw new Error('destDir deve essere un percorso assoluto')
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
       throw new Error(`Operazione già in corso: ${sessionName}`)
     const task = createTask('restore', sessionName)
-    logger.info(`Task restore started [${task.id}] session="${sessionName}" runTs=${runTs} dest="${destDir}"`)
-    spawnWorker('restoreWorker.js', { storeDir: ctx.activeStore, sessionName, runTs, destDir, selectedFiles }, task.id, mainWindow,
+    logger.info(`Task restore started [${task.id}] session="${sessionName}" runTs=${runTs} dest="${resolvedDest}"`)
+    spawnWorker('restoreWorker.js', { storeDir: ctx.activeStore, sessionName, runTs, destDir: resolvedDest, selectedFiles }, task.id, mainWindow,
       (result, error) => {
         if (error) { failTask(task.id, error);   _send(mainWindow, { taskId: task.id, error }) }
         else        { finishTask(task.id, { ...result, status: 'done' }); _send(mainWindow, { taskId: task.id, result }) }
@@ -96,6 +107,9 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:start-integrity', () => {
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (listTasks().some(t => t.type === 'integrity' && t.status === 'running'))
+      throw new Error('Verifica integrità già in corso')
     const task = createTask('integrity', null)
     logger.info(`Task integrity started [${task.id}]`)
     spawnWorker('integrityWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, _onDone(task, mainWindow))
@@ -103,6 +117,7 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:start-clear-store', () => {
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
     if (listTasks().some(t => t.status === 'running'))
       throw new Error('Impossibile svuotare: operazioni in corso')
     const task = createTask('clear', null)
@@ -115,6 +130,9 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:start-extract-store', (_, { destDir, sessionFilter = null }) => {
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (listTasks().some(t => t.type === 'extract-store' && t.status === 'running'))
+      throw new Error('Estrazione store già in corso')
     const task = createTask('extract-store', null)
     logger.info(`Task extract-store started [${task.id}] dest="${destDir}"`)
     spawnWorker('extractStoreWorker.js', { storeDir: ctx.activeStore, destDir, sessionFilter }, task.id, mainWindow, _onDone(task, mainWindow))
@@ -122,6 +140,7 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:start-prune', () => {
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
     if (listTasks().some(t => t.status === 'running'))
       throw new Error('Impossibile pulire: operazioni in corso')
     const task = createTask('prune', null)
@@ -130,12 +149,13 @@ export function registerTaskHandlers(mainWindow) {
     return { taskId: task.id }
   })
 
-  ipcMain.handle('vorn:resume-prune', (_, { orphanList, nextIndex }) => {
+  ipcMain.handle('vorn:resume-prune', (_, { orphanListPath, nextIndex }) => {
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
     if (listTasks().some(t => t.status === 'running'))
       throw new Error('Impossibile riprendere: operazioni in corso')
     const task = createTask('prune', null)
     logger.info(`Task prune resumed [${task.id}] from index=${nextIndex}`)
-    spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore, orphanList, startIndex: nextIndex }, task.id, mainWindow, _onDone(task, mainWindow))
+    spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore, orphanListPath, startIndex: nextIndex }, task.id, mainWindow, _onDone(task, mainWindow))
     return { taskId: task.id }
   })
 
@@ -145,7 +165,8 @@ export function registerTaskHandlers(mainWindow) {
     return true
   })
 
-  ipcMain.handle('vorn:extract-hash', async (_, { hashVorn, destDir, filename }) =>
-    extractByHash(ctx.activeStore, hashVorn, destDir, filename)
-  )
+  ipcMain.handle('vorn:extract-hash', async (_, { hashVorn, destDir, filename }) => {
+    _assertHash(hashVorn)
+    return extractByHash(ctx.activeStore, hashVorn, destDir, filename)
+  })
 }
