@@ -2,6 +2,10 @@
 vorn_data/
 *.vorn
 
+# Claude Code
+CLAUDE.md
+.claude/
+
 # IDE
 .vscode/
 .idea/
