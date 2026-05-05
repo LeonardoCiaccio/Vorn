@@ -4,7 +4,7 @@
 
   <h1>Vorn</h1>
   <p><strong>Vault Of Redundant Nodes</strong></p>
-  <p>A fast, cross-platform desktop backup tool with content-addressable storage and automatic deduplication.</p>
+  <p>A fast, ultra-secure, cross-platform desktop backup tool with content-addressable storage and automatic deduplication.</p>
 
   <p>
     <img src="https://img.shields.io/badge/version-0.7.3-blue?style=flat-square" alt="Version" />
@@ -19,16 +19,28 @@
 
 ## Why Vorn?
 
-Most backup tools copy files as-is — the same content stored a hundred times in a hundred places. Vorn takes a smarter approach.
+Most backup tools copy files as-is — the same content stored a hundred times in a hundred places. Vorn takes a smarter, modern approach.
 
-Every file is identified by its **SHA-256 fingerprint**. Identical content is stored only once across every session and every backup run. This means:
+Every file is identified by its **BLAKE3 fingerprint** — a state-of-the-art hashing algorithm that is significantly faster and more secure than traditional SHA-256. Identical content is stored only once across every session and every backup run.
 
 - **Dramatically smaller backups** — duplicate files across your projects take zero extra space.
-- **Truly incremental** — only files that actually changed get re-processed.
+- **Lightning fast** — uses a local SQLite database to skip re-hashing files that haven't changed.
+- **Crash-resilient** — uses atomic writes and WAL (Write-Ahead Logging) to ensure your backup is never corrupted.
+- **Disaster Proof** — session files lost? No problem. The .vorn format is self-describing, meaning your data remains independently recoverable directly from the store.
+- **Truly incremental** — only new or modified content is processed.
 - **Resumable** — interrupted backups pick up exactly where they left off.
-- **Portable** — a single file (or folder) holds your entire vault. Carry it on a USB drive, sync it to a NAS, or keep it on a second disk.
+- **Portable** — a single folder (the Store) holds your entire vault. Move it anywhere.
 
-Everything runs locally. No accounts, no cloud services, no subscriptions.
+Everything runs locally. No accounts, no cloud services, no telemetry. Your data stays yours.
+
+---
+
+## Quick Start
+
+1. **Create a Store**: Choose a destination folder (e.g., an external drive or NAS) where Vorn will safely pack your files.
+2. **Setup a Session**: Give it a name and select the folders you want to protect.
+3. **Run Backup**: Hit the backup button. Vorn will scan, deduplicate, and secure your files into the store.
+4. **Restore**: Need a file back? Browse any past run and extract exactly what you need to any location.
 
 ---
 
@@ -37,14 +49,13 @@ Everything runs locally. No accounts, no cloud services, no subscriptions.
 | Feature | Description |
 |---|---|
 | **Content-addressable store** | Files are addressed by hash — identical content is written once, referenced everywhere |
-| **Automatic deduplication** | Zero effort: Vorn handles it transparently at the chunk level |
-| **Incremental backups** | Only changed files are processed on subsequent runs |
+| **Atomic Writes** | Files are written to a temporary location and renamed only when complete to prevent corruption |
+| **Automatic deduplication** | Zero effort: Vorn handles it transparently at the file level |
+| **Incremental backups** | Uses file metadata (mtime/size) to skip processing unchanged files |
 | **Resume interrupted runs** | Pick up where you left off after a crash or manual stop |
-| **Multiple sessions** | Independently manage backups for different projects or drives |
-| **Non-destructive restore** | Extract individual files or entire runs to any destination |
-| **Store integrity check** | Verify every entry in the vault against its stored hash |
-| **Store browser** | Inspect, navigate, and manage the contents of your vault |
-| **Antivirus warning** | Warns before backing up executable files (optional, per-session) |
+| **Store integrity check** | Re-verify every entry in the vault against its original BLAKE3 hash |
+| **Store pruning** | Automatically remove data that is no longer referenced by any session |
+| **Non-destructive restore** | Extract individual files or entire runs to any destination without touching originals |
 | **Multi-language UI** | Available in English, Italian, French, German, Spanish, and Portuguese |
 | **Dark / Light theme** | Follows your system preference or can be set manually |
 | **Portable executables** | No installation required on Windows and Linux |
@@ -362,14 +373,21 @@ chmod +x release/Vorn-*.AppImage
 
 Vorn organizes your backups around two concepts: **sessions** and the **store**.
 
-### Sessions
-A session is a named configuration that points to one or more source folders or files. Each time you run a backup, Vorn creates a **run** inside that session — a snapshot of what changed since the last run.
+### The .vorn Format: Self-Describing Data
+Vorn doesn't just copy files. Each unique file is packed into a `.vorn` container. This is a crucial safety feature: **the Store is the single source of truth.**
 
-### The Store
-The store is a single directory on disk that acts as a content-addressable vault. Every unique file ever backed up lives here, addressed by its SHA-256 hash. Sessions reference files in the store — they never duplicate them.
+Each container includes:
+1. **Header**: Magic bytes and content length.
+2. **Payload**: The original, bit-perfect content of your file.
+3. **Metadata**: A JSON tail containing the BLAKE3 hash, file size, and — most importantly — **a record of every session and relative path** that references this content.
+
+**Why this matters:** If you accidentally delete Vorn's internal configuration files or the index database, your backups are still safe. Because every `.vorn` file knows its original identity, the entire index can be reconstructed by simply scanning the store. Your data is never "trapped" in a proprietary, opaque database.
 
 ### Deduplication in practice
-If you back up three projects that all contain the same 200 MB video file, Vorn stores it once and records three references. Your vault stays lean regardless of how many sessions point to the same content.
+If you back up three projects that all contain the same 200 MB video file, Vorn stores it **once** as a single `.vorn` file. The metadata inside that file will record all three different paths. Your vault stays lean regardless of how many sessions point to the same content.
+
+### Data Integrity
+Vorn is built for safety. When writing to the store, it uses a **Write-Ahead** strategy. If the app crashes or the power goes out, Vorn can detect the interrupted operation and recover or clean up automatically, ensuring your store remains in a consistent state.
 
 ### Restoring files
 From any session's run, you can restore individual files or entire snapshots to a destination folder of your choice. Vorn extracts the correct version from the store without touching the originals.
@@ -413,7 +431,7 @@ Vorn/
 | Frontend | [Vue 3](https://vuejs.org/) + [Tailwind CSS](https://tailwindcss.com/) 4 |
 | Build | [electron-vite](https://electron-vite.org/) + [electron-builder](https://www.electron.build/) |
 | Database | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) (WAL mode) |
-| Hashing | [@noble/hashes](https://github.com/paulmillr/noble-hashes) — pure JS SHA-256 |
+| Hashing | [@noble/hashes](https://github.com/paulmillr/noble-hashes) — High-performance **BLAKE3** |
 | i18n | [vue-i18n](https://vue-i18n.intlify.dev/) |
 
 ---
