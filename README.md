@@ -54,7 +54,8 @@ Everything runs locally. No accounts, no cloud services, no subscriptions.
 
 ## Screenshots
 
-> *(Coming soon — contributions welcome!)*
+
+[![Vorn screenshots](/Vorn-Console.png)](/Vorn-Console.png)
 
 ---
 
