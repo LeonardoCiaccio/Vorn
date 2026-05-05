@@ -39,6 +39,7 @@
     "title": "Impostazioni",
     "interface": "Interfaccia",
     "backup": "Backup",
+    "info": "Informazioni",
     "lang": {
       "label": "Lingua",
       "sub": "Lingua dell'interfaccia utente"
@@ -46,6 +47,13 @@
     "notif": {
       "label": "Notifiche di sistema",
       "sub": "Mostra una notifica al termine di ogni run"
+    },
+    "about": {
+      "github": "Repository GitHub",
+      "githubSub": "Codice sorgente, issue e contributi",
+      "releases": "Aggiornamenti",
+      "releasesSub": "Controlla le ultime release disponibili",
+      "open": "Apri"
     }
   },
 

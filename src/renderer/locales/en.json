@@ -39,6 +39,7 @@
     "title": "Settings",
     "interface": "Interface",
     "backup": "Backup",
+    "info": "About",
     "lang": {
       "label": "Language",
       "sub": "Interface language"
@@ -46,6 +47,13 @@
     "notif": {
       "label": "System notifications",
       "sub": "Show a notification at the end of each run"
+    },
+    "about": {
+      "github": "GitHub Repository",
+      "githubSub": "Source code, issues and contributions",
+      "releases": "Updates",
+      "releasesSub": "Check the latest available releases",
+      "open": "Open"
     }
   },
 

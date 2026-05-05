@@ -25,7 +25,7 @@
       </button>
       <div class="w-px h-4 bg-gray-800 mx-1" />
       <button
-        @click="settingsOpen = true"
+        @click="openSettings"
         class="p-2 rounded-md text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
         :title="$t('topbar.settings')"
       >
@@ -43,7 +43,7 @@
 
   </header>
 
-  <SettingsModal v-if="settingsOpen" @close="settingsOpen = false" />
+  <SettingsModal v-if="settingsOpen" :initial-settings="loadedSettings" @close="settingsOpen = false" />
 
 </template>
 
@@ -74,7 +74,13 @@ function navigate(id) {
   else navigateTo(id)
 }
 
-const settingsOpen = ref(false)
+const settingsOpen   = ref(false)
+const loadedSettings = ref(null)
+
+async function openSettings() {
+  loadedSettings.value = await window.vorn.getSettings()
+  settingsOpen.value = true
+}
 
 // Tema
 const isDark = ref(document.documentElement.classList.contains('dark'))

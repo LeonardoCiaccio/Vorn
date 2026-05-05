@@ -1,4 +1,4 @@
-import { ipcMain, app, dialog } from 'electron'
+import { ipcMain, app, dialog, shell } from 'electron'
 import { join, normalize, resolve } from 'path'
 import { readdirSync }              from 'fs'
 import { getEntry, listStoreFiles, countStoreFiles, deleteStoreEntry, getCachedFileList } from '../vorn/store.js'
@@ -16,6 +16,12 @@ function _hashSetForQuery(storeDir, query) {
 }
 
 export function registerSystemHandlers(mainWindow) {
+  ipcMain.handle('vorn:open-external', (_, { url }) => {
+    const allowed = ['https://github.com/LeonardoCiaccio/Vorn']
+    if (typeof url !== 'string' || !allowed.some(base => url.startsWith(base))) return
+    shell.openExternal(url)
+  })
+
   ipcMain.handle('vorn:get-app-info', () => ({
     version:  app.getVersion(),
     platform: process.platform,

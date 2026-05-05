@@ -74,6 +74,7 @@ contextBridge.exposeInMainWorld('vorn', {
   // Settings
   getSettings:  ()        => ipcRenderer.invoke('vorn:get-settings'),
   saveSettings: (patch)   => ipcRenderer.invoke('vorn:save-settings', patch),
+  openExternal: (url)     => ipcRenderer.invoke('vorn:open-external', { url }),
 
   // Utils
   pickFolder:      (defaultPath) => ipcRenderer.invoke('vorn:pick-folder', { defaultPath }),
