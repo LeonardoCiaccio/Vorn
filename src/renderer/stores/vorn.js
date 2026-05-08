@@ -127,7 +127,7 @@ export async function fetchStorePage(offset = 0, limit = 20, query = '') {
 
 export { formatTs, formatBytes, shortHash }        from './format.js'
 export {
-  refreshSession, selectSession, createSession, deleteSession,
+  refreshSession, selectSession, createSession, updateSession, deleteSession,
   deleteRun, selectRun, loadFullRun,
 }                                                  from './sessions.js'
 export {

@@ -7,8 +7,14 @@
         <ArrowLeftIcon class="w-4 h-4" />
       </button>
       <div class="flex items-center gap-3 flex-1">
-        <div class="w-9 h-9 rounded-md bg-linear-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center">
-          <FolderOpenIcon class="w-4.5 h-4.5 text-indigo-400" />
+        <div class="flex flex-col items-center gap-0.5 shrink-0">
+          <div class="w-9 h-9 rounded-md bg-linear-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center">
+            <FolderOpenIcon class="w-4.5 h-4.5 text-indigo-400" />
+          </div>
+          <span
+            v-if="session.compressionType"
+            class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none"
+          >{{ session.compressionType }}</span>
         </div>
         <div>
           <h1 class="text-lg font-bold text-white">{{ session.name }}</h1>

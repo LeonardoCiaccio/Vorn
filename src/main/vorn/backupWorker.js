@@ -21,7 +21,7 @@ parentPort.on('message', (msg) => {
   }
 })
 
-function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, relPath) {
+function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType) {
   return new Promise((resolve, reject) => {
     const id    = ++_reqId
     const timer = setTimeout(() => {
@@ -33,7 +33,7 @@ function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, re
       resolve: (outcome) => { clearTimeout(timer); resolve(outcome) },
       reject:  (err)     => { clearTimeout(timer); reject(err) },
     })
-    parentPort.postMessage({ type: 'store-request', id, hashVorn, bytes, filePath, sessionId, sessionName, relPath })
+    parentPort.postMessage({ type: 'store-request', id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType })
   })
 }
 

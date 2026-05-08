@@ -28,24 +28,24 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
   for (let i = 0; i < fileEntries.length; i++) {
     if (isCancelled?.()) break
 
-    const [relPath, hashVorn] = fileEntries[i]
+    const [relPath, storeKey] = fileEntries[i]
     try {
-      if (!existsSync(join(storeDir, hashVorn + '.vorn'))) {
-        errors.push({ path: relPath, hash: hashVorn, error: 'not_found' })
+      if (!existsSync(join(storeDir, storeKey + '.vorn'))) {
+        errors.push({ path: relPath, storeKey, error: 'not_found' })
         onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
         continue
       }
       const outPath = _safeJoin(destDir, relPath)
       if (!outPath) {
-        errors.push({ path: relPath, hash: hashVorn, error: 'path_traversal' })
+        errors.push({ path: relPath, storeKey, error: 'path_traversal' })
         onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
         continue
       }
       mkdirSync(join(outPath, '..'), { recursive: true })
-      await pipeline(extractContent(storeDir, hashVorn), createWriteStream(outPath))
+      await pipeline(extractContent(storeDir, storeKey), createWriteStream(outPath))
       restored++
     } catch (e) {
-      errors.push({ path: relPath, hash: hashVorn, error: e.code ?? e.message })
+      errors.push({ path: relPath, storeKey, error: e.code ?? e.message })
     }
 
     onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
@@ -107,16 +107,16 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
   return { extracted, total, errors, sessions: [...sessionNames], noRecords }
 }
 
-export async function extractByHash(storeDir, hashVorn, destDir, filename) {
+export async function extractByHash(storeDir, storeKey, destDir, filename) {
   destDir = resolve(destDir)
-  const vornFilePath = join(storeDir, hashVorn + '.vorn')
+  const vornFilePath = join(storeDir, storeKey + '.vorn')
   const { contentLen } = readVornMeta(vornFilePath)
   if (Number(contentLen) > EXTRACT_MAX_BYTES) {
     const mb = Math.round(Number(contentLen) / 1024 / 1024)
     throw new Error(`File troppo grande per l'estrazione diretta (${mb} MB). Limite: 500 MB.`)
   }
-  const outPath = join(destDir, basename(filename || hashVorn))
+  const outPath = join(destDir, basename(filename || storeKey))
   mkdirSync(destDir, { recursive: true })
-  await pipeline(extractContent(storeDir, hashVorn), createWriteStream(outPath))
+  await pipeline(extractContent(storeDir, storeKey), createWriteStream(outPath))
   return { path: outPath }
 }

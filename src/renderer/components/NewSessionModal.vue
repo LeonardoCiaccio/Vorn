@@ -103,6 +103,18 @@
               </div>
             </div>
 
+            <!-- Compressione -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ $t('compression.label') }}</label>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-gray-500">{{ $t('compression.gzip') }}</span>
+                  <Toggle v-model="form.compressionEnabled" />
+                </div>
+              </div>
+              <p class="text-[11px] text-gray-600">{{ $t('compression.help') }}</p>
+            </div>
+
             <!-- Spacer -->
             <div class="flex-1" />
 
@@ -138,6 +150,7 @@ import { useI18n } from 'vue-i18n'
 import { FolderPlusIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { createSession, state } from '../stores/vorn.js'
 import SessionSourceTree from './SessionSourceTree.vue'
+import Toggle from './Toggle.vue'
 
 const { t } = useI18n()
 
@@ -151,10 +164,11 @@ const emit = defineEmits(['close', 'created'])
 const DEFAULT_PATTERNS = ['*.log', '*.tmp', '*.temp', 'node_modules', '.git', '__pycache__', 'Thumbs.db', '.DS_Store']
 
 const form = reactive({
-  name:         '',
-  sources:      [],
-  excludePaths: [],
-  patterns:     [...DEFAULT_PATTERNS],
+  name:               '',
+  sources:            [],
+  excludePaths:       [],
+  patterns:           [...DEFAULT_PATTERNS],
+  compressionEnabled: true,
 })
 const saving     = ref(false)
 const error      = ref('')
@@ -178,10 +192,11 @@ async function submit() {
   saving.value = true
   try {
     await createSession({
-      name:     form.name.trim(),
-      sources:  [...form.sources],
-      excludes: { paths: [...form.excludePaths], patterns: [...form.patterns] },
-      ts:       new Date().toISOString(),
+      name:            form.name.trim(),
+      sources:         [...form.sources],
+      excludes:        { paths: [...form.excludePaths], patterns: [...form.patterns] },
+      compressionType: form.compressionEnabled ? 'gzip' : null,
+      ts:              new Date().toISOString(),
     })
     emit('created')
     emit('close')

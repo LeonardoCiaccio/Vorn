@@ -29,6 +29,13 @@ export async function createSession(session) {
   return created
 }
 
+export async function updateSession(name, store, sources, compressionType = undefined) {
+  const patch = { store, sources }
+  if (compressionType !== undefined) patch.compressionType = compressionType
+  await window.vorn.updateSession(name, patch)
+  await refreshSession(name)
+}
+
 export async function deleteSession(name) {
   await window.vorn.deleteSession(name)
   const idx = state.sessions.findIndex(s => s.name === name)

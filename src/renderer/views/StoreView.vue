@@ -210,9 +210,17 @@
               ]"
             >
               <td class="py-3 pr-5">
-                <span class="font-mono text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md break-all">
-                  {{ entry.hash_vorn }}
-                </span>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-mono text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md break-all">
+                    {{ entry.content_hash ?? entry.hash_vorn }}
+                  </span>
+                  <span
+                    v-if="entry.compressedType"
+                    class="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                  >
+                    {{ entry.compressedType }}
+                  </span>
+                </div>
               </td>
               <td class="py-3 pr-5 text-right font-mono text-sm text-gray-300">
                 {{ formatBytes(entry.bytes_file) }}
@@ -280,7 +288,7 @@
               <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.detail.hash') }}</p>
               <div class="flex items-start gap-2">
                 <p class="font-mono text-[11px] text-indigo-400 bg-indigo-500/10 px-2 py-1.5 rounded-md break-all flex-1 leading-relaxed">
-                  {{ selectedEntry.hash_vorn }}
+                  {{ selectedEntry.content_hash ?? selectedEntry.hash_vorn }}
                 </p>
                 <button
                   @click="copyHash"
@@ -298,6 +306,13 @@
             <div class="space-y-1">
               <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.detail.size') }}</p>
               <p class="text-sm font-mono text-gray-300">{{ formatBytes(selectedEntry.bytes_file) }}</p>
+            </div>
+
+            <!-- Compressione -->
+            <div class="space-y-1">
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.detail.compression') }}</p>
+              <p v-if="selectedEntry.compressedType" class="text-sm font-mono text-emerald-400">{{ selectedEntry.compressedType }}</p>
+              <p v-else class="text-sm font-mono text-gray-500">{{ $t('store.detail.compressionNone') }}</p>
             </div>
 
             <!-- Date -->
@@ -803,7 +818,7 @@ function toggleEntry(entry) {
 
 function copyHash() {
   if (!selectedEntry.value) return
-  navigator.clipboard.writeText(selectedEntry.value.hash_vorn)
+  navigator.clipboard.writeText(selectedEntry.value.content_hash ?? selectedEntry.value.hash_vorn)
   hashCopied.value = true
   clearTimeout(_copyTimer)
   _copyTimer = setTimeout(() => { hashCopied.value = false }, 2000)

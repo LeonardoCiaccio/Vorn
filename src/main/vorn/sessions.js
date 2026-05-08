@@ -63,6 +63,12 @@ export function createSession(storeDir, session) {
   return withId
 }
 
+export function updateSession(storeDir, name, patch) {
+  const session = getSession(storeDir, name)
+  if (!session) throw new Error(`Sessione non trovata: ${name}`)
+  saveSession(storeDir, { ...session, ...patch })
+}
+
 export function deleteSession(storeDir, name) {
   const dir = sessionDir(storeDir, name)
   if (existsSync(dir)) rmSync(dir, { recursive: true, force: true })

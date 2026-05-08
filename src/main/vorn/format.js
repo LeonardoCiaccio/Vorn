@@ -1,6 +1,8 @@
 import { openSync, readSync, writeSync, fsyncSync, closeSync, truncateSync, createReadStream, createWriteStream, statSync, existsSync, readFileSync, unlinkSync, renameSync } from 'fs'
 import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
+import { compressToTemp, decompressStream, cleanupTemp } from './compress.js'
+import { vornHash } from './hash.js'
 
 const MAGIC = Buffer.from('VORN')
 const SEPARATOR = Buffer.from([0xFF, 0x00, 0xFF, 0x00])
@@ -82,31 +84,49 @@ export async function readVorn(filePath) {
   if (contentLen === 0n) return { meta, content: Buffer.alloc(0) }
   if (contentLen > BigInt(READ_VORN_MAX_BYTES))
     throw new Error(`readVorn: file troppo grande (${contentLen} byte). Usa contentStream per file grandi.`)
-  const rs = createReadStream(filePath, { start: HEADER_SIZE, end: HEADER_SIZE + Number(contentLen) - 1 })
+  const stream = contentStream(filePath)
   const chunks = []
   return new Promise((resolve, reject) => {
-    rs.on('data', c => chunks.push(c))
-    rs.on('end', () => resolve({ meta, content: Buffer.concat(chunks) }))
-    rs.on('error', reject)
+    stream.on('data', c => chunks.push(c))
+    stream.on('end', () => resolve({ meta, content: Buffer.concat(chunks) }))
+    stream.on('error', reject)
   })
 }
 
 // ── Scrittura .vorn da sorgente (creazione iniziale) ─────────────────────────
 
-export async function writeVornFromSource(destPath, meta, sourcePath) {
-  const stats      = statSync(sourcePath)
-  const contentLen = BigInt(stats.size)
+export async function writeVornFromSource(destPath, meta, sourcePath, compressionType = null) {
+  const tmpPath = destPath + '.tmp'
+
+  let contentLen
+  let contentSource
+  let compTmpPath = null
+
+  if (compressionType) {
+    compTmpPath = destPath + '.ctmp'
+    try {
+      const compressedSize = await compressToTemp(sourcePath, compTmpPath, compressionType)
+      contentLen    = BigInt(compressedSize)
+      contentSource = compTmpPath
+      meta.compressed_hash = vornHash(compTmpPath)
+    } catch (e) {
+      cleanupTemp(compTmpPath)
+      throw e
+    }
+  } else {
+    contentLen   = BigInt(statSync(sourcePath).size)
+    contentSource = sourcePath
+  }
 
   const header = Buffer.alloc(HEADER_SIZE)
   MAGIC.copy(header)
   header.writeBigUInt64BE(contentLen, 4)
 
   const metaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
-  const tmpPath = destPath + '.tmp'
 
   try {
     await pipeline(
-      createReadStream(sourcePath),
+      createReadStream(contentSource),
       async function* (source) {
         yield header
         for await (const chunk of source) yield chunk
@@ -119,16 +139,20 @@ export async function writeVornFromSource(destPath, meta, sourcePath) {
   } catch (e) {
     if (existsSync(tmpPath)) unlinkSync(tmpPath)
     throw e
+  } finally {
+    if (compTmpPath) cleanupTemp(compTmpPath)
   }
 }
 
 // ── Stream del contenuto (usato dal restore) ──────────────────────────────────
 
 export function contentStream(filePath) {
-  const { contentLen } = readVornMeta(filePath)
+  const { meta, contentLen } = readVornMeta(filePath)
   if (contentLen === 0n) return Readable.from([])
-  return createReadStream(filePath, {
+  const raw = createReadStream(filePath, {
     start: HEADER_SIZE,
     end: HEADER_SIZE + Number(contentLen) - 1
   })
+  const type = meta?.compressedType ?? null
+  return type ? decompressStream(raw, type) : raw
 }

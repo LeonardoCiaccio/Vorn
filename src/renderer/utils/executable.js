@@ -1,6 +1,8 @@
 const EXECUTABLE_EXTS = new Set([
   // Windows
   '.exe', '.msi', '.bat', '.cmd', '.ps1', '.com', '.scr', '.pif',
+  // Script
+  '.py', '.rb', '.pl', '.lua',
   // Linux
   '.sh', '.bin', '.appimage', '.deb', '.rpm', '.run',
   // macOS

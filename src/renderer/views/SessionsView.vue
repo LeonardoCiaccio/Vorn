@@ -146,11 +146,17 @@
               <!-- Name + sources -->
               <td class="py-3.5 px-4">
                 <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-md bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0 group-hover:border-indigo-500/50 group-hover:bg-indigo-500/10 transition-colors"
-                    :class="activeTask(session.name) ? 'border-indigo-500/40 bg-indigo-500/10' : ''"
-                  >
-                    <FolderIcon v-if="!activeTask(session.name)" class="w-4 h-4 text-gray-500 group-hover:text-indigo-400 transition-colors" />
-                    <ArrowPathIcon v-else class="w-4 h-4 text-indigo-400 animate-spin" />
+                  <div class="flex flex-col items-center gap-0.5 shrink-0">
+                    <div class="w-8 h-8 rounded-md bg-gray-800 border border-gray-700 flex items-center justify-center group-hover:border-indigo-500/50 group-hover:bg-indigo-500/10 transition-colors"
+                      :class="activeTask(session.name) ? 'border-indigo-500/40 bg-indigo-500/10' : ''"
+                    >
+                      <FolderIcon v-if="!activeTask(session.name)" class="w-4 h-4 text-gray-500 group-hover:text-indigo-400 transition-colors" />
+                      <ArrowPathIcon v-else class="w-4 h-4 text-indigo-400 animate-spin" />
+                    </div>
+                    <span
+                      v-if="session.compressionType"
+                      class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none"
+                    >{{ session.compressionType }}</span>
                   </div>
                   <div>
                     <p class="font-semibold text-gray-100">{{ session.name }}</p>

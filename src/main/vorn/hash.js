@@ -22,6 +22,16 @@ export function vornHash(filePath) {
   return Buffer.from(h.digest()).toString('hex')
 }
 
+// Hashing da stream leggibile — usato da integrityWorker per file compressi
+export function hashFromStream(readable) {
+  const h = blake3.create()
+  return new Promise((resolve, reject) => {
+    readable.on('data', chunk => h.update(chunk))
+    readable.on('end', () => resolve(Buffer.from(h.digest()).toString('hex')))
+    readable.on('error', reject)
+  })
+}
+
 // Hashing da file descriptor aperto — usato da integrityWorker
 export function hashFromFd(fd, contentOffset, contentLen) {
   const size   = Number(contentLen)
