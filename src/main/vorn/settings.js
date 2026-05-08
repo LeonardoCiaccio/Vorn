@@ -45,6 +45,12 @@ export function saveSettings(patch) {
   return { ..._cache }
 }
 
+export function removeRecentStore(storeDir) {
+  const s = loadSettings()
+  s.recentStores = s.recentStores.filter(r => r.path !== storeDir)
+  saveSettings(s)
+}
+
 export function addRecentStore(storeDir) {
   const s = loadSettings()
   s.recentStores = [

@@ -4,7 +4,7 @@ import { parse }                                      from 'path'
 import { execFileSync }                               from 'child_process'
 import { platform }                                   from 'os'
 import { checkLock, acquireLock, releaseLock }        from '../vorn/lockFile.js'
-import { loadSettings, saveSettings, addRecentStore } from '../vorn/settings.js'
+import { loadSettings, saveSettings, addRecentStore, removeRecentStore } from '../vorn/settings.js'
 import { ctx, startStoreWatch, stopStoreWatch }       from '../workerManager.js'
 import { listSessions, listRuns, loadRun, saveRun }   from '../vorn/sessions.js'
 import { logger }                                     from '../vorn/logger.js'
@@ -78,7 +78,8 @@ export function registerStoreHandlers(mainWindow) {
     }
   })
 
-  ipcMain.handle('vorn:get-settings',      ()         => loadSettings())
-  ipcMain.handle('vorn:save-settings',     (_, patch) => saveSettings(patch))
-  ipcMain.handle('vorn:get-recent-stores', ()         => loadSettings().recentStores)
+  ipcMain.handle('vorn:get-settings',         ()              => loadSettings())
+  ipcMain.handle('vorn:save-settings',        (_, patch)      => saveSettings(patch))
+  ipcMain.handle('vorn:get-recent-stores',    ()              => loadSettings().recentStores)
+  ipcMain.handle('vorn:remove-recent-store',  (_, { path })   => removeRecentStore(path))
 }

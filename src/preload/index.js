@@ -9,7 +9,8 @@ contextBridge.exposeInMainWorld('vorn', {
   // Store
   openStore:        (storeDir)    => ipcRenderer.invoke('vorn:open-store', { storeDir }),
   closeStore:       ()            => ipcRenderer.invoke('vorn:close-store'),
-  getRecentStores:  ()            => ipcRenderer.invoke('vorn:get-recent-stores'),
+  getRecentStores:    ()          => ipcRenderer.invoke('vorn:get-recent-stores'),
+  removeRecentStore:  (path)      => ipcRenderer.invoke('vorn:remove-recent-store', { path }),
 
   // Sessions
   listSessions:   ()              => ipcRenderer.invoke('vorn:list-sessions'),

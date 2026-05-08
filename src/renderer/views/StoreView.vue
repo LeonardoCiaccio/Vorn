@@ -11,6 +11,10 @@
         </p>
       </div>
       <div class="flex items-center gap-2">
+        <button @click="refreshStore" class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 transition-colors">
+          <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': state.loading }" />
+          {{ $t('store.refresh') }}
+        </button>
         <button
           @click="closeStore"
           :disabled="anyTaskRunning"
@@ -28,10 +32,6 @@
         >
           <ArchiveBoxArrowDownIcon class="w-4 h-4" />
           {{ $t('store.extractFiles') }}
-        </button>
-        <button @click="refreshStore" class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 transition-colors">
-          <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': state.loading }" />
-          {{ $t('store.refresh') }}
         </button>
         <button
           @click="showClearModal = true"
