@@ -9,17 +9,15 @@
             <ArrowDownTrayIcon class="w-4 h-4 text-indigo-400" />
           </div>
           <div>
-            <p class="text-sm font-semibold text-white">Aggiornamento disponibile</p>
-            <p class="text-xs text-gray-500 mt-0.5">v{{ info.current }} → v{{ info.latest }}</p>
+            <p class="text-sm font-semibold text-white">{{ $t('update.title') }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">{{ $t('update.subtitle', { current: info.current, latest: info.latest }) }}</p>
           </div>
         </div>
 
         <!-- Body -->
         <div class="px-6 py-5">
           <p class="text-sm text-gray-400 leading-relaxed">
-            È disponibile una nuova versione di Vorn
-            (<span class="text-white font-mono">v{{ info.latest }}</span>).
-            Vuoi aprire la pagina di download?
+            {{ $t('update.body', { latest: info.latest }) }}
           </p>
         </div>
 
@@ -29,14 +27,14 @@
             @click="$emit('dismiss')"
             class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors rounded-md hover:bg-gray-800"
           >
-            Più tardi
+            {{ $t('update.later') }}
           </button>
           <button
             @click="download"
             class="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-md transition-colors flex items-center gap-1.5"
           >
             <ArrowDownTrayIcon class="w-3.5 h-3.5" />
-            Scarica
+            {{ $t('update.download') }}
           </button>
         </div>
 

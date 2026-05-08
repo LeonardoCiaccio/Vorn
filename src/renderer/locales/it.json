@@ -1,4 +1,12 @@
 {
+  "update": {
+    "title": "Aggiornamento disponibile",
+    "subtitle": "v{current} → v{latest}",
+    "body": "È disponibile una nuova versione di Vorn (v{latest}). Vuoi aprire la pagina di download?",
+    "later": "Più tardi",
+    "download": "Scarica"
+  },
+
   "ipcErrors": {
     "ERR_FILESYSTEM_FAT32": "Il filesystem FAT32 non è supportato. Formatta il volume in exFAT o NTFS e riprova."
   },
