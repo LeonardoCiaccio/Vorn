@@ -1,4 +1,4 @@
-import { ipcMain, app, dialog, shell, BrowserWindow } from 'electron'
+import { ipcMain, app, dialog, shell, BrowserWindow, net } from 'electron'
 import { join, normalize, resolve } from 'path'
 import { readdirSync, existsSync }  from 'fs'
 import { homedir }                  from 'os'
@@ -9,6 +9,17 @@ import { logger }                   from '../vorn/logger.js'
 import { loadSettings }             from '../vorn/settings.js'
 
 const HASH_RE = /^[0-9a-f]{64}(_[a-z0-9]+)?$/
+
+function _isNewer(latest, current) {
+  const toNums = v => v.replace(/^v/, '').split('.').map(Number)
+  const a = toNums(latest)
+  const b = toNums(current)
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const diff = (a[i] ?? 0) - (b[i] ?? 0)
+    if (diff !== 0) return diff > 0
+  }
+  return false
+}
 
 function _resolveIcon() {
   const candidates = process.platform === 'win32'
@@ -185,6 +196,23 @@ export function registerSystemHandlers(mainWindow) {
           return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
         })
     } catch { return [] }
+  })
+
+  ipcMain.handle('vorn:check-update', async () => {
+    try {
+      const res = await net.fetch(
+        'https://api.github.com/repos/LeonardoCiaccio/Vorn/releases/latest',
+        { headers: { 'User-Agent': 'Vorn-App' } }
+      )
+      if (!res.ok) return null
+      const data = await res.json()
+      const latest  = data.tag_name?.replace(/^v/, '')
+      const current = app.getVersion()
+      if (!latest) return null
+      return { latest, current, hasUpdate: _isNewer(latest, current), url: data.html_url }
+    } catch {
+      return null
+    }
   })
 
   ipcMain.handle('vorn:inspect-hash',       (_, { hashVorn })           => { _assertHash(hashVorn); return getEntry(ctx.activeStore, hashVorn) })

@@ -82,7 +82,8 @@ contextBridge.exposeInMainWorld('vorn', {
   // Utils
   pickFolder:      (defaultPath) => ipcRenderer.invoke('vorn:pick-folder', { defaultPath }),
   getPathForFile:  (file)        => webUtils.getPathForFile(file),
-  getAppInfo:  () => ipcRenderer.invoke('vorn:get-app-info'),
+  getAppInfo:   () => ipcRenderer.invoke('vorn:get-app-info'),
+  checkUpdate:  () => ipcRenderer.invoke('vorn:check-update'),
   listDir:     (dirPath) => ipcRenderer.invoke('vorn:list-dir', { dirPath }),
 
   platform: process.platform,

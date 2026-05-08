@@ -11,6 +11,7 @@ export const state = reactive({
 
   // App
   appInfo:         null,
+  updateInfo:      null,
 
   // Sessioni e navigazione
   currentView:     'sessions',
@@ -31,12 +32,14 @@ export const state = reactive({
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 export async function boot() {
-  const [appInfo, settings, tasks] = await Promise.all([
+  const [appInfo, settings, tasks, updateInfo] = await Promise.all([
     window.vorn.getAppInfo(),
     window.vorn.getSettings(),
     window.vorn.listTasks(),
+    window.vorn.checkUpdate(),
   ])
   state.appInfo      = appInfo
+  state.updateInfo   = updateInfo
   state.recentStores = settings.recentStores ?? []
   syncThemeFromSettings(settings.theme)
   setLocale(settings.language)
