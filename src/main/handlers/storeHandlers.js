@@ -21,11 +21,11 @@ function _getFilesystem(dirPath) {
       const letter = root[0].toUpperCase()
       if (!letter || root[1] !== ':') return null
       const out = execFileSync(
-        'wmic', ['logicaldisk', 'where', `deviceid='${letter}:'`, 'get', 'filesystem', '/value'],
-        { encoding: 'utf8', timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] }
+        'powershell', ['-NoProfile', '-NonInteractive', '-Command',
+          `(Get-Volume -DriveLetter '${letter}' -ErrorAction SilentlyContinue).FileSystem`],
+        { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }
       )
-      const match = out.match(/FileSystem=(.+)/i)
-      return match?.[1]?.trim() ?? null
+      return out.trim() || null
     }
     if (os === 'linux') {
       return execFileSync('findmnt', ['-n', '-o', 'FSTYPE', '--target', dirPath], { encoding: 'utf8', timeout: 3000 }).trim()
