@@ -1,7 +1,7 @@
 import { statSync, existsSync } from 'fs'
 import { basename, relative, join } from 'path'
 import { vornHash } from './hash.js'
-import { storeBlob } from './store.js'
+import { storeBlob, toStoreKey } from './store.js'
 import { getSession, saveRun, loadRun } from './sessions.js'
 import { walk, matchPattern } from './scanner.js'
 import { dbGetFile, dbUpsertFile, dbPruneOrphans } from './db.js'
@@ -14,6 +14,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
   const session = getSession(storeDir, sessionName)
   if (!session) throw new Error(`Sessione non trovata: ${sessionName}`)
 
+  const compressionType = session.compressionType ?? null
   const sources  = session.sources ?? []
   const excPaths = session.excludes?.paths    ?? []
   const excPats  = session.excludes?.patterns ?? []
@@ -85,13 +86,15 @@ export async function backup(storeDir, sessionName, opts = {}) {
     let hashVorn
     const dbRecord = dbGetFile(filePath)
     if (dbRecord && dbRecord.mtime === mtime && dbRecord.size === bytes) {
-      // File invariato — verifica che il .vorn esista ancora nello store
-      const vornPath = join(storeDir, dbRecord.hash + '.vorn')
-      if (existsSync(vornPath)) {
+      // File invariato — verifica che il .vorn esista ancora nello store.
+      // Controlla prima la chiave compressa della sessione corrente, poi quella non compressa.
+      const storeKey   = toStoreKey(dbRecord.hash, compressionType)
+      const vornExists = existsSync(join(storeDir, storeKey + '.vorn'))
+      if (vornExists) {
         // Dedup completo: nessun hashing, nessuna lettura del file
         filesDedup++
         bytesTotal += bytes
-        run.files[relPath] = dbRecord.hash
+        run.files[relPath] = storeKey
         onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew })
         if (current - lastSaveCount >= SAVE_INTERVAL_FILES || Date.now() - lastSaveTime >= SAVE_INTERVAL_MS) {
           run.files_new = filesNew; run.files_dedup = filesDedup; run.bytes_total = bytesTotal; run.bytes_new = bytesNew; run.errors = errors
@@ -113,10 +116,10 @@ export async function backup(storeDir, sessionName, opts = {}) {
     bytesTotal += bytes
 
     try {
-      const outcome = await _storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath)
+      const { outcome, storeKey } = await _storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath, compressionType)
       if (outcome === 'new') { filesNew++; bytesNew += bytes }
       else                   { filesDedup++ }
-      run.files[relPath] = hashVorn
+      run.files[relPath] = storeKey
       dbUpsertFile(filePath, mtime, bytes, hashVorn)
     } catch (e) {
       if (e.code === 'ENOSPC') {

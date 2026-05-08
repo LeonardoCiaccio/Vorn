@@ -8,7 +8,7 @@ import { ctx, spawnWorker }                                                from 
 import { loadRun, saveRun, validateSessionName, validateRunTs }            from '../vorn/sessions.js'
 import { loadSettings }                                                    from '../vorn/settings.js'
 
-const _HASH_RE = /^[0-9a-f]{64}$/
+const _HASH_RE = /^[0-9a-f]{64}(_[a-z0-9]+)?$/
 function _assertHash(h) {
   if (!h || !_HASH_RE.test(h)) throw new Error('Hash non valido')
 }

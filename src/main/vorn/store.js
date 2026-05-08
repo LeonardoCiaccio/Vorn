@@ -23,8 +23,12 @@ function _updateMeta(filePath, meta) {
   try { unlinkSync(tmpPath) } catch { /* non-critico */ }
 }
 
-function vornPath(storeDir, hashVorn) {
-  return join(storeDir, hashVorn + '.vorn')
+export function toStoreKey(hash, compressionType) {
+  return compressionType ? `${hash}_${compressionType}` : hash
+}
+
+function vornPath(storeDir, storeKey) {
+  return join(storeDir, storeKey + '.vorn')
 }
 
 export function ensureStore(storeDir) {
@@ -73,13 +77,20 @@ export function listStoreFiles(storeDir, offset = 0, limit = 20, matchHashes = n
   const files = slice.map(f => {
     const p = join(storeDir, f)
     const st = statSync(p)
-    let records = []
-    try { records = readVornMeta(p).meta?.records ?? [] } catch { /* skip unreadable */ }
+    let records = [], compressedType = null, content_hash = null
+    try {
+      const meta    = readVornMeta(p).meta
+      records        = meta?.records        ?? []
+      compressedType = meta?.compressedType ?? null
+      content_hash   = meta?.hash_vorn      ?? null
+    } catch { /* skip unreadable */ }
     return {
-      hash_vorn:  basename(f, '.vorn'),
-      bytes_file: st.size,
-      ctime:      st.birthtimeMs,
-      mtime:      st.mtimeMs,
+      hash_vorn:      basename(f, '.vorn'),
+      content_hash,
+      compressedType,
+      bytes_file:     st.size,
+      ctime:          st.birthtimeMs,
+      mtime:          st.mtimeMs,
       records,
     }
   })
@@ -91,16 +102,23 @@ export function listStoreFiles(storeDir, offset = 0, limit = 20, matchHashes = n
 // Ritorna 'new' se il file è stato creato, 'dedup' se già esisteva.
 // Qualsiasi altro chiamante che arriva sullo stesso hash aspetta in coda.
 
-export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath) {
+export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath, compressionType = null) {
   ensureStore(storeDir)
-  const p = vornPath(storeDir, hashVorn)
+
+  const key = toStoreKey(hashVorn, compressionType)
+  const p   = vornPath(storeDir, key)
 
   return withFileLock(p, async () => {
     if (!existsSync(p)) {
-      const meta = { hash_vorn: hashVorn, bytes, records: [{ id: sessionId, session: sessionName, paths: [relPath] }] }
-      await writeVornFromSource(p, meta, sourcePath)
+      const meta = {
+        hash_vorn:       hashVorn,
+        bytes,
+        compressedType:  compressionType ?? null,
+        records:         [{ id: sessionId, session: sessionName, paths: [relPath] }],
+      }
+      await writeVornFromSource(p, meta, sourcePath, compressionType)
       _listCache = null
-      return 'new'
+      return { outcome: 'new', storeKey: key }
     }
 
     const { meta } = readVornMeta(p)
@@ -112,12 +130,11 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
         rec.paths.push(relPath)
         _updateMeta(p, meta)
       }
-      // relPath già presente: nessuna I/O
     } else {
       meta.records.push({ id: sessionId, session: sessionName, paths: [relPath] })
       _updateMeta(p, meta)
     }
-    return 'dedup'
+    return { outcome: 'dedup', storeKey: key }
   })
 }
 

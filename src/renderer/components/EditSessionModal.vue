@@ -81,6 +81,18 @@
             <p class="text-[11px] text-gray-600 mt-1.5">{{ $t('editSession.storeDir.help') }}</p>
           </div>
 
+          <!-- Compressione -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ $t('compression.label') }}</label>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500">{{ $t('compression.gzip') }}</span>
+                <Toggle v-model="form.compressionEnabled" />
+              </div>
+            </div>
+            <p class="text-[11px] text-gray-600">{{ $t('compression.help') }}</p>
+          </div>
+
           <!-- Error -->
           <p v-if="error" class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">{{ error }}</p>
         </div>
@@ -112,6 +124,7 @@ import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PencilSquareIcon, FolderOpenIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { updateSession } from '../stores/vorn.js'
+import Toggle from './Toggle.vue'
 
 const { t } = useI18n()
 
@@ -121,8 +134,9 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved'])
 
 const form = reactive({
-  store:   props.session.store ?? '',
-  sources: [...(props.session.sources ?? [''])],
+  store:              props.session.store ?? '',
+  sources:            [...(props.session.sources ?? [''])],
+  compressionEnabled: !!(props.session.compressionType),
 })
 const saving = ref(false)
 const error  = ref('')
@@ -150,7 +164,7 @@ async function submit() {
 
   saving.value = true
   try {
-    await updateSession(props.session.name, form.store.trim(), sources)
+    await updateSession(props.session.name, form.store.trim(), sources, form.compressionEnabled ? 'gzip' : null)
     emit('saved')
     emit('close')
   } catch (e) {

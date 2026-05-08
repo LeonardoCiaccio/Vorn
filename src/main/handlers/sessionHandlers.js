@@ -1,5 +1,5 @@
 import { ipcMain }                                                          from 'electron'
-import { listSessions, getSession, createSession, deleteSession,
+import { listSessions, getSession, createSession, updateSession, deleteSession,
          listRuns, loadRun, deleteRun, validateSessionName, validateRunTs } from '../vorn/sessions.js'
 import { hasRunningTask }                                                   from '../vorn/taskManager.js'
 import { ctx }                                                              from '../workerManager.js'
@@ -26,6 +26,10 @@ function _validateSession(session) {
       if (session.excludes.patterns.length > 200) throw new Error('Troppi excludes.patterns (max 200)')
     }
   }
+  if (session.compressionType != null) {
+    if (session.compressionType !== 'gzip')
+      throw new Error(`compressionType non valido: "${session.compressionType}"`)
+  }
 }
 
 // Cache in-memory dell'ultima run letta — evita di rileggere il JSON per ogni chunk di file
@@ -48,6 +52,23 @@ export function registerSessionHandlers() {
     _validateSession(session)
     return createSession(ctx.activeStore, session)
   })
+  ipcMain.handle('vorn:update-session', (_, { name, patch }) => {
+    _validateName(name)
+    if (hasRunningTask(name)) throw new Error(`Operazione in corso per "${name}"`)
+    const allowed = {}
+    if (patch.store           !== undefined) allowed.store           = patch.store
+    if (patch.sources         !== undefined) {
+      if (!Array.isArray(patch.sources)) throw new Error('sources deve essere un array')
+      allowed.sources = patch.sources
+    }
+    if (patch.compressionType !== undefined) {
+      if (patch.compressionType != null && patch.compressionType !== 'gzip')
+        throw new Error(`compressionType non valido: "${patch.compressionType}"`)
+      allowed.compressionType = patch.compressionType
+    }
+    updateSession(ctx.activeStore, name, allowed)
+  })
+
   ipcMain.handle('vorn:delete-session', (_, name) => {
     _validateName(name)
     if (hasRunningTask(name)) throw new Error(`Operazione in corso per "${name}"`)

@@ -8,7 +8,7 @@ import { ctx }                      from '../workerManager.js'
 import { logger }                   from '../vorn/logger.js'
 import { loadSettings }             from '../vorn/settings.js'
 
-const HASH_RE = /^[0-9a-f]{64}$/
+const HASH_RE = /^[0-9a-f]{64}(_[a-z0-9]+)?$/
 
 function _resolveIcon() {
   const candidates = process.platform === 'win32'

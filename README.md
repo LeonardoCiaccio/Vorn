@@ -7,7 +7,7 @@
   <p>A fast, ultra-secure, cross-platform desktop backup tool with content-addressable storage and automatic deduplication.</p>
 
   <p>
-    <img src="https://img.shields.io/badge/version-0.7.4-blue?style=flat-square" alt="Version" />
+    <img src="https://img.shields.io/badge/version-0.8.1-blue?style=flat-square" alt="Version" />
     <img src="https://img.shields.io/badge/license-AGPL--3.0-green?style=flat-square" alt="License" />
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square" alt="Platforms" />
     <img src="https://img.shields.io/badge/Electron-41-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron" />
@@ -30,6 +30,7 @@ Every file is identified by its **BLAKE3 fingerprint** — a state-of-the-art ha
 - **Truly incremental** — only new or modified content is processed.
 - **Resumable** — interrupted backups pick up exactly where they left off.
 - **Portable** — a single folder (the Store) holds your entire vault. Move it anywhere.
+- **Optional compression** — enable gzip per session to shrink compressible content further, with zero impact on deduplication.
 
 Everything runs locally. No accounts, no cloud services, no telemetry. Your data stays yours.
 
@@ -56,6 +57,7 @@ Everything runs locally. No accounts, no cloud services, no telemetry. Your data
 | **Automatic deduplication** | Zero effort: Vorn handles it transparently at the file level |
 | **Incremental backups** | Uses file metadata (mtime/size) to skip processing unchanged files |
 | **Resume interrupted runs** | Pick up where you left off after a crash or manual stop |
+| **Optional gzip compression** | Enable per-session gzip to reduce store footprint for compressible content — deduplication is preserved across compression variants |
 | **Store integrity check** | Re-verify every entry in the vault against its original BLAKE3 hash |
 | **Store pruning** | Automatically remove data that is no longer referenced by any session |
 | **Non-destructive restore** | Extract individual files or entire runs to any destination without touching originals |
@@ -392,13 +394,18 @@ Vorn doesn't just copy files. Each unique file is packed into a `.vorn` containe
 
 Each container includes:
 1. **Header**: Magic bytes and content length.
-2. **Payload**: The original, bit-perfect content of your file.
-3. **Metadata**: A JSON tail containing the BLAKE3 hash, file size, and — most importantly — **a record of every session and relative path** that references this content.
+2. **Payload**: The original file content — or its gzip-compressed equivalent if compression is enabled for that session.
+3. **Metadata**: A JSON tail containing the BLAKE3 hash, file size, compression type, and — most importantly — **a record of every session and relative path** that references this content.
 
 **Why this matters:** If you accidentally delete Vorn's internal configuration files or the index database, your backups are still safe. Because every `.vorn` file knows its original identity, the entire index can be reconstructed by simply scanning the store. Your data is never "trapped" in a proprietary, opaque database.
 
 ### Deduplication in practice
 If you back up three projects that all contain the same 200 MB video file, Vorn stores it **once** as a single `.vorn` file. The metadata inside that file will record all three different paths. Your vault stays lean regardless of how many sessions point to the same content.
+
+### Compression
+Each session can optionally enable **gzip compression**. When active, newly written files are compressed before being packed into the store — reducing footprint for text-heavy content such as source code, logs, or documents. Compression is applied at write time only: files already present in the store via a previous run are deduplicated as-is and never recompressed.
+
+The compression type is stored in the metadata, not inferred from the filename. Deduplication works correctly across compression variants: two sessions that back up the same file with different compression settings produce separate, independent store entries.
 
 ### Data Integrity
 Vorn is built for safety. When writing to the store, it uses a **Write-Ahead** strategy. If the app crashes or the power goes out, Vorn can detect the interrupted operation and recover or clean up automatically, ensuring your store remains in a consistent state.

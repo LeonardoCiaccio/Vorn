@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('vorn', {
   listSessions:   ()              => ipcRenderer.invoke('vorn:list-sessions'),
   getSession:     (name)          => ipcRenderer.invoke('vorn:get-session', name),
   createSession:  (session)       => ipcRenderer.invoke('vorn:create-session', session),
+  updateSession:  (name, patch)   => ipcRenderer.invoke('vorn:update-session', { name, patch }),
   deleteSession:  (name)          => ipcRenderer.invoke('vorn:delete-session', name),
 
   // Runs

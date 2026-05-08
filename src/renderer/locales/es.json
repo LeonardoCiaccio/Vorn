@@ -106,6 +106,8 @@
       "modified": "Modificado el",
       "sessions": "Sesiones ({n})",
       "noSessions": "Sin sesiones",
+      "compression": "Compresión",
+      "compressionNone": "ninguna",
       "copyHash": "Copiar hash",
       "copied": "¡Copiado!",
       "restoreFile": "Restaurar archivo",
@@ -280,6 +282,12 @@
       "written": "{n} escritos",
       "restored": "{n} restaurados"
     }
+  },
+
+  "compression": {
+    "label": "Compresión",
+    "gzip": "Gzip",
+    "help": "Aplicada a los archivos nuevos. Los archivos ya presentes en el store no se recomprimen."
   },
 
   "newSession": {
