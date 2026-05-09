@@ -65,10 +65,12 @@ export function dbPruneOrphans() {
 
   const del = db.prepare('DELETE FROM Files WHERE path = ?')
   let removed = 0
-  db.transaction(() => {
-    for (const { path } of rows) {
-      if (!existsSync(path)) { del.run(path); removed++ }
-    }
-  })()
+  try {
+    db.transaction(() => {
+      for (const { path } of rows) {
+        if (!existsSync(path)) { del.run(path); removed++ }
+      }
+    })()
+  } catch { removed = 0 }
   return removed
 }

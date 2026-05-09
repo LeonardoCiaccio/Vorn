@@ -1,6 +1,6 @@
 import { ipcMain }                                    from 'electron'
-import { existsSync }                                 from 'fs'
-import { parse }                                      from 'path'
+import { existsSync, readdirSync, unlinkSync }        from 'fs'
+import { parse, join }                                from 'path'
 import { execFileSync }                               from 'child_process'
 import { platform }                                   from 'os'
 import { checkLock, acquireLock, releaseLock }        from '../vorn/lockFile.js'
@@ -52,6 +52,16 @@ async function _cleanCrashedRuns(storeDir) {
   }
 }
 
+function _cleanupResidualTemps(storeDir) {
+  try {
+    for (const f of readdirSync(storeDir)) {
+      if (f.endsWith('.ctmp') || f.endsWith('.tmp') || f.endsWith('.mtmp')) {
+        try { unlinkSync(join(storeDir, f)) } catch { }
+      }
+    }
+  } catch { }
+}
+
 export function registerStoreHandlers(mainWindow) {
   ipcMain.handle('vorn:open-store', async (_, { storeDir }) => {
     if (!existsSync(storeDir)) throw new Error('Cartella non trovata')
@@ -64,6 +74,7 @@ export function registerStoreHandlers(mainWindow) {
     ctx.activeStore = storeDir
     addRecentStore(storeDir)
     logger.info(`Store opened: ${storeDir}`)
+    _cleanupResidualTemps(storeDir)
     _cleanCrashedRuns(storeDir).catch(err => logger.error(`[storeHandlers] cleanCrashedRuns: ${err.message}`))
     startStoreWatch(mainWindow)
     return { ok: true }

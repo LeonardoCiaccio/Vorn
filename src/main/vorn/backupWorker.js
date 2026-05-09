@@ -18,6 +18,9 @@ parentPort.on('message', (msg) => {
       if (msg.error) p.reject(Object.assign(new Error(msg.error), { code: msg.code }))
       else           p.resolve(msg.outcome)
     }
+  } else if (msg?.type === 'store-disconnected') {
+    for (const p of _pending.values()) p.reject(new Error('Store non raggiungibile'))
+    _pending.clear()
   }
 })
 

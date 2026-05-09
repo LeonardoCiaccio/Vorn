@@ -1,17 +1,14 @@
 import { ipcMain, Notification, nativeImage, app }                          from 'electron'
 import { logger }                                                          from '../vorn/logger.js'
 import { isAbsolute, join, resolve }                                       from 'path'
+import { accessSync, constants }                                           from 'fs'
 import { createTask, cancelTask, listTasks, finishTask, failTask }         from '../vorn/taskManager.js'
 import { extractByHash }                                                   from '../vorn/restore.js'
 import { invalidateListCache }                                             from '../vorn/store.js'
 import { ctx, spawnWorker }                                                from '../workerManager.js'
 import { loadRun, saveRun, validateSessionName, validateRunTs }            from '../vorn/sessions.js'
 import { loadSettings }                                                    from '../vorn/settings.js'
-
-const _HASH_RE = /^[0-9a-f]{64}(_[a-z0-9]+)?$/
-function _assertHash(h) {
-  if (!h || !_HASH_RE.test(h)) throw new Error('Hash non valido')
-}
+import { assertHash }                                                      from './_validation.js'
 
 let _icon = null
 function _getIcon() {
@@ -93,6 +90,8 @@ export function registerTaskHandlers(mainWindow) {
     if (!destDir || typeof destDir !== 'string') throw new Error('destDir non valido')
     const resolvedDest = resolve(destDir)
     if (!isAbsolute(resolvedDest)) throw new Error('destDir deve essere un percorso assoluto')
+    try { accessSync(resolvedDest, constants.W_OK) }
+    catch { throw new Error(`destDir non scrivibile: ${destDir}`) }
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
       throw new Error(`Operazione già in corso: ${sessionName}`)
     const task = createTask('restore', sessionName)
@@ -166,7 +165,7 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:extract-hash', async (_, { hashVorn, destDir, filename }) => {
-    _assertHash(hashVorn)
+    assertHash(hashVorn)
     return extractByHash(ctx.activeStore, hashVorn, destDir, filename)
   })
 }

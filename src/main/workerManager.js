@@ -10,6 +10,7 @@ export const ctx = {
   activeWorkers: new Map(), // taskId → { worker, cancelFlag }
   activeStore:   null,
   storeWatcher:  null,
+  appClosing:    false,
 }
 
 function _send(mainWindow, channel, payload) {
@@ -19,12 +20,15 @@ function _send(mainWindow, channel, payload) {
 // ── Store health poller ───────────────────────────────────────────────────────
 
 export function startStoreWatch(mainWindow) {
+  if (ctx.storeWatcher !== null) {
+    logger.warn('startStoreWatch: watcher già attivo, stop forzato')
+  }
   stopStoreWatch()
   ctx.storeWatcher = setInterval(() => {
-    if (!ctx.activeStore) return stopStoreWatch()
+    if (ctx.appClosing || !ctx.activeStore) return stopStoreWatch()
     try { statSync(ctx.activeStore) }
     catch { triggerDisconnect(mainWindow) }
-  }, 2000)
+  }, 1000)
 }
 
 export function stopStoreWatch() {
@@ -37,7 +41,8 @@ export function triggerDisconnect(mainWindow) {
   stopStoreWatch()
   for (const { worker, cancelFlag } of ctx.activeWorkers.values()) {
     Atomics.store(cancelFlag, 0, 1)
-    setTimeout(() => worker.terminate(), 5000) // terminate forzata se non risponde al cancel
+    worker.postMessage({ type: 'store-disconnected' }) // cancella subito le store-request pending
+    setTimeout(() => worker.terminate(), 5000)
   }
   ctx.activeWorkers.clear()
   releaseLock(ctx.activeStore)

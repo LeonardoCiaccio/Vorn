@@ -11,6 +11,7 @@ import { logger }                  from './vorn/logger.js'
 export function registerIpcHandlers(mainWindow) {
 
   app.once('before-quit', (e) => {
+    ctx.appClosing = true
     stopStoreWatch()
     if (ctx.activeStore) releaseLock(ctx.activeStore)
     if (ctx.activeWorkers.size === 0) {
