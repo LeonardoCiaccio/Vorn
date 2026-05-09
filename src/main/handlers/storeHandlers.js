@@ -33,7 +33,7 @@ function _getFilesystem(dirPath) {
     if (os === 'darwin') {
       return execFileSync('stat', ['-f', '%T', dirPath], { encoding: 'utf8', timeout: 3000 }).trim()
     }
-  } catch { /* impossibile determinare il filesystem */ }
+  } catch (e) { logger.warn(`_getFilesystem failed for "${dirPath}": ${e.message}`) }
   return null
 }
 
@@ -46,7 +46,7 @@ async function _cleanCrashedRuns(storeDir) {
         const full = loadRun(storeDir, session.name, run.ts)
         full.status = newStatus
         saveRun(storeDir, session.name, full)
-      } catch { /* run corrotto, ignorato */ }
+      } catch (e) { logger.warn(`Run corrotto ignorato [${session.name}/${run.ts}]: ${e.message}`) }
       await new Promise(r => setImmediate(r)) // cede il controllo tra sessioni per non bloccare il main process
     }
   }

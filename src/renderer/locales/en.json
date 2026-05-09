@@ -46,7 +46,8 @@
   "topbar": {
     "settings": "Settings",
     "lightTheme": "Switch to light theme",
-    "darkTheme": "Switch to dark theme"
+    "darkTheme": "Switch to dark theme",
+    "openLog": "Open application log"
   },
 
   "settings": {

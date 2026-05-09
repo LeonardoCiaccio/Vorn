@@ -27,7 +27,7 @@ export function startStoreWatch(mainWindow) {
   ctx.storeWatcher = setInterval(() => {
     if (ctx.appClosing || !ctx.activeStore) return stopStoreWatch()
     try { statSync(ctx.activeStore) }
-    catch { triggerDisconnect(mainWindow) }
+    catch (e) { logger.warn(`Store health check failed (${e.code ?? e.message})`); triggerDisconnect(mainWindow) }
   }, 1000)
 }
 

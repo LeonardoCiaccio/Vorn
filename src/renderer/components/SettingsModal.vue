@@ -55,23 +55,6 @@
 
           <div class="border-t border-gray-800" />
 
-          <!-- Sezione: Log -->
-          <div>
-            <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-4">{{
-              $t('settings.log.section') }}</p>
-            <div class="space-y-5">
-              <SettingRow :label="$t('settings.log.label')" :sub="$t('settings.log.sub')">
-                <button @click="openLog"
-                  class="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer">
-                  <DocumentTextIcon class="w-3.5 h-3.5 shrink-0" />
-                  {{ $t('settings.log.open') }}
-                </button>
-              </SettingRow>
-            </div>
-          </div>
-
-          <div class="border-t border-gray-800" />
-
           <!-- Sezione: Informazioni -->
           <div>
             <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-4">{{ $t('settings.info') }}
@@ -121,7 +104,7 @@
 
 <script setup>
 import { reactive } from 'vue'
-import { Cog6ToothIcon, XMarkIcon, ArrowTopRightOnSquareIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
+import { Cog6ToothIcon, XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline'
 import SettingRow from './SettingRow.vue'
 import Toggle from './Toggle.vue'
 import { setLocale } from '../stores/i18n.js'
@@ -145,10 +128,6 @@ const draft = reactive({
 
 function openExternal(url) {
   window.vorn.openExternal(url)
-}
-
-function openLog() {
-  window.vorn.openLog()
 }
 
 async function save() {

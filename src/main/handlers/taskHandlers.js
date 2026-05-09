@@ -39,6 +39,29 @@ function _notifyRunDone(task, result, mainWindow) {
   notif.show()
 }
 
+function _logTaskErrors(task, result) {
+  const prefix = `Task ${task.type} [${task.id}]${task.sessionName ? ` session="${task.sessionName}"` : ''}`
+
+  // Backup / restore: errors[] = [{ path, error, phase }]
+  if (Array.isArray(result?.errors) && result.errors.length > 0) {
+    logger.warn(`${prefix} completed with ${result.errors.length} file error(s)`)
+    for (const e of result.errors) {
+      const where = e.path ?? e.hash ?? '?'
+      const phase = e.phase ? ` [${e.phase}]` : ''
+      logger.warn(`  ${phase} ${where}: ${e.error ?? e.message ?? 'unknown error'}`)
+    }
+  }
+
+  // Integrity: errors[] = [{ hashVorn, issues: string[] }]
+  if (Array.isArray(result?.errors)) {
+    for (const e of result.errors) {
+      if (Array.isArray(e.issues)) {
+        logger.warn(`  [integrity] ${e.hashVorn}: ${e.issues.join(' | ')}`)
+      }
+    }
+  }
+}
+
 function _onDone(task, mainWindow) {
   return (result, error) => {
     if (error) {
@@ -46,7 +69,13 @@ function _onDone(task, mainWindow) {
       failTask(task.id, error)
       _send(mainWindow, { taskId: task.id, error })
     } else {
-      logger.info(`Task ${task.type} [${task.id}]${task.sessionName ? ` session="${task.sessionName}"` : ''} completed`)
+      const errCount = result?.errors?.length ?? 0
+      if (errCount > 0) {
+        logger.warn(`Task ${task.type} [${task.id}]${task.sessionName ? ` session="${task.sessionName}"` : ''} completed with ${errCount} error(s)`)
+      } else {
+        logger.info(`Task ${task.type} [${task.id}]${task.sessionName ? ` session="${task.sessionName}"` : ''} completed`)
+      }
+      _logTaskErrors(task, result)
       finishTask(task.id, result)
       _notifyRunDone(task, result, mainWindow)
       _send(mainWindow, { taskId: task.id, result })
