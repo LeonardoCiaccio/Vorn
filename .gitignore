@@ -6,6 +6,8 @@ vorn_data/
 CLAUDE.md
 .claude/
 .claude-flow/
+.swarm/
+ruvector.db
 RESPONSE.md
 
 # IDE
