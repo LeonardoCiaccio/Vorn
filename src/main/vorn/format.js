@@ -1,8 +1,13 @@
 import { openSync, readSync, writeSync, fsyncSync, closeSync, truncateSync, createReadStream, createWriteStream, statSync, existsSync, readFileSync, unlinkSync, renameSync } from 'fs'
 import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
+import { createHash } from 'crypto'
 import { compressToTemp, decompressStream, cleanupTemp } from './compress.js'
 import { vornHash } from './hash.js'
+
+function _walChecksum(metaJson) {
+  return createHash('sha256').update(metaJson).digest('hex').slice(0, 16)
+}
 
 const MAGIC = Buffer.from('VORN')
 const SEPARATOR = Buffer.from([0xFF, 0x00, 0xFF, 0x00])
@@ -58,7 +63,19 @@ export function readVornMeta(filePath) {
       // Metadati assenti o corrotti: tenta recovery dal file WAL
       const tmpPath = filePath + '.mtmp'
       if (!existsSync(tmpPath)) throw new Error('Metadati corrotti e nessun file di recovery trovato')
-      const recovered = JSON.parse(readFileSync(tmpPath, 'utf8'))
+      let recovered
+      try {
+        const walData = JSON.parse(readFileSync(tmpPath, 'utf8'))
+        if (walData.checksum !== undefined) {
+          const expected = createHash('sha256').update(JSON.stringify(walData.meta)).digest('hex').slice(0, 16)
+          if (walData.checksum !== expected) throw new Error('WAL checksum non valido')
+          recovered = walData.meta
+        } else {
+          recovered = walData // backward compat: WAL scritto prima dell'introduzione del checksum
+        }
+      } catch (e) {
+        throw new Error(`Metadati corrotti e WAL non valido: ${e.message}`)
+      }
       closeSync(fd); fd = null
       const truncateAt = HEADER_SIZE + Number(contentLen) + SEPARATOR.length
       truncateSync(filePath, truncateAt)
@@ -108,7 +125,8 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
       const compressedSize = await compressToTemp(sourcePath, compTmpPath, compressionType)
       contentLen    = BigInt(compressedSize)
       contentSource = compTmpPath
-      meta.compressed_hash = vornHash(compTmpPath)
+      meta.compressed_hash  = vornHash(compTmpPath)
+      meta.bytes_compressed = compressedSize
     } catch (e) {
       cleanupTemp(compTmpPath)
       throw e

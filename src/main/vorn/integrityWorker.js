@@ -32,12 +32,16 @@ let ok = 0
       const { meta, contentLen } = readVornMeta(filePath)
       const isCompressed = !!(meta?.compressedType)
 
-      // Check dimensione: per i file compressi contentLen è la dimensione compressa,
-      // non la dimensione originale in meta.bytes — il check va saltato.
+      // Check dimensione: per i file non compressi confronta contentLen con meta.bytes.
+      // Per i compressi usa meta.bytes_compressed se disponibile (scritto dopo l'introduzione del campo).
       if (!isCompressed) {
         const storedBytes = meta.bytes ?? meta.content_length
         if (storedBytes !== undefined && Number(contentLen) !== storedBytes) {
           issues.push(`Dimensione non corrispondente: header=${Number(contentLen)} B, metadati=${storedBytes} B`)
+        }
+      } else if (meta?.bytes_compressed !== undefined) {
+        if (Number(contentLen) !== meta.bytes_compressed) {
+          issues.push(`Dimensione compressa non corrispondente: header=${Number(contentLen)} B, metadati=${meta.bytes_compressed} B`)
         }
       }
 

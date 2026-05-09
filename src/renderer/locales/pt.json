@@ -46,7 +46,8 @@
   "topbar": {
     "settings": "Configurações",
     "lightTheme": "Mudar para tema claro",
-    "darkTheme": "Mudar para tema escuro"
+    "darkTheme": "Mudar para tema escuro",
+    "openLog": "Abrir registo da aplicação"
   },
 
   "settings": {

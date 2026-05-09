@@ -1,6 +1,6 @@
 import { ipcMain }                                    from 'electron'
-import { existsSync }                                 from 'fs'
-import { parse }                                      from 'path'
+import { existsSync, readdirSync, unlinkSync }        from 'fs'
+import { parse, join }                                from 'path'
 import { execFileSync }                               from 'child_process'
 import { platform }                                   from 'os'
 import { checkLock, acquireLock, releaseLock }        from '../vorn/lockFile.js'
@@ -33,7 +33,7 @@ function _getFilesystem(dirPath) {
     if (os === 'darwin') {
       return execFileSync('stat', ['-f', '%T', dirPath], { encoding: 'utf8', timeout: 3000 }).trim()
     }
-  } catch { /* impossibile determinare il filesystem */ }
+  } catch (e) { logger.warn(`_getFilesystem failed for "${dirPath}": ${e.message}`) }
   return null
 }
 
@@ -46,10 +46,20 @@ async function _cleanCrashedRuns(storeDir) {
         const full = loadRun(storeDir, session.name, run.ts)
         full.status = newStatus
         saveRun(storeDir, session.name, full)
-      } catch { /* run corrotto, ignorato */ }
+      } catch (e) { logger.warn(`Run corrotto ignorato [${session.name}/${run.ts}]: ${e.message}`) }
       await new Promise(r => setImmediate(r)) // cede il controllo tra sessioni per non bloccare il main process
     }
   }
+}
+
+function _cleanupResidualTemps(storeDir) {
+  try {
+    for (const f of readdirSync(storeDir)) {
+      if (f.endsWith('.ctmp') || f.endsWith('.tmp') || f.endsWith('.mtmp')) {
+        try { unlinkSync(join(storeDir, f)) } catch { }
+      }
+    }
+  } catch { }
 }
 
 export function registerStoreHandlers(mainWindow) {
@@ -64,7 +74,8 @@ export function registerStoreHandlers(mainWindow) {
     ctx.activeStore = storeDir
     addRecentStore(storeDir)
     logger.info(`Store opened: ${storeDir}`)
-    _cleanCrashedRuns(storeDir).catch(err => logger.error(`[storeHandlers] cleanCrashedRuns: ${err.message}`))
+    _cleanupResidualTemps(storeDir)
+    await _cleanCrashedRuns(storeDir).catch(err => logger.error(`[storeHandlers] cleanCrashedRuns: ${err.message}`))
     startStoreWatch(mainWindow)
     return { ok: true }
   })

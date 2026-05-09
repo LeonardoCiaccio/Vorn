@@ -1,14 +1,20 @@
 import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, openSync, writeSync, closeSync, truncateSync, writeFileSync, fsyncSync } from 'fs'
 import { join, basename } from 'path'
+import { createHash } from 'crypto'
 import { readVornMeta, readVorn, writeVornFromSource, contentStream, VORN_HEADER_SIZE, VORN_SEPARATOR_LEN, readVornContentLen } from './format.js'
 import { withFileLock } from './fileLock.js'
 
+function _walChecksum(metaJson) {
+  return createHash('sha256').update(metaJson).digest('hex').slice(0, 16)
+}
+
 function _updateMeta(filePath, meta) {
   const contentLen = readVornContentLen(filePath)
-  const metaBuf    = Buffer.from(JSON.stringify(meta), 'utf8')
+  const metaJson   = JSON.stringify(meta)
+  const metaBuf    = Buffer.from(metaJson, 'utf8')
   const tmpPath    = filePath + '.mtmp'
 
-  writeFileSync(tmpPath, metaBuf) // WAL: esiste prima della modifica
+  writeFileSync(tmpPath, JSON.stringify({ meta, checksum: _walChecksum(metaJson) })) // WAL con checksum
 
   truncateSync(filePath, VORN_HEADER_SIZE + Number(contentLen) + VORN_SEPARATOR_LEN)
 

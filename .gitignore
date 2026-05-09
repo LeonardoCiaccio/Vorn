@@ -2,9 +2,14 @@
 vorn_data/
 *.vorn
 
-# Claude Code
+# Claude Code / Ruflo
 CLAUDE.md
 .claude/
+.claude-flow/
+.swarm/
+ruvector.db
+.ruvector/
+RESPONSE.md
 
 # IDE
 .vscode/

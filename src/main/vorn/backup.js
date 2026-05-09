@@ -41,11 +41,17 @@ export async function backup(storeDir, sessionName, opts = {}) {
   if (resumeTs) {
     try {
       run = loadRun(storeDir, sessionName, resumeTs)
+      if (run.compressionType !== undefined && run.compressionType !== compressionType) {
+        throw new Error(`Impossibile riprendere: la sessione ha cambiato tipo di compressione (era ${run.compressionType ?? 'nessuna'}, ora ${compressionType ?? 'nessuna'})`)
+      }
       alreadyDone = new Set(Object.keys(run.files ?? {}))
-    } catch { /* run non trovato: parte da zero */ }
+    } catch (e) {
+      if (e.message.startsWith('Impossibile riprendere')) throw e
+      /* run non trovato: parte da zero */
+    }
   }
   if (!run) {
-    run = { ts: runTs ?? new Date().toISOString(), status: 'running', files: {} }
+    run = { ts: runTs ?? new Date().toISOString(), status: 'running', files: {}, compressionType: compressionType ?? null }
   } else {
     run.status = 'running'
   }

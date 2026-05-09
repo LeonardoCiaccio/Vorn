@@ -1,17 +1,14 @@
 import { ipcMain, Notification, nativeImage, app }                          from 'electron'
 import { logger }                                                          from '../vorn/logger.js'
-import { isAbsolute, join, resolve }                                       from 'path'
+import { isAbsolute, join, resolve, sep }                                  from 'path'
+import { accessSync, constants }                                           from 'fs'
 import { createTask, cancelTask, listTasks, finishTask, failTask }         from '../vorn/taskManager.js'
 import { extractByHash }                                                   from '../vorn/restore.js'
 import { invalidateListCache }                                             from '../vorn/store.js'
 import { ctx, spawnWorker }                                                from '../workerManager.js'
 import { loadRun, saveRun, validateSessionName, validateRunTs }            from '../vorn/sessions.js'
 import { loadSettings }                                                    from '../vorn/settings.js'
-
-const _HASH_RE = /^[0-9a-f]{64}(_[a-z0-9]+)?$/
-function _assertHash(h) {
-  if (!h || !_HASH_RE.test(h)) throw new Error('Hash non valido')
-}
+import { assertHash }                                                      from './_validation.js'
 
 let _icon = null
 function _getIcon() {
@@ -42,6 +39,21 @@ function _notifyRunDone(task, result, mainWindow) {
   notif.show()
 }
 
+function _logTaskErrors(task, result) {
+  if (!Array.isArray(result?.errors) || result.errors.length === 0) return
+  const prefix = `Task ${task.type} [${task.id}]${task.sessionName ? ` session="${task.sessionName}"` : ''}`
+  logger.warn(`${prefix} completed with ${result.errors.length} file error(s)`)
+  for (const e of result.errors) {
+    if (Array.isArray(e.issues)) {
+      logger.warn(`  [integrity] ${e.hashVorn}: ${e.issues.join(' | ')}`)
+    } else {
+      const where = e.path ?? e.hash ?? '?'
+      const phase = e.phase ? ` [${e.phase}]` : ''
+      logger.warn(`  ${phase} ${where}: ${e.error ?? e.message ?? 'unknown error'}`)
+    }
+  }
+}
+
 function _onDone(task, mainWindow) {
   return (result, error) => {
     if (error) {
@@ -49,7 +61,13 @@ function _onDone(task, mainWindow) {
       failTask(task.id, error)
       _send(mainWindow, { taskId: task.id, error })
     } else {
-      logger.info(`Task ${task.type} [${task.id}]${task.sessionName ? ` session="${task.sessionName}"` : ''} completed`)
+      const errCount = result?.errors?.length ?? 0
+      if (errCount > 0) {
+        logger.warn(`Task ${task.type} [${task.id}]${task.sessionName ? ` session="${task.sessionName}"` : ''} completed with ${errCount} error(s)`)
+      } else {
+        logger.info(`Task ${task.type} [${task.id}]${task.sessionName ? ` session="${task.sessionName}"` : ''} completed`)
+      }
+      _logTaskErrors(task, result)
       finishTask(task.id, result)
       _notifyRunDone(task, result, mainWindow)
       _send(mainWindow, { taskId: task.id, result })
@@ -93,6 +111,8 @@ export function registerTaskHandlers(mainWindow) {
     if (!destDir || typeof destDir !== 'string') throw new Error('destDir non valido')
     const resolvedDest = resolve(destDir)
     if (!isAbsolute(resolvedDest)) throw new Error('destDir deve essere un percorso assoluto')
+    try { accessSync(resolvedDest, constants.W_OK) }
+    catch { throw new Error(`destDir non scrivibile: ${destDir}`) }
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
       throw new Error(`Operazione già in corso: ${sessionName}`)
     const task = createTask('restore', sessionName)
@@ -131,11 +151,17 @@ export function registerTaskHandlers(mainWindow) {
 
   ipcMain.handle('vorn:start-extract-store', (_, { destDir, sessionFilter = null }) => {
     if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!destDir || typeof destDir !== 'string') throw new Error('destDir non valido')
+    const resolvedDest = resolve(destDir)
+    if (!isAbsolute(resolvedDest)) throw new Error('destDir deve essere un percorso assoluto')
+    try { accessSync(resolvedDest, constants.W_OK) }
+    catch { throw new Error(`destDir non scrivibile: ${destDir}`) }
+    if (sessionFilter !== null && typeof sessionFilter !== 'string') throw new Error('sessionFilter non valido')
     if (listTasks().some(t => t.type === 'extract-store' && t.status === 'running'))
       throw new Error('Estrazione store già in corso')
     const task = createTask('extract-store', null)
-    logger.info(`Task extract-store started [${task.id}] dest="${destDir}"`)
-    spawnWorker('extractStoreWorker.js', { storeDir: ctx.activeStore, destDir, sessionFilter }, task.id, mainWindow, _onDone(task, mainWindow))
+    logger.info(`Task extract-store started [${task.id}] dest="${resolvedDest}"`)
+    spawnWorker('extractStoreWorker.js', { storeDir: ctx.activeStore, destDir: resolvedDest, sessionFilter }, task.id, mainWindow, _onDone(task, mainWindow))
     return { taskId: task.id }
   })
 
@@ -151,11 +177,17 @@ export function registerTaskHandlers(mainWindow) {
 
   ipcMain.handle('vorn:resume-prune', (_, { orphanListPath, nextIndex }) => {
     if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!orphanListPath || typeof orphanListPath !== 'string') throw new Error('orphanListPath non valido')
+    const resolvedOrphan = resolve(orphanListPath)
+    const resolvedStore  = resolve(ctx.activeStore)
+    if (!resolvedOrphan.startsWith(resolvedStore + sep))
+      throw new Error('orphanListPath fuori dallo store')
+    if (!Number.isInteger(nextIndex) || nextIndex < 0) throw new Error('nextIndex non valido')
     if (listTasks().some(t => t.status === 'running'))
       throw new Error('Impossibile riprendere: operazioni in corso')
     const task = createTask('prune', null)
     logger.info(`Task prune resumed [${task.id}] from index=${nextIndex}`)
-    spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore, orphanListPath, startIndex: nextIndex }, task.id, mainWindow, _onDone(task, mainWindow))
+    spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore, orphanListPath: resolvedOrphan, startIndex: nextIndex }, task.id, mainWindow, _onDone(task, mainWindow))
     return { taskId: task.id }
   })
 
@@ -166,7 +198,11 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:extract-hash', async (_, { hashVorn, destDir, filename }) => {
-    _assertHash(hashVorn)
-    return extractByHash(ctx.activeStore, hashVorn, destDir, filename)
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    assertHash(hashVorn)
+    if (!destDir || typeof destDir !== 'string') throw new Error('destDir non valido')
+    const resolvedDest = resolve(destDir)
+    if (!isAbsolute(resolvedDest)) throw new Error('destDir deve essere un percorso assoluto')
+    return extractByHash(ctx.activeStore, hashVorn, resolvedDest, filename)
   })
 }

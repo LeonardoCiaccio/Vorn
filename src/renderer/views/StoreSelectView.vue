@@ -34,26 +34,27 @@
           <div
             v-for="s in state.recentStores"
             :key="s.path"
-            class="flex items-center group"
+            class="flex items-center gap-1 group/btn rounded-lg border border-gray-800 hover:border-indigo-500/40 hover:bg-indigo-500/5 transition-colors"
+            :class="loading ? 'opacity-50 pointer-events-none' : ''"
           >
             <button
               @click="selectStore(s.path)"
               :disabled="loading"
-              class="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-800 hover:border-indigo-500/40 hover:bg-indigo-500/5 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+              class="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 text-left disabled:cursor-not-allowed"
             >
               <CircleStackIcon class="w-4 h-4 text-gray-600 group-hover/btn:text-indigo-400 shrink-0 transition-colors" />
               <div class="min-w-0 flex-1">
                 <p class="text-xs text-gray-200 font-mono truncate">{{ s.path }}</p>
                 <p class="text-[10px] text-gray-600 mt-0.5">{{ formatTs(s.lastUsed) }}</p>
               </div>
-              <button
-                @click.stop="removeRecent(s.path)"
-                :disabled="loading"
-                class="opacity-0 group-hover/btn:opacity-100 p-1 rounded text-gray-600 hover:text-red-400 transition-all disabled:cursor-not-allowed shrink-0"
-              >
-                <TrashIcon class="w-3.5 h-3.5" />
-              </button>
               <ArrowRightIcon class="w-3.5 h-3.5 text-gray-700 group-hover/btn:text-indigo-400 shrink-0 transition-colors" />
+            </button>
+            <button
+              @click.stop="removeRecent(s.path)"
+              :disabled="loading"
+              class="opacity-0 group-hover/btn:opacity-100 p-1 mr-2 rounded text-gray-600 hover:text-red-400 transition-all disabled:cursor-not-allowed shrink-0"
+            >
+              <TrashIcon class="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

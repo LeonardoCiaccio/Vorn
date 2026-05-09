@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import { mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
+import { logger } from './logger.js'
 
 const _dir  = join(homedir(), '.vorn')
 const _path = join(_dir, 'vorn.db')
@@ -13,7 +14,7 @@ export function getDb() {
   mkdirSync(_dir, { recursive: true })
   _db = new Database(_path)
   _db.pragma('journal_mode = WAL')
-  _db.pragma('busy_timeout = 3000')
+  _db.pragma('busy_timeout = 5000')
   _db.pragma('synchronous = NORMAL')
   _db.exec(`
     CREATE TABLE IF NOT EXISTS Files (
@@ -65,10 +66,15 @@ export function dbPruneOrphans() {
 
   const del = db.prepare('DELETE FROM Files WHERE path = ?')
   let removed = 0
-  db.transaction(() => {
-    for (const { path } of rows) {
-      if (!existsSync(path)) { del.run(path); removed++ }
-    }
-  })()
+  try {
+    db.transaction(() => {
+      for (const { path } of rows) {
+        if (!existsSync(path)) { del.run(path); removed++ }
+      }
+    })()
+  } catch (e) {
+    logger.warn(`dbPruneOrphans: transaction failed — ${e.message}`)
+    removed = 0
+  }
   return removed
 }

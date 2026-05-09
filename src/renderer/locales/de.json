@@ -46,7 +46,8 @@
   "topbar": {
     "settings": "Einstellungen",
     "lightTheme": "Zum hellen Design wechseln",
-    "darkTheme": "Zum dunklen Design wechseln"
+    "darkTheme": "Zum dunklen Design wechseln",
+    "openLog": "Anwendungsprotokoll öffnen"
   },
 
   "settings": {

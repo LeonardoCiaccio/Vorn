@@ -46,7 +46,8 @@
   "topbar": {
     "settings": "Paramètres",
     "lightTheme": "Passer au thème clair",
-    "darkTheme": "Passer au thème sombre"
+    "darkTheme": "Passer au thème sombre",
+    "openLog": "Ouvrir le journal de l'application"
   },
 
   "settings": {

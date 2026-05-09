@@ -25,6 +25,13 @@
       </button>
       <div class="w-px h-4 bg-gray-800 mx-1" />
       <button
+        @click="openLog"
+        class="p-2 rounded-md text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
+        :title="$t('topbar.openLog')"
+      >
+        <DocumentMagnifyingGlassIcon class="w-4.5 h-4.5" />
+      </button>
+      <button
         @click="openSettings"
         class="p-2 rounded-md text-gray-500 hover:text-gray-200 hover:bg-gray-800 transition-colors"
         :title="$t('topbar.settings')"
@@ -56,6 +63,7 @@ import {
   SunIcon,
   MoonIcon,
   Cog6ToothIcon,
+  DocumentMagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
 import { state, goBack, navigateTo } from '../stores/vorn.js'
 import SettingsModal from './SettingsModal.vue'
@@ -68,6 +76,10 @@ const navItems = computed(() => [
   { id: 'sessions', label: t('nav.sessions'), icon: RectangleStackIcon },
   { id: 'store',    label: t('nav.store'),    icon: CircleStackIcon },
 ])
+
+function openLog() {
+  window.vorn.openLog()
+}
 
 function navigate(id) {
   if (id === 'sessions') goBack()

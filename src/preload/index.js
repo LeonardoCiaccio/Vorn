@@ -33,7 +33,10 @@ contextBridge.exposeInMainWorld('vorn', {
   listTasks:    ()                                                  => ipcRenderer.invoke('vorn:task-list'),
 
   onTaskProgress: (cb) => {
-    if (_onProgress) ipcRenderer.off('vorn:task-progress', _onProgress)
+    if (_onProgress) {
+      console.warn('[preload] onTaskProgress: listener precedente non rimosso con offTaskProgress')
+      ipcRenderer.off('vorn:task-progress', _onProgress)
+    }
     _onProgress = (_, data) => cb(data)
     ipcRenderer.on('vorn:task-progress', _onProgress)
   },

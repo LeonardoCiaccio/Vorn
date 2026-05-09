@@ -80,8 +80,17 @@ export function listRuns(storeDir, sessionName) {
   const session = getSession(storeDir, sessionName)
   if (!session) return []
 
-  // Se abbiamo il cache dei metadati nel manifest, lo usiamo (veloce)
-  if (session.runs_meta?.length) return session.runs_meta
+  // Se abbiamo il cache dei metadati nel manifest, lo usiamo (veloce).
+  // Riconciliazione: se sul disco ci sono più file di quanti registrati, il cache
+  // è stale (es. crash tra writeFile e saveSession) — forziamo un rebuild.
+  if (session.runs_meta?.length) {
+    const dir = runsDir(storeDir, sessionName)
+    if (!existsSync(dir)) return session.runs_meta
+    const fileCount  = readdirSync(dir).filter(f => f.endsWith('.json')).length
+    const knownTotal = Math.max(session.runs_total ?? 0, session.runs_meta.length)
+    if (fileCount <= knownTotal) return session.runs_meta
+    // più file su disco che nel cache → rebuild sotto
+  }
 
   // Altrimenti ricostruiamo la cache dai file (compatibilità o cache mancante)
   const dir = runsDir(storeDir, sessionName)

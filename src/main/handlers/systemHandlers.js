@@ -7,8 +7,7 @@ import { listTasks }                from '../vorn/taskManager.js'
 import { ctx }                      from '../workerManager.js'
 import { logger }                   from '../vorn/logger.js'
 import { loadSettings }             from '../vorn/settings.js'
-
-const HASH_RE = /^[0-9a-f]{64}(_[a-z0-9]+)?$/
+import { assertHash }               from './_validation.js'
 
 function _isNewer(latest, current) {
   const toNums = v => v.replace(/^v/, '').split('.').map(Number)
@@ -35,10 +34,6 @@ function _resolveIcon() {
 }
 
 let _logWin = null
-
-function _assertHash(hashVorn) {
-  if (!hashVorn || !HASH_RE.test(hashVorn)) throw new Error('Hash non valido')
-}
 
 function _hashSetForQuery(storeDir, query) {
   const q = query.toLowerCase()
@@ -215,13 +210,22 @@ export function registerSystemHandlers(mainWindow) {
     }
   })
 
-  ipcMain.handle('vorn:inspect-hash',       (_, { hashVorn })           => { _assertHash(hashVorn); return getEntry(ctx.activeStore, hashVorn) })
-  ipcMain.handle('vorn:count-store-files',  ()                          => countStoreFiles(ctx.activeStore))
-  ipcMain.handle('vorn:list-store-files',   (_, { offset, limit, query }) =>
-    listStoreFiles(ctx.activeStore, offset, limit, query?.trim() ? _hashSetForQuery(ctx.activeStore, query.trim()) : null)
-  )
+  ipcMain.handle('vorn:inspect-hash', (_, { hashVorn }) => {
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    assertHash(hashVorn)
+    return getEntry(ctx.activeStore, hashVorn)
+  })
+  ipcMain.handle('vorn:count-store-files', () => {
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    return countStoreFiles(ctx.activeStore)
+  })
+  ipcMain.handle('vorn:list-store-files', (_, { offset, limit, query }) => {
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    return listStoreFiles(ctx.activeStore, offset, limit, query?.trim() ? _hashSetForQuery(ctx.activeStore, query.trim()) : null)
+  })
   ipcMain.handle('vorn:delete-store-entry', (_, { hashVorn }) => {
-    _assertHash(hashVorn)
+    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    assertHash(hashVorn)
     if (listTasks().some(t => t.status === 'running'))
       throw new Error('Impossibile eliminare: operazioni in corso')
     deleteStoreEntry(ctx.activeStore, hashVorn)

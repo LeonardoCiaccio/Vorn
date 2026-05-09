@@ -46,7 +46,8 @@
   "topbar": {
     "settings": "Impostazioni",
     "lightTheme": "Passa al tema chiaro",
-    "darkTheme": "Passa al tema scuro"
+    "darkTheme": "Passa al tema scuro",
+    "openLog": "Apri log applicazione"
   },
 
   "settings": {
