@@ -75,7 +75,7 @@ export function registerStoreHandlers(mainWindow) {
     addRecentStore(storeDir)
     logger.info(`Store opened: ${storeDir}`)
     _cleanupResidualTemps(storeDir)
-    _cleanCrashedRuns(storeDir).catch(err => logger.error(`[storeHandlers] cleanCrashedRuns: ${err.message}`))
+    await _cleanCrashedRuns(storeDir).catch(err => logger.error(`[storeHandlers] cleanCrashedRuns: ${err.message}`))
     startStoreWatch(mainWindow)
     return { ok: true }
   })

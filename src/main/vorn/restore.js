@@ -66,15 +66,16 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
   for (let i = 0; i < allFiles.length; i++) {
     if (isCancelled?.()) break
 
-    const hashVorn  = basename(allFiles[i], '.vorn')
+    const storeKey  = basename(allFiles[i], '.vorn')
+    const hashOnly  = storeKey.split('_')[0]
     const vornPath  = join(storeDir, allFiles[i])
 
     let meta
     try { meta = readVornMeta(vornPath).meta }
-    catch (e) { errors.push({ hash: hashVorn, error: e.message }); onProgress?.({ current: i + 1, total, extracted, errors: errors.length }); continue }
+    catch (e) { errors.push({ hash: hashOnly, error: e.message }); onProgress?.({ current: i + 1, total, extracted, errors: errors.length }); continue }
 
     if (!meta.records?.length) {
-      noRecords.push(hashVorn)
+      noRecords.push(hashOnly)
       onProgress?.({ current: i + 1, total, extracted, errors: errors.length })
       continue
     }
@@ -91,12 +92,12 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
         try {
           const folderName = `${rec.session}-${rec.id}`
           const outPath    = _safeJoin(join(destDir, folderName), relPath)
-          if (!outPath) { errors.push({ hash: hashVorn, session: rec.session, path: relPath, error: 'path_traversal' }); continue }
+          if (!outPath) { errors.push({ hash: hashOnly, session: rec.session, path: relPath, error: 'path_traversal' }); continue }
           mkdirSync(dirname(outPath), { recursive: true })
-          await pipeline(extractContent(storeDir, hashVorn), createWriteStream(outPath))
+          await pipeline(extractContent(storeDir, storeKey), createWriteStream(outPath))
           extracted++
         } catch (e) {
-          errors.push({ hash: hashVorn, session: rec.session, path: relPath, error: e.message })
+          errors.push({ hash: hashOnly, session: rec.session, path: relPath, error: e.message })
         }
       }
     }
