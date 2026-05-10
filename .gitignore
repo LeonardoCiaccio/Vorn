@@ -34,3 +34,6 @@ node_modules/
 out/
 release/
 package-lock.json
+
+*.rvf
+agentdb.rvf.lock
