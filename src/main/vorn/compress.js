@@ -1,6 +1,7 @@
 import { createGzip, createGunzip } from 'zlib'
-import { createReadStream, createWriteStream, existsSync, statSync, unlinkSync } from 'fs'
+import { createWriteStream, existsSync, statSync, unlinkSync } from 'fs'
 import { pipeline } from 'stream/promises'
+import { safeCreateReadStream } from './safeFs.js'
 
 function _compressor(type) {
   if (type === 'gzip') return createGzip()
@@ -20,7 +21,7 @@ export function decompressStream(inputStream, type) {
 // Il chiamante è responsabile di eliminare tmpPath se non serve più.
 export async function compressToTemp(sourcePath, tmpPath, type) {
   await pipeline(
-    createReadStream(sourcePath),
+    safeCreateReadStream(sourcePath),
     _compressor(type),
     createWriteStream(tmpPath)
   )

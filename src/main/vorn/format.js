@@ -4,6 +4,7 @@ import { pipeline } from 'stream/promises'
 import { createHash } from 'crypto'
 import { compressToTemp, decompressStream, cleanupTemp } from './compress.js'
 import { vornHash } from './hash.js'
+import { safeCreateReadStream } from './safeFs.js'
 
 function _walChecksum(metaJson) {
   return createHash('sha256').update(metaJson).digest('hex').slice(0, 16)
@@ -144,7 +145,7 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
 
   try {
     await pipeline(
-      createReadStream(contentSource),
+      safeCreateReadStream(contentSource),
       async function* (source) {
         yield header
         for await (const chunk of source) yield chunk

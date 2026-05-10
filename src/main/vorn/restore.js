@@ -1,10 +1,11 @@
-import { mkdirSync, createWriteStream, existsSync, readdirSync } from 'fs'
+import { mkdirSync, existsSync, readdirSync } from 'fs'
 import { join, basename, dirname, resolve, sep } from 'path'
 import { pipeline } from 'stream/promises'
 import { extractContent } from './store.js'
 import { readVornMeta } from './format.js'
 import { loadRun } from './sessions.js'
 import { EXTRACT_MAX_BYTES } from './constants.js'
+import { safeCreateWriteStream } from './safeFs.js'
 
 // Restituisce il path assoluto solo se è contenuto dentro baseDir, altrimenti null
 function _safeJoin(baseDir, relPath) {
@@ -42,7 +43,7 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
         continue
       }
       mkdirSync(join(outPath, '..'), { recursive: true })
-      await pipeline(extractContent(storeDir, storeKey), createWriteStream(outPath))
+      await pipeline(extractContent(storeDir, storeKey), safeCreateWriteStream(outPath))
       restored++
     } catch (e) {
       errors.push({ path: relPath, storeKey, error: e.code ?? e.message })
@@ -94,7 +95,7 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
           const outPath    = _safeJoin(join(destDir, folderName), relPath)
           if (!outPath) { errors.push({ hash: hashOnly, session: rec.session, path: relPath, error: 'path_traversal' }); continue }
           mkdirSync(dirname(outPath), { recursive: true })
-          await pipeline(extractContent(storeDir, storeKey), createWriteStream(outPath))
+          await pipeline(extractContent(storeDir, storeKey), safeCreateWriteStream(outPath))
           extracted++
         } catch (e) {
           errors.push({ hash: hashOnly, session: rec.session, path: relPath, error: e.message })
@@ -118,6 +119,6 @@ export async function extractByHash(storeDir, storeKey, destDir, filename) {
   }
   const outPath = join(destDir, basename(filename || storeKey))
   mkdirSync(destDir, { recursive: true })
-  await pipeline(extractContent(storeDir, storeKey), createWriteStream(outPath))
+  await pipeline(extractContent(storeDir, storeKey), safeCreateWriteStream(outPath))
   return { path: outPath }
 }
