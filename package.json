@@ -1,6 +1,6 @@
 {
   "name": "vorn",
-  "version": "0.8.3",
+  "version": "0.8.5",
   "description": "Vorn — Vault Of Redundant Nodes",
   "license": "AGPL-3.0-only",
   "author": "Leonardo Ciaccio <leonardo.ciaccio@gmail.com>",
@@ -34,6 +34,10 @@
     "directories": {
       "output": "release"
     },
+    "extraResources": [
+      { "from": "build/icon.png", "to": "icons/icon.png" },
+      { "from": "build/icon.ico", "to": "icons/icon.ico" }
+    ],
     "win": {
       "target": "portable",
       "icon": "build/icon.ico"

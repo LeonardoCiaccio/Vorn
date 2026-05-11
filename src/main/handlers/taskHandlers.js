@@ -1,6 +1,6 @@
-import { ipcMain, Notification, nativeImage, app }                          from 'electron'
+import { ipcMain, Notification, app }                                      from 'electron'
 import { logger }                                                          from '../vorn/logger.js'
-import { isAbsolute, join, resolve, sep }                                  from 'path'
+import { isAbsolute, resolve, sep }                                        from 'path'
 import { accessSync, constants }                                           from 'fs'
 import { createTask, cancelTask, listTasks, finishTask, failTask }         from '../vorn/taskManager.js'
 import { extractByHash }                                                   from '../vorn/restore.js'
@@ -9,12 +9,7 @@ import { ctx, spawnWorker }                                                from 
 import { loadRun, saveRun, validateSessionName, validateRunTs }            from '../vorn/sessions.js'
 import { loadSettings }                                                    from '../vorn/settings.js'
 import { assertHash }                                                      from './_validation.js'
-
-let _icon = null
-function _getIcon() {
-  if (!_icon) _icon = nativeImage.createFromPath(join(__dirname, '../../build/icon.png'))
-  return _icon
-}
+import { getAppIcon }                                                      from '../vorn/icon.js'
 
 function _send(mainWindow, payload) {
   if (!mainWindow.isDestroyed()) mainWindow.webContents.send('vorn:task-done', payload)
@@ -28,7 +23,7 @@ function _notifyRunDone(task, result, mainWindow) {
   const body = errors > 0
     ? `${result.files_total} file — ${errors} errori`
     : `${result.files_total} file completati`
-  const notif = new Notification({ title: `Backup completato — ${task.sessionName}`, body, icon: _getIcon() })
+  const notif = new Notification({ title: `Backup completato — ${task.sessionName}`, body, icon: getAppIcon() })
   notif.on('click', () => {
     if (mainWindow.isDestroyed()) return
     if (mainWindow.isMinimized()) mainWindow.restore()
