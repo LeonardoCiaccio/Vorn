@@ -10,8 +10,9 @@ export const state = reactive({
   recentStores:    [],
 
   // App
-  appInfo:         null,
-  updateInfo:      null,
+  appInfo:              null,
+  updateInfo:           null,
+  defaultExcludePatterns: [],
 
   // Sessioni e navigazione
   currentView:     'sessions',
@@ -38,9 +39,10 @@ export async function boot() {
     window.vorn.listTasks(),
     window.vorn.checkUpdate(),
   ])
-  state.appInfo      = appInfo
-  state.updateInfo   = updateInfo
-  state.recentStores = settings.recentStores ?? []
+  state.appInfo                 = appInfo
+  state.updateInfo              = updateInfo
+  state.recentStores            = settings.recentStores ?? []
+  state.defaultExcludePatterns  = settings.defaultExcludePatterns ?? []
   syncThemeFromSettings(settings.theme)
   setLocale(settings.language)
   for (const t of tasks) state.tasks[t.id] = t
@@ -78,8 +80,15 @@ export async function openStore(storeDir) {
     window.vorn.listSessions(),
     window.vorn.getSettings(),
   ])
-  state.sessions     = sessions
-  state.recentStores = settings.recentStores ?? []
+  state.sessions                = sessions
+  state.recentStores            = settings.recentStores ?? []
+  state.defaultExcludePatterns  = settings.defaultExcludePatterns ?? []
+}
+
+export async function saveAppSettings(patch) {
+  const updated = await window.vorn.saveSettings(patch)
+  if (updated?.defaultExcludePatterns) state.defaultExcludePatterns = updated.defaultExcludePatterns
+  return updated
 }
 
 export function closeStore() {
