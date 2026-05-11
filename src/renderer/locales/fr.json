@@ -69,6 +69,11 @@
       "sub": "Événements, avertissements et erreurs enregistrés par l'application",
       "open": "Ouvrir"
     },
+    "filters": {
+      "label": "Filtres d'exclusion par défaut",
+      "sub": "Ces modèles seront pré-remplis automatiquement lors de la création d'une nouvelle session.",
+      "placeholder": "ex. *.bak ou .cache"
+    },
     "about": {
       "github": "Répertoire GitHub",
       "githubSub": "Code source, problèmes et contributions",

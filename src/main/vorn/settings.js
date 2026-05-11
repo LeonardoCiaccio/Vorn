@@ -4,19 +4,29 @@ import { homedir } from 'os'
 
 const _path = join(homedir(), '.vorn', 'settings.json')
 
+const DEFAULT_EXCLUDE_PATTERNS = [
+  '*.log', '*.tmp', '*.temp',
+  'node_modules', '.git', '__pycache__',
+  'Thumbs.db', '.DS_Store',
+  'dist', 'out', 'output', 'build', 'target',
+  '.cache', 'coverage',
+]
+
 const _defaults = {
-  recentStores:  [],
-  theme:         'dark',
-  notifications: false,
+  recentStores:           [],
+  theme:                  'dark',
+  notifications:          false,
+  defaultExcludePatterns: DEFAULT_EXCLUDE_PATTERNS,
 }
 
-const ALLOWED_KEYS = new Set(['theme', 'notifications', 'language', 'recentStores'])
+const ALLOWED_KEYS = new Set(['theme', 'notifications', 'language', 'recentStores', 'defaultExcludePatterns'])
 
 const _validators = {
-  theme:         v => v === 'dark' || v === 'light',
-  notifications: v => typeof v === 'boolean',
-  language:      v => ['it', 'en', 'fr', 'de', 'es', 'pt'].includes(v),
-  recentStores:  v => Array.isArray(v),
+  theme:                  v => v === 'dark' || v === 'light',
+  notifications:          v => typeof v === 'boolean',
+  language:               v => ['it', 'en', 'fr', 'de', 'es', 'pt'].includes(v),
+  recentStores:           v => Array.isArray(v),
+  defaultExcludePatterns: v => Array.isArray(v) && v.length <= 100 && v.every(p => typeof p === 'string' && p.length <= 200),
 }
 
 let _cache = null

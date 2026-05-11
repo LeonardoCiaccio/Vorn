@@ -69,6 +69,11 @@
       "sub": "Von der App aufgezeichnete Ereignisse, Warnungen und Fehler",
       "open": "Öffnen"
     },
+    "filters": {
+      "label": "Standard-Ausschlussmuster",
+      "sub": "Diese Muster werden beim Erstellen einer neuen Sitzung automatisch vorausgefüllt.",
+      "placeholder": "z.B. *.bak oder .cache"
+    },
     "about": {
       "github": "GitHub-Repository",
       "githubSub": "Quellcode, Probleme und Beiträge",

@@ -69,6 +69,11 @@
       "sub": "Eventos, avisos e erros registrados pela aplicação",
       "open": "Abrir"
     },
+    "filters": {
+      "label": "Filtros de exclusão predefinidos",
+      "sub": "Estes padrões serão preenchidos automaticamente ao criar uma nova sessão.",
+      "placeholder": "ex. *.bak ou .cache"
+    },
     "about": {
       "github": "Repositório GitHub",
       "githubSub": "Código-fonte, problemas e contribuições",

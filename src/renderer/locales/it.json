@@ -69,6 +69,11 @@
       "sub": "Eventi, avvisi ed errori registrati dall'app",
       "open": "Apri"
     },
+    "filters": {
+      "label": "Filtri esclusione predefiniti",
+      "sub": "Questi pattern verranno proposti in automatico alla creazione di ogni nuova sessione.",
+      "placeholder": "es. *.bak oppure .cache"
+    },
     "about": {
       "github": "Repository GitHub",
       "githubSub": "Codice sorgente, issue e contributi",

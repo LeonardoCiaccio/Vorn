@@ -69,6 +69,11 @@
       "sub": "Events, warnings and errors recorded by the app",
       "open": "Open"
     },
+    "filters": {
+      "label": "Default exclusion filters",
+      "sub": "These patterns will be pre-filled automatically when creating a new session.",
+      "placeholder": "e.g. *.bak or .cache"
+    },
     "about": {
       "github": "GitHub Repository",
       "githubSub": "Source code, issues and contributions",

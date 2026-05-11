@@ -161,13 +161,11 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'created'])
 
-const DEFAULT_PATTERNS = ['*.log', '*.tmp', '*.temp', 'node_modules', '.git', '__pycache__', 'Thumbs.db', '.DS_Store']
-
 const form = reactive({
   name:               '',
   sources:            [],
   excludePaths:       [],
-  patterns:           [...DEFAULT_PATTERNS],
+  patterns:           [...state.defaultExcludePatterns],
   compressionEnabled: true,
 })
 const saving     = ref(false)

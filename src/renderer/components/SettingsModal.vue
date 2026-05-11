@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px]"
       @click.self="$emit('close')">
-      <div class="w-full max-w-md bg-gray-900 border border-gray-700 rounded-md shadow-2xl flex flex-col max-h-[80vh]">
+      <div class="w-full max-w-xl bg-gray-900 border border-gray-700 rounded-md shadow-2xl flex flex-col max-h-[85vh]">
 
         <!-- Header -->
         <div class="px-6 py-5 border-b border-gray-800 flex items-center justify-between">
@@ -50,6 +50,41 @@
               <SettingRow :label="$t('settings.notif.label')" :sub="$t('settings.notif.sub')">
                 <Toggle v-model="draft.notifications" />
               </SettingRow>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-800" />
+
+          <!-- Sezione: Filtri default -->
+          <div>
+            <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1">{{ $t('settings.filters.label') }}</p>
+            <p class="text-[11px] text-gray-600 mb-3">{{ $t('settings.filters.sub') }}</p>
+            <div class="flex flex-wrap gap-2 mb-3">
+              <div
+                v-for="pat in draft.defaultExcludePatterns"
+                :key="pat"
+                class="flex items-center gap-1 px-2 py-1 rounded-md bg-gray-800 border border-gray-700 text-xs font-mono text-gray-300"
+              >
+                {{ pat }}
+                <button @click="removeDefaultPattern(pat)" class="ml-0.5 text-gray-600 hover:text-red-400 transition-colors">
+                  <XMarkIcon class="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                v-model="newDefaultPattern"
+                @keydown.enter.prevent="addDefaultPattern"
+                :placeholder="$t('settings.filters.placeholder')"
+                class="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-xs font-mono text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+              <button
+                @click="addDefaultPattern"
+                :disabled="!newDefaultPattern.trim()"
+                class="px-3 py-2 rounded-md text-xs font-medium text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <PlusIcon class="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
@@ -103,11 +138,12 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
-import { Cog6ToothIcon, XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/24/outline'
+import { reactive, ref } from 'vue'
+import { Cog6ToothIcon, XMarkIcon, ArrowTopRightOnSquareIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import SettingRow from './SettingRow.vue'
 import Toggle from './Toggle.vue'
 import { setLocale } from '../stores/i18n.js'
+import { saveAppSettings } from '../stores/vorn.js'
 
 const props = defineProps({ initialSettings: { type: Object, required: true } })
 const emit = defineEmits(['close'])
@@ -122,16 +158,33 @@ const languages = [
 ]
 
 const draft = reactive({
-  language: props.initialSettings.language ?? 'it',
-  notifications: props.initialSettings.notifications ?? false,
+  language:               props.initialSettings.language ?? 'it',
+  notifications:          props.initialSettings.notifications ?? false,
+  defaultExcludePatterns: [...(props.initialSettings.defaultExcludePatterns ?? [])],
 })
+
+const newDefaultPattern = ref('')
+
+function addDefaultPattern() {
+  const p = newDefaultPattern.value.trim()
+  if (p && !draft.defaultExcludePatterns.includes(p)) draft.defaultExcludePatterns.push(p)
+  newDefaultPattern.value = ''
+}
+
+function removeDefaultPattern(pat) {
+  draft.defaultExcludePatterns = draft.defaultExcludePatterns.filter(p => p !== pat)
+}
 
 function openExternal(url) {
   window.vorn.openExternal(url)
 }
 
 async function save() {
-  await window.vorn.saveSettings({ language: draft.language, notifications: draft.notifications })
+  await saveAppSettings({
+    language:               draft.language,
+    notifications:          draft.notifications,
+    defaultExcludePatterns: [...draft.defaultExcludePatterns],
+  })
   setLocale(draft.language)
   emit('close')
 }
