@@ -1,6 +1,6 @@
 import { ipcMain, app, dialog, shell, BrowserWindow, net } from 'electron'
-import { join, normalize, resolve } from 'path'
-import { readdirSync, existsSync }  from 'fs'
+import { normalize, resolve, join } from 'path'
+import { readdirSync }              from 'fs'
 import { homedir }                  from 'os'
 import { getEntry, listStoreFiles, countStoreFiles, deleteStoreEntry, getCachedFileList } from '../vorn/store.js'
 import { listTasks }                from '../vorn/taskManager.js'
@@ -8,6 +8,7 @@ import { ctx }                      from '../workerManager.js'
 import { logger }                   from '../vorn/logger.js'
 import { loadSettings }             from '../vorn/settings.js'
 import { assertHash }               from './_validation.js'
+import { getAppIcon, applyWindowIcon } from '../vorn/icon.js'
 
 function _isNewer(latest, current) {
   const toNums = v => v.replace(/^v/, '').split('.').map(Number)
@@ -18,19 +19,6 @@ function _isNewer(latest, current) {
     if (diff !== 0) return diff > 0
   }
   return false
-}
-
-function _resolveIcon() {
-  const candidates = process.platform === 'win32'
-    ? ['../../build/icon.ico', '../../build/icon.png']
-    : process.platform === 'darwin'
-    ? ['../../build/icon.icns', '../../build/icon.png']
-    : ['../../build/icon.png']
-  for (const rel of candidates) {
-    const abs = join(__dirname, rel)
-    if (existsSync(abs)) return abs
-  }
-  return undefined
 }
 
 let _logWin = null
@@ -87,13 +75,15 @@ export function registerSystemHandlers(mainWindow) {
       title: 'Vorn — Log',
       autoHideMenuBar: true,
       backgroundColor: c.bg,
-      icon: _resolveIcon(),
+      icon: getAppIcon(),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
       },
     })
+
+    applyWindowIcon(_logWin)
 
     _logWin.on('closed', () => { _logWin = null })
 

@@ -1,26 +1,13 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
-import { existsSync } from 'fs'
 import { registerIpcHandlers } from './ipc.js'
 import { logger, initLogger } from './vorn/logger.js'
+import { getAppIcon, applyWindowIcon } from './vorn/icon.js'
 
 // Singola istanza: se una seconda viene lanciata (es. click su toast Windows)
 // focalizza quella già aperta e termina la nuova
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) app.quit()
-
-function resolveIcon() {
-  const candidates = process.platform === 'win32'
-    ? ['../../build/icon.ico', '../../build/icon.png']
-    : process.platform === 'darwin'
-    ? ['../../build/icon.icns', '../../build/icon.png']
-    : ['../../build/icon.png']
-  for (const rel of candidates) {
-    const abs = join(__dirname, rel)
-    if (existsSync(abs)) return abs
-  }
-  return undefined
-}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -30,11 +17,13 @@ function createWindow() {
     minHeight: 720,
     show: false,
     autoHideMenuBar: true,
-    icon: resolveIcon(),
+    icon: getAppIcon(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
     }
   })
+
+  applyWindowIcon(win)
 
   win.on('ready-to-show', () => win.show())
 
@@ -58,8 +47,10 @@ function createWindow() {
 app.whenReady().then(() => {
   initLogger()
   logger.info(`Application started — version ${app.getVersion()} platform=${process.platform}`)
-  // AUMID solo nel build packaged — in dev resterebbe registrato su electron.exe
-  if (process.platform === 'win32' && app.isPackaged) app.setAppUserModelId('com.vorn.app')
+  // Su Windows l'AUMID deve corrispondere all'execPath per i portable (nessun
+  // installer/shortcut registrato). Un ID personalizzato ('com.vorn.app') causa
+  // icona bianca nel taskbar perché Windows non trova l'icona per quell'ID.
+  if (process.platform === 'win32' && app.isPackaged) app.setAppUserModelId(process.execPath)
 
   const win = createWindow()
   registerIpcHandlers(win)
