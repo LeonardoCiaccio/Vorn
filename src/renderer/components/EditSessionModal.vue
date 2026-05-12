@@ -24,9 +24,6 @@
             <div class="px-6 pt-6 pb-3 shrink-0">
               <div class="flex items-center justify-between mb-1">
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ $t('newSession.foldersLabel') }}</p>
-                <div class="flex items-center gap-3 text-[10px] text-gray-600">
-                  <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded border bg-red-950/30 border-red-700/50"></span> {{ $t('newSession.legend.filtered') }}</span>
-                </div>
               </div>
               <p class="text-[11px] text-gray-600">{{ $t('newSession.instructions') }}</p>
             </div>

@@ -308,9 +308,6 @@
   "newSession": {
     "title": "Neue Sitzung",
     "foldersLabel": "Einzuschließende Ordner",
-    "legend": {
-      "filtered": "gefiltert"
-    },
     "instructions": "Ordner auswählen. Erweitern und Unterordner abwählen, um sie auszuschließen.",
     "nameLabel": "Sitzungsname",
     "namePlaceholder": "z. B. Dokumente, Projekte, Fotos…",

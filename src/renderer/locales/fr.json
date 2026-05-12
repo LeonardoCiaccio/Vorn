@@ -308,9 +308,6 @@
   "newSession": {
     "title": "Nouvelle session",
     "foldersLabel": "Dossiers à inclure",
-    "legend": {
-      "filtered": "filtré"
-    },
     "instructions": "Sélectionnez des dossiers. Développez et désélectionnez les sous-dossiers pour les exclure.",
     "nameLabel": "Nom de la session",
     "namePlaceholder": "ex: Documents, Projets, Photos…",

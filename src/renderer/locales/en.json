@@ -308,9 +308,6 @@
   "newSession": {
     "title": "New session",
     "foldersLabel": "Folders to include",
-    "legend": {
-      "filtered": "filtered"
-    },
     "instructions": "Select folders. Expand and deselect subfolders to exclude.",
     "nameLabel": "Session name",
     "namePlaceholder": "e.g. Documents, Projects, Photos…",

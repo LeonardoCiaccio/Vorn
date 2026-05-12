@@ -308,9 +308,6 @@
   "newSession": {
     "title": "Nova sessão",
     "foldersLabel": "Pastas a incluir",
-    "legend": {
-      "filtered": "filtrado"
-    },
     "instructions": "Selecione as pastas. Expanda e desmarque as subpastas para excluir.",
     "nameLabel": "Nome da sessão",
     "namePlaceholder": "ex: Documentos, Projetos, Fotos…",

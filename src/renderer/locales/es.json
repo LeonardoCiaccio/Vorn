@@ -308,9 +308,6 @@
   "newSession": {
     "title": "Nueva sesión",
     "foldersLabel": "Carpetas a incluir",
-    "legend": {
-      "filtered": "filtrado"
-    },
     "instructions": "Seleccione carpetas. Expanda y deseleccione subcarpetas para excluirlas.",
     "nameLabel": "Nombre de la sesión",
     "namePlaceholder": "ej. Documentos, Proyectos, Fotos…",

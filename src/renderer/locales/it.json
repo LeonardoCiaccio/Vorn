@@ -308,9 +308,6 @@
   "newSession": {
     "title": "Nuova sessione",
     "foldersLabel": "Cartelle da includere",
-    "legend": {
-      "filtered": "filtrati"
-    },
     "instructions": "Seleziona le cartelle. Espandi e deseleziona le sottocartelle da escludere.",
     "nameLabel": "Nome sessione",
     "namePlaceholder": "es. Documenti, Progetti, Foto…",
