@@ -24,10 +24,6 @@
             <div class="px-6 pt-6 pb-3 shrink-0">
               <div class="flex items-center justify-between mb-1">
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ $t('newSession.foldersLabel') }}</p>
-                <div class="flex items-center gap-3 text-[10px] text-gray-600">
-                  <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded border bg-indigo-500 border-indigo-400"></span> {{ $t('newSession.legend.source') }}</span>
-                  <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded border bg-gray-900 border-red-600/60"></span> {{ $t('newSession.legend.excluded') }}</span>
-                </div>
               </div>
               <p class="text-[11px] text-gray-600">{{ $t('newSession.instructions') }}</p>
             </div>
@@ -35,6 +31,7 @@
               <SessionSourceTree class="flex-1 min-h-0"
                 :initialRoot="props.initialRoot"
                 :preSelected="props.preSelected"
+                :excludePatterns="form.patterns"
                 @update:sources="form.sources = $event"
                 @update:excludePaths="form.excludePaths = $event"
               />

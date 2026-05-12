@@ -308,10 +308,6 @@
   "newSession": {
     "title": "Nouvelle session",
     "foldersLabel": "Dossiers à inclure",
-    "legend": {
-      "source": "source",
-      "excluded": "exclu"
-    },
     "instructions": "Sélectionnez des dossiers. Développez et désélectionnez les sous-dossiers pour les exclure.",
     "nameLabel": "Nom de la session",
     "namePlaceholder": "ex: Documents, Projets, Photos…",
@@ -432,6 +428,7 @@
     "storeError": "Le dossier du dépôt ne peut pas être utilisé comme source.",
     "badgeSource": "source",
     "badgeFile": "fichier",
+    "badgeFiltered": "filtré",
     "empty": "Aucun contenu"
   }
 }

@@ -308,10 +308,6 @@
   "newSession": {
     "title": "New session",
     "foldersLabel": "Folders to include",
-    "legend": {
-      "source": "source",
-      "excluded": "excluded"
-    },
     "instructions": "Select folders. Expand and deselect subfolders to exclude.",
     "nameLabel": "Session name",
     "namePlaceholder": "e.g. Documents, Projects, Photos…",
@@ -432,6 +428,7 @@
     "storeError": "The store folder cannot be used as a source.",
     "badgeSource": "source",
     "badgeFile": "file",
+    "badgeFiltered": "filtered",
     "empty": "No content"
   }
 }

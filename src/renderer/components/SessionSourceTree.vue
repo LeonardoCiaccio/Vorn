@@ -44,9 +44,10 @@ import { state } from '../stores/vorn.js'
 const { t } = useI18n()
 
 const props = defineProps({
-  initialRoot: { type: String, default: '' },
-  preSelected: { type: Array,  default: () => [] },
-  preExcluded: { type: Array,  default: () => [] },
+  initialRoot:     { type: String, default: '' },
+  preSelected:     { type: Array,  default: () => [] },
+  preExcluded:     { type: Array,  default: () => [] },
+  excludePatterns: { type: Array,  default: () => [] },
 })
 
 const emit = defineEmits(['update:sources', 'update:excludePaths'])
@@ -73,10 +74,59 @@ function isInsideSource(path) {
   return false
 }
 
+function isInsideExcluded(path) {
+  for (const e of excluded) {
+    if (path !== e && (path.startsWith(e + '\\') || path.startsWith(e + '/'))) return true
+  }
+  return false
+}
+
+function isPartiallySelected(path) {
+  if (excluded.has(path)) return false
+  for (const e of excluded) {
+    if (e.startsWith(path + '\\') || e.startsWith(path + '/')) return true
+  }
+  return false
+}
+
 function clearExcludedUnder(root) {
   for (const p of [...excluded]) {
     if (p.startsWith(root + '\\') || p.startsWith(root + '/')) excluded.delete(p)
   }
+}
+
+function findNode(targetPath, nodes) {
+  if (!nodes) return null
+  for (const n of nodes) {
+    if (n.path === targetPath) return n
+    const found = findNode(targetPath, n.children)
+    if (found) return found
+  }
+  return null
+}
+
+function narrowToPath(clickedPath, nodes) {
+  if (!nodes) return
+  for (const child of nodes) {
+    if (clickedPath === child.path) continue
+    if (clickedPath.startsWith(child.path + '\\') || clickedPath.startsWith(child.path + '/')) {
+      narrowToPath(clickedPath, child.children)
+    } else {
+      excluded.add(child.path)
+    }
+  }
+}
+
+function _matchesPattern(name, pattern) {
+  if (!pattern || pattern.length > 200) return false
+  const pat = pattern.endsWith('/') ? pattern.slice(0, -1) : pattern
+  const escaped = pat.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+  const reStr = escaped.replace(/\*/g, '\x00').replace(/\x00+/g, '.*').replace(/\?/g, '.')
+  return new RegExp('^' + reStr + '$', 'i').test(name)
+}
+
+function isFilteredByPattern(name) {
+  return props.excludePatterns.some(pat => _matchesPattern(name, pat))
 }
 
 function makeNode(d) {
@@ -89,8 +139,21 @@ function makeNode(d) {
 function toggleNode(node) {
   const inside = isInsideSource(node.path)
   if (inside) {
-    if (excluded.has(node.path)) excluded.delete(node.path)
-    else                         excluded.add(node.path)
+    if (excluded.has(node.path)) {
+      excluded.delete(node.path)
+    } else if (isInsideExcluded(node.path)) {
+      for (const e of [...excluded]) {
+        if (node.path.startsWith(e + '\\') || node.path.startsWith(e + '/')) {
+          excluded.delete(e)
+          const ancestorNode = findNode(e, rootNodes.value)
+          if (ancestorNode?.children) narrowToPath(node.path, ancestorNode.children)
+          break
+        }
+      }
+    } else {
+      excluded.add(node.path)
+      clearExcludedUnder(node.path)
+    }
   } else {
     if (sources.has(node.path)) {
       sources.delete(node.path)
@@ -157,5 +220,5 @@ function emitChange() {
 
 // ── Provide to nodes ──────────────────────────────────────────────────────────
 
-provide('sourceTree', { sources, excluded, isInsideSource, toggleNode, expandNode })
+provide('sourceTree', { sources, excluded, isInsideSource, isInsideExcluded, isPartiallySelected, isFilteredByPattern, toggleNode, expandNode })
 </script>
