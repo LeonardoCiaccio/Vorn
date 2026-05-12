@@ -393,13 +393,24 @@
           <!-- Intestazione -->
           <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2.5">
-              <div class="w-7 h-7 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                <FolderOpenIcon class="w-3.5 h-3.5 text-indigo-400" />
+              <div class="flex flex-col items-center gap-0.5 shrink-0">
+                <div class="w-7 h-7 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
+                  <FolderOpenIcon class="w-3.5 h-3.5 text-indigo-400" />
+                </div>
+                <span v-if="session.compressionType" class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none">{{ session.compressionType }}</span>
               </div>
-              <div class="min-w-0">
+              <div class="min-w-0 flex-1">
                 <p class="text-sm font-bold text-white truncate">{{ session.name }}</p>
                 <p class="text-[10px] text-gray-500 mt-0.5">{{ formatTs(session.ts) }}</p>
               </div>
+              <button
+                @click="editingSession = session"
+                :disabled="sessionBusy"
+                class="p-1.5 rounded-md text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
+                :title="$t('sessions.actions.edit')"
+              >
+                <PencilSquareIcon class="w-3.5 h-3.5" />
+              </button>
             </div>
             <div v-if="session.id" class="px-4 py-2.5 border-b border-gray-800/60 flex items-center gap-2">
               <span class="text-[10px] text-gray-600 uppercase tracking-wider font-semibold w-8 shrink-0">{{ $t('sessionDetail.id') }}</span>
@@ -597,6 +608,13 @@
       </div>
     </transition>
 
+    <EditSessionModal
+      v-if="editingSession"
+      :session="editingSession"
+      @close="editingSession = null"
+      @saved="editingSession = null"
+    />
+
     <!-- Modals -->
     <RestoreModal
       :show="showRestoreModal"
@@ -668,6 +686,7 @@ import {
   TableCellsIcon,
   ClockIcon,
   ChevronDownIcon,
+  PencilSquareIcon,
 } from '@heroicons/vue/24/outline'
 import { computed, ref, watch } from 'vue'
 import {
@@ -675,6 +694,7 @@ import {
   startBackup, startRestore, cancelTask, getActiveTask, getLastTask,
   formatTs, formatBytes
 } from '../stores/vorn.js'
+import EditSessionModal from '../components/EditSessionModal.vue'
 
 function formatDuration(sec) {
   if (sec == null) return '—'
@@ -725,6 +745,7 @@ function clearRestoreResult() {
   if (t) t.result = null
 }
 
+const editingSession   = ref(null)
 const runsView         = ref('table')
 const showRestoreModal = ref(false)
 const confirmingDelete = ref(false)
