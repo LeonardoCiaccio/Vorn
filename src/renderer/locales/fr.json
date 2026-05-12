@@ -214,6 +214,7 @@
       "suspend": "Suspendre la sauvegarde",
       "resume": "Reprendre la sauvegarde",
       "start": "Démarrer la sauvegarde",
+      "edit": "Modifier la session",
       "delete": "Supprimer la session"
     },
     "confirmDelete": {

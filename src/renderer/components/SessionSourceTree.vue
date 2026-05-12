@@ -46,6 +46,7 @@ const { t } = useI18n()
 const props = defineProps({
   initialRoot: { type: String, default: '' },
   preSelected: { type: Array,  default: () => [] },
+  preExcluded: { type: Array,  default: () => [] },
 })
 
 const emit = defineEmits(['update:sources', 'update:excludePaths'])
@@ -117,13 +118,14 @@ async function expandNode(node) {
 
 // ── Load root ─────────────────────────────────────────────────────────────────
 
-async function loadRoot(dir, preSelectPaths = []) {
+async function loadRoot(dir, preSelectPaths = [], preExcludedPaths = []) {
   if (!dir) return
   rootPath.value    = dir
   loadingRoot.value = true
   sources.clear()
   excluded.clear()
-  for (const p of preSelectPaths) sources.add(p)
+  for (const p of preSelectPaths)  sources.add(p)
+  for (const p of preExcludedPaths) excluded.add(p)
   emitChange()
   try {
     const dirs      = await window.vorn.listDir(dir)
@@ -143,8 +145,8 @@ async function pickRoot() {
   loadRoot(picked)
 }
 
-watch(() => props.initialRoot, (r) => { if (r) loadRoot(r, props.preSelected) }, { immediate: true })
-watch(() => state.appInfo?.homedir, (h) => { if (h && !rootPath.value) loadRoot(h) }, { immediate: true })
+watch(() => props.initialRoot, (r) => { if (r) loadRoot(r, props.preSelected, props.preExcluded) }, { immediate: true })
+watch(() => state.appInfo?.homedir, (h) => { if (h && !rootPath.value) loadRoot(h, props.preSelected, props.preExcluded) }, { immediate: true })
 
 // ── Emit ──────────────────────────────────────────────────────────────────────
 

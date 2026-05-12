@@ -56,7 +56,6 @@ export function registerSessionHandlers() {
     _validateName(name)
     if (hasRunningTask(name)) throw new Error(`Operazione in corso per "${name}"`)
     const allowed = {}
-    if (patch.store           !== undefined) allowed.store           = patch.store
     if (patch.sources         !== undefined) {
       if (!Array.isArray(patch.sources)) throw new Error('sources deve essere un array')
       allowed.sources = patch.sources
@@ -65,6 +64,22 @@ export function registerSessionHandlers() {
       if (patch.compressionType != null && patch.compressionType !== 'gzip')
         throw new Error(`compressionType non valido: "${patch.compressionType}"`)
       allowed.compressionType = patch.compressionType
+    }
+    if (patch.excludes !== undefined) {
+      if (typeof patch.excludes !== 'object' || patch.excludes === null)
+        throw new Error('excludes non valido')
+      const ex = {}
+      if (patch.excludes.paths !== undefined) {
+        if (!Array.isArray(patch.excludes.paths)) throw new Error('excludes.paths deve essere un array')
+        if (patch.excludes.paths.length > 200) throw new Error('Troppi excludes.paths (max 200)')
+        ex.paths = patch.excludes.paths
+      }
+      if (patch.excludes.patterns !== undefined) {
+        if (!Array.isArray(patch.excludes.patterns)) throw new Error('excludes.patterns deve essere un array')
+        if (patch.excludes.patterns.length > 200) throw new Error('Troppi excludes.patterns (max 200)')
+        ex.patterns = patch.excludes.patterns
+      }
+      allowed.excludes = ex
     }
     updateSession(ctx.activeStore, name, allowed)
   })

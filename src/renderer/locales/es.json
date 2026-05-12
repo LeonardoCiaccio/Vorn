@@ -214,6 +214,7 @@
       "suspend": "Suspender copia",
       "resume": "Reanudar copia",
       "start": "Iniciar copia",
+      "edit": "Editar sesión",
       "delete": "Eliminar sesión"
     },
     "confirmDelete": {

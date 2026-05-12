@@ -214,6 +214,7 @@
       "suspend": "Sicherung aussetzen",
       "resume": "Sicherung fortsetzen",
       "start": "Sicherung starten",
+      "edit": "Sitzung bearbeiten",
       "delete": "Sitzung löschen"
     },
     "confirmDelete": {
