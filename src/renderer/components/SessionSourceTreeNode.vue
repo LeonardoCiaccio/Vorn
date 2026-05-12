@@ -23,8 +23,8 @@
         class="w-4 h-4 shrink-0 rounded flex items-center justify-center border transition-all"
         :class="checkboxClass"
       >
-        <CheckIcon v-if="isChecked" class="w-2.5 h-2.5" />
-        <XMarkIcon v-else-if="isExcluded" class="w-2.5 h-2.5" />
+        <CheckIcon  v-if="isChecked && !isPartial" class="w-2.5 h-2.5" />
+        <MinusIcon  v-else-if="isPartial"          class="w-2.5 h-2.5" />
       </button>
 
       <!-- Icona + nome -->
@@ -56,7 +56,7 @@
 
 <script setup>
 import { computed, inject } from 'vue'
-import { FolderIcon, FolderOpenIcon, DocumentTextIcon, ArrowPathIcon, CheckIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { FolderIcon, FolderOpenIcon, DocumentTextIcon, ArrowPathIcon, CheckIcon, MinusIcon } from '@heroicons/vue/24/outline'
 import { ChevronRightIcon, ChevronDownIcon } from '@heroicons/vue/24/solid'
 import SessionSourceTreeNode from './SessionSourceTreeNode.vue'
 
@@ -65,30 +65,32 @@ const props = defineProps({
   depth: { type: Number, default: 0 },
 })
 
-const { sources, excluded, isInsideSource, toggleNode, expandNode } = inject('sourceTree')
+const { sources, excluded, isInsideSource, isInsideExcluded, isPartiallySelected, toggleNode, expandNode } = inject('sourceTree')
 
 const isDir      = computed(() => (props.node.type ?? 'dir') === 'dir')
 const isSource   = computed(() => sources.has(props.node.path))
-const isExcluded = computed(() => excluded.has(props.node.path))
+const isExcluded = computed(() => excluded.has(props.node.path) || isInsideExcluded(props.node.path))
 const inside     = computed(() => isInsideSource(props.node.path))
+const isPartial  = computed(() => isDir.value && !isExcluded.value && (isSource.value || inside.value) && isPartiallySelected(props.node.path))
 const isChecked  = computed(() => isSource.value || (inside.value && !isExcluded.value))
 
 const checkboxClass = computed(() => {
+  if (isPartial.value)  return 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400'
   if (isSource.value)   return 'bg-indigo-500 border-indigo-400 text-white'
-  if (isExcluded.value) return 'bg-gray-900 border-red-600/60 text-red-400'
+  if (isExcluded.value) return 'bg-gray-900 border-gray-700 text-gray-600'
   if (inside.value)     return 'bg-indigo-500/15 border-indigo-500/40 text-indigo-400'
   return 'bg-gray-900 border-gray-700 text-gray-600'
 })
 
 const iconClass = computed(() => {
   if (isSource.value)   return isDir.value ? 'text-amber-300' : 'text-sky-400'
-  if (isExcluded.value) return 'text-red-500/60'
+  if (isExcluded.value) return isDir.value ? 'text-amber-400/30' : 'text-sky-400/30'
   if (inside.value)     return isDir.value ? 'text-amber-400/50' : 'text-sky-400/50'
   return isDir.value ? 'text-amber-400/80' : 'text-sky-400/70'
 })
 
 const nameClass = computed(() => {
-  if (isExcluded.value) return 'text-red-400/60 line-through'
+  if (isExcluded.value) return 'text-gray-500'
   if (isSource.value || inside.value) return 'text-gray-200'
   return isDir.value ? 'text-gray-500' : 'text-gray-400'
 })
