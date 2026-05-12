@@ -29,9 +29,7 @@ export async function createSession(session) {
   return created
 }
 
-export async function updateSession(name, store, sources, compressionType = undefined) {
-  const patch = { store, sources }
-  if (compressionType !== undefined) patch.compressionType = compressionType
+export async function updateSession(name, patch) {
   await window.vorn.updateSession(name, patch)
   await refreshSession(name)
 }

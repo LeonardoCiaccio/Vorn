@@ -214,6 +214,7 @@
       "suspend": "Suspend backup",
       "resume": "Resume backup",
       "start": "Start backup",
+      "edit": "Edit session",
       "delete": "Delete session"
     },
     "confirmDelete": {

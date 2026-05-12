@@ -223,6 +223,14 @@
                       <PlayIcon class="w-3.5 h-3.5" />
                     </button>
                     <button
+                      @click.stop="editingSession = session"
+                      :disabled="!!activeTask(session.name)"
+                      class="p-1.5 rounded-md text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                      :title="$t('sessions.actions.edit')"
+                    >
+                      <PencilSquareIcon class="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       @click="askDelete($event, session.name)"
                       :disabled="!!activeTask(session.name)"
                       class="p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
@@ -306,6 +314,13 @@
     @created="showModal = false; dropSources = null"
   />
 
+  <EditSessionModal
+    v-if="editingSession"
+    :session="editingSession"
+    @close="editingSession = null"
+    @saved="editingSession = null"
+  />
+
   <!-- Modal conferma eliminazione -->
   <Teleport to="body">
     <div v-if="deleteConfirm.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-4">
@@ -337,11 +352,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, PauseIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon } from '@heroicons/vue/24/outline'
+import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, PauseIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
 import { state, selectSession, deleteSession, getActiveTask, startBackup, cancelTask, formatTs, formatBytes } from '../stores/vorn.js'
 import { isExecutable } from '../utils/executable.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
+import EditSessionModal from '../components/EditSessionModal.vue'
 
 const { t } = useI18n()
 
@@ -409,9 +425,10 @@ function onDrop(e) {
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-const showModal   = ref(false)
-const sessions    = computed(() => state.sessions)
-const confirmName = ref(null)
+const showModal      = ref(false)
+const editingSession = ref(null)
+const sessions       = computed(() => state.sessions)
+const confirmName    = ref(null)
 
 const totalRuns  = computed(() => sessions.value.reduce((acc, s) => acc + s.runs.length, 0))
 const anyRunning         = computed(() => sessions.value.some(s => !!getActiveTask(s.name)))
