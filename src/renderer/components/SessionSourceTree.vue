@@ -44,9 +44,10 @@ import { state } from '../stores/vorn.js'
 const { t } = useI18n()
 
 const props = defineProps({
-  initialRoot: { type: String, default: '' },
-  preSelected: { type: Array,  default: () => [] },
-  preExcluded: { type: Array,  default: () => [] },
+  initialRoot:     { type: String, default: '' },
+  preSelected:     { type: Array,  default: () => [] },
+  preExcluded:     { type: Array,  default: () => [] },
+  excludePatterns: { type: Array,  default: () => [] },
 })
 
 const emit = defineEmits(['update:sources', 'update:excludePaths'])
@@ -114,6 +115,18 @@ function narrowToPath(clickedPath, nodes) {
       excluded.add(child.path)
     }
   }
+}
+
+function _matchesPattern(name, pattern) {
+  if (!pattern || pattern.length > 200) return false
+  const pat = pattern.endsWith('/') ? pattern.slice(0, -1) : pattern
+  const escaped = pat.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+  const reStr = escaped.replace(/\*/g, '\x00').replace(/\x00+/g, '.*').replace(/\?/g, '.')
+  return new RegExp('^' + reStr + '$', 'i').test(name)
+}
+
+function isFilteredByPattern(name) {
+  return props.excludePatterns.some(pat => _matchesPattern(name, pat))
 }
 
 function makeNode(d) {
@@ -207,5 +220,5 @@ function emitChange() {
 
 // ── Provide to nodes ──────────────────────────────────────────────────────────
 
-provide('sourceTree', { sources, excluded, isInsideSource, isInsideExcluded, isPartiallySelected, toggleNode, expandNode })
+provide('sourceTree', { sources, excluded, isInsideSource, isInsideExcluded, isPartiallySelected, isFilteredByPattern, toggleNode, expandNode })
 </script>

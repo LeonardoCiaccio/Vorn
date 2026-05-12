@@ -309,8 +309,7 @@
     "title": "Nuova sessione",
     "foldersLabel": "Cartelle da includere",
     "legend": {
-      "source": "sorgente",
-      "excluded": "esclusa"
+      "filtered": "filtrati"
     },
     "instructions": "Seleziona le cartelle. Espandi e deseleziona le sottocartelle da escludere.",
     "nameLabel": "Nome sessione",
@@ -432,6 +431,7 @@
     "storeError": "La cartella dello store non può essere usata come sorgente.",
     "badgeSource": "sorgente",
     "badgeFile": "file",
+    "badgeFiltered": "filtrato",
     "empty": "Nessun contenuto"
   }
 }

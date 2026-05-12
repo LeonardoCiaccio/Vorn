@@ -309,8 +309,7 @@
     "title": "Nova sessão",
     "foldersLabel": "Pastas a incluir",
     "legend": {
-      "source": "origem",
-      "excluded": "excluído"
+      "filtered": "filtrado"
     },
     "instructions": "Selecione as pastas. Expanda e desmarque as subpastas para excluir.",
     "nameLabel": "Nome da sessão",
@@ -432,6 +431,7 @@
     "storeError": "A pasta do repositório não pode ser usada como origem.",
     "badgeSource": "origem",
     "badgeFile": "arquivo",
+    "badgeFiltered": "filtrado",
     "empty": "Sem conteúdo"
   }
 }

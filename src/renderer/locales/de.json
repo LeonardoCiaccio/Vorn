@@ -309,8 +309,7 @@
     "title": "Neue Sitzung",
     "foldersLabel": "Einzuschließende Ordner",
     "legend": {
-      "source": "Quelle",
-      "excluded": "ausgeschlossen"
+      "filtered": "gefiltert"
     },
     "instructions": "Ordner auswählen. Erweitern und Unterordner abwählen, um sie auszuschließen.",
     "nameLabel": "Sitzungsname",
@@ -432,6 +431,7 @@
     "storeError": "Der Speicherordner kann nicht als Quelle verwendet werden.",
     "badgeSource": "Quelle",
     "badgeFile": "Datei",
+    "badgeFiltered": "gefiltert",
     "empty": "Kein Inhalt"
   }
 }

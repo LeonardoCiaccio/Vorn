@@ -309,8 +309,7 @@
     "title": "Nueva sesión",
     "foldersLabel": "Carpetas a incluir",
     "legend": {
-      "source": "origen",
-      "excluded": "excluido"
+      "filtered": "filtrado"
     },
     "instructions": "Seleccione carpetas. Expanda y deseleccione subcarpetas para excluirlas.",
     "nameLabel": "Nombre de la sesión",
@@ -432,6 +431,7 @@
     "storeError": "La carpeta del almacén no se puede utilizar como origen.",
     "badgeSource": "origen",
     "badgeFile": "archivo",
+    "badgeFiltered": "filtrado",
     "empty": "Sin contenido"
   }
 }
