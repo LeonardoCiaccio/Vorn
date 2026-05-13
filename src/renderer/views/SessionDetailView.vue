@@ -577,7 +577,7 @@
               </span>
               <button
                 @click="selectedFiles.length ? handleRestore() : null"
-                :disabled="sessionBusy || !selectedFiles.length"
+                :disabled="sessionBusy || anyBackupRunning || !selectedFiles.length"
                 class="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
               >
                 <ArrowDownTrayIcon class="w-3.5 h-3.5" />
@@ -596,7 +596,7 @@
               </button>
               <button
                 @click="handleRestore"
-                :disabled="sessionBusy"
+                :disabled="sessionBusy || anyBackupRunning"
                 class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-md text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
               >
                 <ArrowDownTrayIcon class="w-3.5 h-3.5" />

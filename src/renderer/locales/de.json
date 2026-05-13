@@ -89,7 +89,8 @@
     "subtitle": "Wählen Sie aus, wo Ihre Sicherungen gespeichert werden",
     "recent": "Zuletzt verwendet",
     "browse": "Durchsuchen…",
-    "opening": "Wird geöffnet…"
+    "opening": "Wird geöffnet…",
+    "madeBy": "Erstellt von {name} mit {heart}"
   },
 
   "store": {

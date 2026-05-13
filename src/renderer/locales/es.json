@@ -89,7 +89,8 @@
     "subtitle": "Elija dónde se guardan sus copias de seguridad",
     "recent": "Reciente",
     "browse": "Examinar…",
-    "opening": "Abriendo…"
+    "opening": "Abriendo…",
+    "madeBy": "Hecho por {name} con {heart}"
   },
 
   "store": {

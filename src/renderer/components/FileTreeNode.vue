@@ -65,7 +65,7 @@ const props = defineProps({
   depth: { type: Number, default: 0 },
 })
 
-const open   = ref(props.depth < 2)
+const open   = ref(false)
 const indent = computed(() => 8 + props.depth * 14)
 const cbRef  = ref(null)
 

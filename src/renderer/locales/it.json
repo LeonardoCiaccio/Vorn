@@ -89,7 +89,8 @@
     "subtitle": "Scegli dove sono archiviati i tuoi backup",
     "recent": "Recenti",
     "browse": "Sfoglia…",
-    "opening": "Apertura in corso…"
+    "opening": "Apertura in corso…",
+    "madeBy": "Scritto da {name} con {heart}"
   },
 
   "store": {
