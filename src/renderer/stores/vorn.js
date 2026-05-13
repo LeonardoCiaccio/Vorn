@@ -146,5 +146,5 @@ export {
   integrityState, clearState, extractState, pruneState,
   startBackup, startRestore, startIntegrity, startClearStore, startExtractStore,
   startPrune,
-  cancelTask, getActiveTask, getLastTask,
+  cancelTask, getActiveTask, getLastTask, anyBackupRunning,
 }                                                  from './tasks.js'

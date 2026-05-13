@@ -26,14 +26,6 @@
             {{ $t('sessions.select') }}
           </button>
           <button
-            @click="startAll"
-            :disabled="!sessions.length || anyRunning"
-            class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-300 hover:text-white hover:border-gray-600 hover:bg-gray-800 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <PlayIcon class="w-4 h-4" />
-            {{ $t('sessions.startAll') }}
-          </button>
-          <button
             @click="askDeleteAll"
             :disabled="!sessions.length || anyRunning"
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-300 hover:text-red-400 hover:border-red-600/50 hover:bg-red-500/5 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -49,14 +41,6 @@
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800 text-sm font-medium transition-colors"
           >
             {{ $t('sessions.cancel') }}
-          </button>
-          <button
-            @click="startSelected"
-            :disabled="!selected.size || anySelectedRunning"
-            class="flex items-center gap-2 px-4 py-2 rounded-md border border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <PlayIcon class="w-4 h-4" />
-            {{ selected.size ? $t('sessions.startSelectedCount', { n: selected.size }) : $t('sessions.startSelected') }}
           </button>
           <button
             @click="askDeleteSelected"
@@ -217,7 +201,8 @@
                     <button
                       v-else
                       @click.stop="startBackup(session.name, _resumeTs(session))"
-                      class="p-1.5 rounded-md text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+                      :disabled="anyBackupRunning"
+                      class="p-1.5 rounded-md text-gray-600 hover:text-indigo-400 hover:bg-indigo-500/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
                       :title="_resumeTs(session) ? $t('sessions.actions.resume') : $t('sessions.actions.start')"
                     >
                       <PlayIcon class="w-3.5 h-3.5" />
@@ -353,7 +338,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, PauseIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
-import { state, selectSession, deleteSession, getActiveTask, startBackup, cancelTask, formatTs, formatBytes } from '../stores/vorn.js'
+import { state, selectSession, deleteSession, getActiveTask, startBackup, cancelTask, formatTs, formatBytes, anyBackupRunning } from '../stores/vorn.js'
 import { isExecutable } from '../utils/executable.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
@@ -456,19 +441,6 @@ function _resumeTs(session) {
   return session.runs.find(r => r.status === 'paused')?.ts ?? null
 }
 
-async function startAll() {
-  for (const s of sessions.value) {
-    if (!getActiveTask(s.name)) await startBackup(s.name, _resumeTs(s))
-  }
-}
-
-async function startSelected() {
-  const targets = sessions.value.filter(s => selected.value.has(s.name))
-  for (const s of targets) {
-    if (!getActiveTask(s.name)) await startBackup(s.name, _resumeTs(s))
-  }
-  exitSelection()
-}
 
 const deleteConfirm = ref({ show: false, names: [] })
 
