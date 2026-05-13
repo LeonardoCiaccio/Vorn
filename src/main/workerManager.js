@@ -63,7 +63,8 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
 
   // Guard: onDone può scattare una sola volta per worker indipendentemente
   // da quanti eventi (done + error, store-disconnected + error, ecc.) arrivino.
-  let _settled = false
+  let _settled    = false
+  let _lastProgress = null
   function _settle(result, error) {
     if (_settled) return
     _settled = true
@@ -82,9 +83,11 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
         .then(outcome => worker.postMessage({ type: 'store-result', id, outcome }))
         .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message, code: err.code }))
     } else if (type === 'progress') {
+      _lastProgress = msg.progress
       updateTaskProgress(taskId, msg.progress)
       _send(mainWindow, 'vorn:task-progress', { taskId, ...msg.progress })
     } else if (type === 'done') {
+      if (_cancelTimer) { clearTimeout(_cancelTimer); _cancelTimer = null }
       ctx.activeWorkers.delete(taskId)
       _settle(msg.result, null)
     } else if (type === 'error') {
@@ -112,8 +115,17 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
     if (_cancelTimer) { clearTimeout(_cancelTimer); _cancelTimer = null }
     ctx.activeWorkers.delete(taskId)
     if (!_settled) {
-      logger.warn(`Worker [${taskId}] exited unexpectedly (code ${code})`)
-      _settle(null, `Worker terminato inaspettatamente (code ${code})`)
+      if (Atomics.load(cancelFlag, 0) !== 0) {
+        _settle({
+          status:     'cancelled',
+          orphanCount: _lastProgress?.orphanCount ?? 0,
+          deleted:     _lastProgress?.deleted     ?? 0,
+          failed:      _lastProgress?.failed      ?? 0,
+        }, null)
+      } else {
+        logger.warn(`Worker [${taskId}] exited unexpectedly (code ${code})`)
+        _settle(null, `Worker terminato inaspettatamente (code ${code})`)
+      }
     }
   })
 
@@ -128,6 +140,6 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
         ctx.activeWorkers.delete(taskId)
         entry.worker.terminate()
       }
-    }, 3000)
+    }, 8000)
   })
 }

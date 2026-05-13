@@ -59,6 +59,11 @@ async function run() {
     orphans = allStoreFiles.map(f => f.slice(0, -5)).filter(h => !referenced.has(h))
   }
 
+  if (Atomics.load(cancelFlag, 0) !== 0) {
+    parentPort.postMessage({ type: 'done', result: { status: 'cancelled', orphanCount: orphans.length, deleted: 0, failed: 0 } })
+    return
+  }
+
   const orphanCount = orphans.length
 
   if (orphanCount === 0) {
@@ -86,11 +91,8 @@ async function run() {
   }
 
   async function deleteWorker() {
-    while (true) {
-      if (Atomics.load(cancelFlag, 0) !== 0 || disconnected) break
-      const i = localIdx++
-      if (i >= toDelete.length) break
-
+    let i
+    while (Atomics.load(cancelFlag, 0) === 0 && !disconnected && (i = localIdx++) < toDelete.length) {
       try {
         await unlink(join(storeDir, toDelete[i] + '.vorn'))
         deleted++
@@ -98,9 +100,7 @@ async function run() {
         if (e.code === 'ENOENT') {
           deleted++
         } else {
-          try { await stat(storeDir) } catch {
-            disconnected = true; break
-          }
+          try { await stat(storeDir) } catch { disconnected = true }
           failed++
         }
       }

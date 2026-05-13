@@ -649,21 +649,30 @@
       <template v-if="pruneState.report">
         <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-md bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-              <CheckCircleIcon class="w-4 h-4 text-emerald-400" />
+            <div class="w-8 h-8 rounded-md flex items-center justify-center"
+              :class="pruneState.report.fatalError ? 'bg-red-500/15 border border-red-500/30' : 'bg-emerald-500/15 border border-emerald-500/30'"
+            >
+              <ExclamationTriangleIcon v-if="pruneState.report.fatalError" class="w-4 h-4 text-red-400" />
+              <CheckCircleIcon v-else class="w-4 h-4 text-emerald-400" />
             </div>
             <h3 class="text-sm font-bold text-white uppercase tracking-wider">
-              {{ pruneState.report.status === 'cancelled'
-                ? $t('store.prune.reportTitleCancelled')
-                : $t('store.prune.reportTitle') }}
+              {{ pruneState.report.fatalError
+                ? $t('common.error')
+                : pruneState.report.status === 'cancelled'
+                  ? $t('store.prune.reportTitleCancelled')
+                  : $t('store.prune.reportTitle') }}
             </h3>
           </div>
           <button @click="showPruneStatus = false" class="text-gray-500 hover:text-white transition-colors">
             <XMarkIcon class="w-5 h-5" />
           </button>
         </div>
+        <!-- Errore fatale -->
+        <div v-if="pruneState.report.fatalError" class="px-6 py-5">
+          <p class="text-xs text-red-400 font-mono">{{ pruneState.report.fatalError }}</p>
+        </div>
         <!-- Store già pulito -->
-        <div v-if="pruneState.report.orphanCount === 0 && pruneState.report.status !== 'cancelled'" class="flex flex-col items-center justify-center py-10 text-center gap-3">
+        <div v-else-if="pruneState.report.orphanCount === 0 && pruneState.report.status !== 'cancelled'" class="flex flex-col items-center justify-center py-10 text-center gap-3">
           <CheckCircleIcon class="w-10 h-10 text-emerald-500" />
           <p class="text-sm text-gray-300 font-medium">{{ $t('store.prune.allClean') }}</p>
           <p class="text-xs text-gray-500">{{ $t('store.prune.allCleanSub') }}</p>
