@@ -136,7 +136,7 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
     _cancelTimer = setTimeout(() => {
       const entry = ctx.activeWorkers.get(taskId)
       if (entry) {
-        logger.warn(`Worker [${taskId}] force-terminated: non ha risposto al cancel entro 3s`)
+        logger.warn(`Worker [${taskId}] force-terminated: non ha risposto al cancel entro 8s`)
         ctx.activeWorkers.delete(taskId)
         entry.worker.terminate()
       }

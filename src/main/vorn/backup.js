@@ -124,11 +124,11 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
     try {
       const { outcome, storeKey } = await _storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath, compressionType)
+      run.files[relPath] = storeKey
+      dbUpsertFile(filePath, mtime, bytes, hashVorn)
       if (isCancelled?.()) break // cancellato durante lo store
       if (outcome === 'new') { filesNew++; bytesNew += bytes }
       else                   { filesDedup++ }
-      run.files[relPath] = storeKey
-      dbUpsertFile(filePath, mtime, bytes, hashVorn)
     } catch (e) {
       if (e.code === 'ENOSPC') {
         run.status      = 'error'
