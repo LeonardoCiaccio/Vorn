@@ -163,6 +163,49 @@
       </div>
     </div>
 
+    <!-- Modal bloccante: verifica integrità in corso -->
+    <div v-if="integrityState.running" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-[2px]">
+      <div class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-md bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center shrink-0">
+            <ArrowPathIcon class="w-4 h-4 text-emerald-400 animate-spin" />
+          </div>
+          <div>
+            <p class="text-sm font-bold text-white">{{ $t('store.integrity.title') }}</p>
+            <p class="text-xs text-gray-500 mt-0.5">{{ $t('store.integrity.dontClose') }}</p>
+          </div>
+        </div>
+        <div class="px-6 py-5 space-y-4">
+          <div class="flex items-center justify-between text-xs font-mono mb-1">
+            <span class="text-emerald-400">{{ $t('store.integrity.checked', { n: (integrityState.progress?.current ?? 0).toLocaleString() }) }}</span>
+            <span class="text-gray-500">{{ $t('store.integrity.total', { n: (integrityState.progress?.total ?? 0).toLocaleString() }) }}</span>
+          </div>
+          <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-emerald-500 rounded-full transition-all duration-300"
+              :style="{ width: integrityProgressPct + '%' }"
+            />
+          </div>
+          <div class="flex items-center gap-4 text-xs font-mono">
+            <span class="text-emerald-400">{{ $t('store.integrity.ok', { n: (integrityState.progress?.ok ?? 0).toLocaleString() }) }}</span>
+            <span v-if="integrityState.progress?.errors" class="text-red-400">
+              {{ $t('store.integrity.errors', { n: integrityState.progress.errors }) }}
+            </span>
+          </div>
+        </div>
+        <div class="px-6 py-4 bg-gray-800/30 flex justify-end">
+          <button
+            @click="stopIntegrity"
+            :disabled="integritySuspending"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold text-white bg-red-700 hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            <ArrowPathIcon v-if="integritySuspending" class="w-3 h-3 animate-spin" />
+            {{ integritySuspending ? $t('store.integrity.suspending') : $t('common.stop') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Table Area -->
     <div class="flex-1 overflow-hidden flex flex-col">
 
@@ -899,6 +942,23 @@ async function runIntegrity() {
   await startIntegrity()
 }
 
+const integritySuspending = ref(false)
+
+const integrityProgressPct = computed(() => {
+  const p = integrityState.value.progress
+  if (!p?.total) return 0
+  return Math.round((p.current / p.total) * 100)
+})
+
+function stopIntegrity() {
+  for (const [id, t] of Object.entries(state.tasks)) {
+    if (t.type === 'integrity' && t.status === 'running') {
+      integritySuspending.value = true
+      cancelTask(t.id)
+    }
+  }
+}
+
 // Infinite scroll
 const storeFileCount = ref(null)
 const sentinel = ref(null)
@@ -956,7 +1016,10 @@ watch(() => clearState.value.running, (running, wasRunning) => {
 })
 
 watch(() => integrityState.value.running, (running, wasRunning) => {
-  if (wasRunning && !running) showIntegrityReport.value = true
+  if (wasRunning && !running) {
+    integritySuspending.value = false
+    showIntegrityReport.value = true
+  }
 })
 
 onMounted(async () => {

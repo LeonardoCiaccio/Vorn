@@ -140,6 +140,15 @@
       "deleted": "Eliminados",
       "errors": "Errores"
     },
+    "integrity": {
+      "title": "Verificación de integridad en curso…",
+      "dontClose": "No cierres la aplicación",
+      "checked": "{n} verificados",
+      "total": "{n} total",
+      "ok": "{n} íntegros",
+      "errors": "{n} corruptos",
+      "suspending": "Deteniendo…"
+    },
     "integrityReport": {
       "title": "Informe de integridad",
       "checked": "Verificados",

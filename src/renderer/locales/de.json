@@ -140,6 +140,15 @@
       "deleted": "Gelöscht",
       "errors": "Fehler"
     },
+    "integrity": {
+      "title": "Integritätsprüfung läuft…",
+      "dontClose": "Anwendung nicht schließen",
+      "checked": "{n} geprüft",
+      "total": "{n} gesamt",
+      "ok": "{n} intakt",
+      "errors": "{n} beschädigt",
+      "suspending": "Wird gestoppt…"
+    },
     "integrityReport": {
       "title": "Integritätsbericht",
       "checked": "Geprüft",

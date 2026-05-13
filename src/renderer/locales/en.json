@@ -140,6 +140,15 @@
       "deleted": "Deleted",
       "errors": "Errors"
     },
+    "integrity": {
+      "title": "Integrity check in progress…",
+      "dontClose": "Do not close the application",
+      "checked": "{n} checked",
+      "total": "{n} total",
+      "ok": "{n} intact",
+      "errors": "{n} corrupted",
+      "suspending": "Stopping…"
+    },
     "integrityReport": {
       "title": "Integrity Report",
       "checked": "Checked",
