@@ -56,14 +56,12 @@
           <span v-else>{{ $t('store.verifyIntegrity') }}</span>
         </button>
         <button
-          @click="handlePruneClick"
+          @click="showPruneConfirm = true"
           :disabled="pruneState.running || anyTaskRunning"
           :title="anyTaskRunning && !pruneState.running ? $t('common.operationWait') : ''"
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-indigo-500/50 hover:text-indigo-300 hover:bg-indigo-500/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          :class="pruneState.paused ? 'border-amber-500/30! text-amber-300!' : ''"
         >
           <ArrowPathIcon v-if="pruneState.running" class="w-4 h-4 animate-spin" />
-          <PlayIcon      v-else-if="pruneState.paused" class="w-4 h-4" />
           <ScissorsIcon  v-else class="w-4 h-4" />
           <span v-if="pruneState.running">{{ pruneState.progress?.deleted ?? 0 }}/{{ pruneState.progress?.orphanCount ?? '…' }}</span>
           <span v-else>{{ $t('store.prune.button') }}</span>
@@ -154,16 +152,12 @@
         </div>
         <div class="px-6 py-4 bg-gray-800/30 flex justify-end gap-2">
           <button
-            @click="doPausePrune"
-            class="px-4 py-2 rounded-md text-xs font-semibold text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition-colors"
-          >
-            {{ $t('store.prune.pause') }}
-          </button>
-          <button
             @click="doStopPrune"
-            class="px-4 py-2 rounded-md text-xs font-semibold text-white bg-red-700 hover:bg-red-600 transition-colors"
+            :disabled="pruneSuspending"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold text-white bg-red-700 hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
-            {{ $t('common.stop') }}
+            <ArrowPathIcon v-if="pruneSuspending" class="w-3 h-3 animate-spin" />
+            {{ pruneSuspending ? $t('store.prune.suspending') : $t('common.stop') }}
           </button>
         </div>
       </div>
@@ -651,51 +645,8 @@
     @click.self="showPruneStatus = false"
   >
     <div class="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
-      <!-- Paused -->
-      <template v-if="pruneState.paused && pruneState.pausedData">
-        <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-md bg-amber-500/15 border border-amber-500/30 flex items-center justify-center">
-              <PauseIcon class="w-4 h-4 text-amber-400" />
-            </div>
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">{{ $t('store.prune.pausedTitle') }}</h3>
-          </div>
-          <button @click="showPruneStatus = false" class="text-gray-500 hover:text-white transition-colors">
-            <XMarkIcon class="w-5 h-5" />
-          </button>
-        </div>
-        <div class="px-6 py-5 grid grid-cols-2 gap-4 border-b border-gray-800">
-          <div class="text-center">
-            <p class="text-2xl font-bold text-white">{{ pruneState.pausedData.orphanCount }}</p>
-            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.prune.orphanCount') }}</p>
-          </div>
-          <div class="text-center">
-            <p class="text-2xl font-bold text-indigo-400">{{ pruneState.pausedData.deleted }}</p>
-            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.prune.reportDeleted') }}</p>
-          </div>
-        </div>
-        <p class="px-6 pt-4 text-xs text-gray-500">{{ $t('store.prune.pausedSub') }}</p>
-        <div class="px-6 py-4 flex justify-end gap-2">
-          <button @click="showPruneStatus = false" class="px-4 py-2 rounded-md text-xs font-medium text-gray-400 hover:text-white transition-colors">
-            {{ $t('common.cancel') }}
-          </button>
-          <button
-            @click="doStopPrune(); showPruneStatus = false"
-            class="px-4 py-2 rounded-md text-xs font-semibold text-white bg-red-700 hover:bg-red-600 transition-colors"
-          >
-            {{ $t('common.stop') }}
-          </button>
-          <button
-            @click="doResumePrune"
-            :disabled="anyTaskRunning"
-            class="px-4 py-2 rounded-md text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-500/20"
-          >
-            {{ $t('store.prune.resume') }}
-          </button>
-        </div>
-      </template>
       <!-- Done -->
-      <template v-else-if="pruneState.report">
+      <template v-if="pruneState.report">
         <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-md bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
@@ -792,10 +743,8 @@ import {
   ArrowDownTrayIcon,
   FolderOpenIcon,
   ScissorsIcon,
-  PauseIcon,
-  PlayIcon,
 } from '@heroicons/vue/24/outline'
-import { state, clearState, integrityState, pruneState, fetchStorePage, startIntegrity, startClearStore, startPrune, resumePrune, pausePrune, cancelTask, formatTs, formatBytes, closeStore } from '../stores/vorn.js'
+import { state, clearState, integrityState, pruneState, fetchStorePage, startIntegrity, startClearStore, startPrune, cancelTask, formatTs, formatBytes, closeStore } from '../stores/vorn.js'
 import ExtractFromStoreModal from '../components/ExtractFromStoreModal.vue'
 
 const { t } = useI18n()
@@ -883,8 +832,9 @@ function _showExtractResult(ok, message) {
 }
 
 // Prune store
-const showPruneConfirm = ref(false)
-const showPruneStatus  = ref(false)
+const showPruneConfirm  = ref(false)
+const showPruneStatus   = ref(false)
+const pruneSuspending   = ref(false)
 
 const pruneProgressPct = computed(() => {
   const p = pruneState.value.progress
@@ -892,37 +842,18 @@ const pruneProgressPct = computed(() => {
   return Math.round((p.current / p.total) * 100)
 })
 
-function handlePruneClick() {
-  if (pruneState.value.paused) {
-    showPruneStatus.value = true
-    return
-  }
-  showPruneConfirm.value = true
-}
-
 async function confirmPrune() {
   showPruneConfirm.value = false
   await startPrune()
 }
 
-function doPausePrune() {
-  if (pruneState.value.activeTaskId) pausePrune(pruneState.value.activeTaskId)
-}
-
 function doStopPrune() {
   for (const [id, t] of Object.entries(state.tasks)) {
-    if (t.type === 'prune') {
-      if (t.status === 'running') cancelTask(t.id)
-      if (t.status === 'paused') delete state.tasks[id]
+    if (t.type === 'prune' && t.status === 'running') {
+      pruneSuspending.value = true
+      cancelTask(t.id)
     }
   }
-}
-
-async function doResumePrune() {
-  const d = pruneState.value.pausedData
-  if (!d) return
-  showPruneStatus.value = false
-  await resumePrune(d.orphanList, d.nextIndex)
 }
 
 // Clear store
@@ -994,9 +925,8 @@ function setupObserver() {
 
 watch(() => pruneState.value.running, (running, wasRunning) => {
   if (wasRunning && !running) {
-    if (pruneState.value.paused || pruneState.value.report) {
-      showPruneStatus.value = true
-    }
+    pruneSuspending.value = false
+    if (pruneState.value.report) showPruneStatus.value = true
     if (pruneState.value.report && pruneState.value.report.status !== 'cancelled' && !pruneState.value.report.fatalError) {
       refreshStore()
     }

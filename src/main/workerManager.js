@@ -105,5 +105,29 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
     _settle(null, err.message)
   })
 
-  setTaskCancelFn(taskId, () => Atomics.store(cancelFlag, 0, 1))
+  // Se il worker esce senza aver mandato done/error (crash, terminate forzato),
+  // il task viene comunque risolto per non rimanere bloccato in stato running.
+  let _cancelTimer = null
+  worker.on('exit', (code) => {
+    if (_cancelTimer) { clearTimeout(_cancelTimer); _cancelTimer = null }
+    ctx.activeWorkers.delete(taskId)
+    if (!_settled) {
+      logger.warn(`Worker [${taskId}] exited unexpectedly (code ${code})`)
+      _settle(null, `Worker terminato inaspettatamente (code ${code})`)
+    }
+  })
+
+  setTaskCancelFn(taskId, () => {
+    Atomics.store(cancelFlag, 0, 1)
+    // Se il worker non risponde entro 8s dal cancel (es. unlink bloccata su rete),
+    // lo termina forzatamente. L'exit handler chiamerà _settle.
+    _cancelTimer = setTimeout(() => {
+      const entry = ctx.activeWorkers.get(taskId)
+      if (entry) {
+        logger.warn(`Worker [${taskId}] force-terminated: non ha risposto al cancel entro 3s`)
+        ctx.activeWorkers.delete(taskId)
+        entry.worker.terminate()
+      }
+    }, 3000)
+  })
 }

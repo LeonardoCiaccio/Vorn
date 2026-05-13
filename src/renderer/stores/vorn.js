@@ -145,6 +145,6 @@ export {
 export {
   integrityState, clearState, extractState, pruneState,
   startBackup, startRestore, startIntegrity, startClearStore, startExtractStore,
-  startPrune, resumePrune, pausePrune,
+  startPrune,
   cancelTask, getActiveTask, getLastTask,
 }                                                  from './tasks.js'
