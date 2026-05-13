@@ -89,7 +89,8 @@
     "subtitle": "Choisissez où vos sauvegardes sont stockées",
     "recent": "Récent",
     "browse": "Parcourir…",
-    "opening": "Ouverture…"
+    "opening": "Ouverture…",
+    "madeBy": "Fait par {name} avec {heart}"
   },
 
   "store": {

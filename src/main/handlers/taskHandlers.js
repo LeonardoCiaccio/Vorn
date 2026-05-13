@@ -92,8 +92,8 @@ export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:start-backup', (_, { sessionName, resumeTs = null }) => {
     if (!ctx.activeStore) throw new Error('Nessuno store aperto')
     validateSessionName(sessionName)
-    if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
-      throw new Error(`Operazione già in corso: ${sessionName}`)
+    if (listTasks().some(t => t.type === 'backup' && t.status === 'running'))
+      throw new Error('BACKUP_IN_PROGRESS')
     // Scrivi il run su disco prima di avviare il worker — il watcher potrebbe
     // fare refreshSession prima che il worker abbia avuto tempo di crearlo.
     let runTs

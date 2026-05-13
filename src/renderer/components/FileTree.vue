@@ -68,7 +68,7 @@ const emit = defineEmits(['update:selected', 'update:selectionMode'])
 // Expand/collapse globale
 const expandSignal   = ref(0)
 const collapseSignal = ref(0)
-const allExpanded    = ref(true)
+const allExpanded    = ref(false)
 provide('expandSignal',   expandSignal)
 provide('collapseSignal', collapseSignal)
 
@@ -95,6 +95,7 @@ provide('selectedPaths', selectedPaths)
 watch(() => props.files, () => {
   selectedPaths.value = new Set()
   selectionMode.value = false
+  allExpanded.value   = false
   emit('update:selectionMode', false)
 })
 

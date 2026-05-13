@@ -46,6 +46,10 @@ export function getLastTask(sessionName, type) {
 
 export function cancelTask(taskId) { window.vorn.cancelTask(taskId) }
 
+export const anyBackupRunning = computed(() =>
+  Object.values(state.tasks).some(t => t.type === 'backup' && t.status === 'running')
+)
+
 // ── Avvio task ────────────────────────────────────────────────────────────────
 
 function _registerTask(taskId, type, sessionName) {

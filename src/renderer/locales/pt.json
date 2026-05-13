@@ -89,7 +89,8 @@
     "subtitle": "Escolha onde seus backups serão armazenados",
     "recent": "Recente",
     "browse": "Procurar…",
-    "opening": "Abrindo…"
+    "opening": "Abrindo…",
+    "madeBy": "Feito por {name} com {heart}"
   },
 
   "store": {
