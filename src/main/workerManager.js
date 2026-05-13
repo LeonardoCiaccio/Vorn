@@ -108,8 +108,10 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
     _settle(null, err.message)
   })
 
-  // Se il worker esce senza aver mandato done/error (crash, terminate forzato),
-  // il task viene comunque risolto per non rimanere bloccato in stato running.
+  // Se il worker esce senza aver mandato done/error (crash o exit inatteso),
+  // risolve il task per non lasciarlo bloccato in stato running.
+  // Nota: il force-terminate da cancel timer risolve già il task PRIMA di
+  // chiamare terminate(), quindi qui _settled è tipicamente già true.
   let _cancelTimer = null
   worker.on('exit', (code) => {
     if (_cancelTimer) { clearTimeout(_cancelTimer); _cancelTimer = null }
@@ -117,10 +119,13 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
     if (!_settled) {
       if (Atomics.load(cancelFlag, 0) !== 0) {
         _settle({
-          status:     'cancelled',
-          orphanCount: _lastProgress?.orphanCount ?? 0,
-          deleted:     _lastProgress?.deleted     ?? 0,
-          failed:      _lastProgress?.failed      ?? 0,
+          status:      'cancelled',
+          total:        _lastProgress?.total        ?? 0,
+          ok:           _lastProgress?.ok           ?? 0,
+          errors:       Array.isArray(_lastProgress?.errors) ? _lastProgress.errors : [],
+          orphanCount:  _lastProgress?.orphanCount  ?? 0,
+          deleted:      _lastProgress?.deleted      ?? 0,
+          failed:       _lastProgress?.failed       ?? 0,
         }, null)
       } else {
         logger.warn(`Worker [${taskId}] exited unexpectedly (code ${code})`)
@@ -131,13 +136,26 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
 
   setTaskCancelFn(taskId, () => {
     Atomics.store(cancelFlag, 0, 1)
-    // Se il worker non risponde entro 8s dal cancel (es. unlink bloccata su rete),
-    // lo termina forzatamente. L'exit handler chiamerà _settle.
+    // Se il worker non risponde entro 8s dal cancel (es. I/O bloccata su USB/rete),
+    // risolve subito il task come 'cancelled' per sbloccare la UI, poi tenta il
+    // terminate. Su Windows il thread potrebbe restare in un kernel-wait finché
+    // l'I/O non completa — l'exit handler non scatterebbe mai, lasciando la
+    // modal bloccata in "Stopping…" indefinitamente.
     _cancelTimer = setTimeout(() => {
       const entry = ctx.activeWorkers.get(taskId)
       if (entry) {
         logger.warn(`Worker [${taskId}] force-terminated: non ha risposto al cancel entro 8s`)
         ctx.activeWorkers.delete(taskId)
+        // Sblocca la UI immediatamente, indipendentemente dall'exit del worker.
+        _settle({
+          status:      'cancelled',
+          total:        _lastProgress?.total        ?? 0,
+          ok:           _lastProgress?.ok           ?? 0,
+          errors:       Array.isArray(_lastProgress?.errors) ? _lastProgress.errors : [],
+          orphanCount:  _lastProgress?.orphanCount  ?? 0,
+          deleted:      _lastProgress?.deleted      ?? 0,
+          failed:       _lastProgress?.failed       ?? 0,
+        }, null)
         entry.worker.terminate()
       }
     }, 8000)

@@ -151,10 +151,10 @@
     },
     "integrityReport": {
       "title": "Rapport d'intégrité",
-      "checked": "Vérifiés",
+      "checked": "Total",
       "ok": "OK",
       "corrupt": "Corrompus",
-      "allOk": "Tous les fichiers sont intacts",
+      "allOk": "Tous les fichiers vérifiés sont intacts",
       "noIssues": "Aucune anomalie détectée dans le dépôt.",
       "corruptFiles": "Fichiers corrompus"
     },

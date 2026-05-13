@@ -523,14 +523,14 @@
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.integrityReport.ok') }}</p>
           </div>
           <div class="text-center">
-            <p class="text-2xl font-bold" :class="integrityState.report.errors.length ? 'text-red-400' : 'text-gray-500'">
-              {{ integrityState.report.errors.length }}
+            <p class="text-2xl font-bold" :class="(integrityState.report.errors?.length ?? 0) ? 'text-red-400' : 'text-gray-500'">
+              {{ integrityState.report.errors?.length ?? 0 }}
             </p>
             <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.integrityReport.corrupt') }}</p>
           </div>
         </div>
         <div class="flex-1 overflow-auto">
-          <div v-if="integrityState.report.errors.length === 0" class="flex flex-col items-center justify-center py-12 text-center gap-3">
+          <div v-if="!(integrityState.report.errors?.length)" class="flex flex-col items-center justify-center py-12 text-center gap-3">
             <CheckCircleIcon class="w-10 h-10 text-emerald-500" />
             <p class="text-sm text-gray-300 font-medium">{{ $t('store.integrityReport.allOk') }}</p>
             <p class="text-xs text-gray-500">{{ $t('store.integrityReport.noIssues') }}</p>

@@ -151,10 +151,10 @@
     },
     "integrityReport": {
       "title": "Integritätsbericht",
-      "checked": "Geprüft",
+      "checked": "Gesamt",
       "ok": "OK",
       "corrupt": "Beschädigt",
-      "allOk": "Alle Dateien sind intakt",
+      "allOk": "Alle geprüften Dateien sind intakt",
       "noIssues": "Keine Anomalien im Speicher erkannt.",
       "corruptFiles": "Beschädigte Dateien"
     },

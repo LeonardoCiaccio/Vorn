@@ -151,10 +151,10 @@
     },
     "integrityReport": {
       "title": "Relatório de Integridade",
-      "checked": "Verificados",
+      "checked": "Total",
       "ok": "OK",
       "corrupt": "Corrompidos",
-      "allOk": "Todos os arquivos estão intactos",
+      "allOk": "Todos os arquivos verificados estão intactos",
       "noIssues": "Nenhuma anomalia detectada no repositório.",
       "corruptFiles": "Arquivos corrompidos"
     },

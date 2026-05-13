@@ -151,10 +151,10 @@
     },
     "integrityReport": {
       "title": "Integrity Report",
-      "checked": "Checked",
+      "checked": "Total",
       "ok": "OK",
       "corrupt": "Corrupted",
-      "allOk": "All files are intact",
+      "allOk": "All checked files are intact",
       "noIssues": "No anomalies detected in the store.",
       "corruptFiles": "Corrupted files"
     },
