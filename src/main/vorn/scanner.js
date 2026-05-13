@@ -10,7 +10,7 @@ export function walk(dir, excludePaths = [], excludePatterns = [], _results = []
         const full = join(current, entry.name)
         if (excludePaths.some(p => full === p || full.startsWith(p + '\\') || full.startsWith(p + '/'))) continue
         const relFromRoot = full.slice(dir.length + 1).replace(/\\/g, '/')
-        if (excludePatterns.some(pat => matchPattern(relFromRoot, pat))) continue
+        if (excludePatterns.some(pat => matchPattern(relFromRoot, pat) || matchPattern(entry.name, pat))) continue
         
         if (entry.isDirectory()) {
           queue.push(full)
