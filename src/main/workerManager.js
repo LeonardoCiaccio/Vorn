@@ -1,6 +1,6 @@
 import { Worker } from 'worker_threads'
 import { join }   from 'path'
-import { statSync } from 'fs'
+import { stat }   from 'fs/promises'
 import { storeBlob }                                         from './vorn/store.js'
 import { releaseLock }                                       from './vorn/lockFile.js'
 import { setTaskCancelFn, updateTaskProgress }               from './vorn/taskManager.js'
@@ -26,8 +26,7 @@ export function startStoreWatch(mainWindow) {
   stopStoreWatch()
   ctx.storeWatcher = setInterval(() => {
     if (ctx.appClosing || !ctx.activeStore) return stopStoreWatch()
-    try { statSync(ctx.activeStore) }
-    catch (e) { logger.warn(`Store health check failed (${e.code ?? e.message})`); triggerDisconnect(mainWindow) }
+    stat(ctx.activeStore).catch(e => { logger.warn(`Store health check failed (${e.code ?? e.message})`); triggerDisconnect(mainWindow) })
   }, 1000)
 }
 

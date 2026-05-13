@@ -115,14 +115,16 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
     // Hash necessario: file nuovo, modificato, o .vorn mancante con hash sconosciuto
     if (!hashVorn) {
-      try { hashVorn = vornHash(filePath) }
+      try { hashVorn = vornHash(filePath, isCancelled) }
       catch (e) { errors.push({ path: filePath, error: e.code ?? e.message, phase: 'hash' }); continue }
+      if (hashVorn === null) break // cancellato durante l'hashing
     }
 
     bytesTotal += bytes
 
     try {
       const { outcome, storeKey } = await _storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath, compressionType)
+      if (isCancelled?.()) break // cancellato durante lo store
       if (outcome === 'new') { filesNew++; bytesNew += bytes }
       else                   { filesDedup++ }
       run.files[relPath] = storeKey

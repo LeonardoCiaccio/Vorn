@@ -5,7 +5,7 @@ import { safeOpenSync, safeReadSync, safeCloseSync, safeStatSync } from './safeF
 
 const CHUNK = HASH_CHUNK_BYTES
 
-export function vornHash(filePath) {
+export function vornHash(filePath, isCancelled) {
   const size  = safeStatSync(filePath).size
   const fd    = safeOpenSync(filePath, 'r')
   const h     = blake3.create()
@@ -13,6 +13,7 @@ export function vornHash(filePath) {
   let offset  = 0
   try {
     while (offset < size) {
+      if (isCancelled?.()) return null
       const n = safeReadSync(fd, buf, 0, Math.min(CHUNK, size - offset), offset)
       h.update(buf.subarray(0, n))
       offset += n
