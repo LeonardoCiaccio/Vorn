@@ -40,9 +40,18 @@ function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, re
   })
 }
 
+let _lastProgressTs = 0
+function _sendProgress(progress) {
+  const now = Date.now()
+  if (now - _lastProgressTs >= 200 || progress.current === progress.total) {
+    _lastProgressTs = now
+    parentPort.postMessage({ type: 'progress', progress })
+  }
+}
+
 backup(storeDir, sessionName, {
   isCancelled: () => Atomics.load(cancelFlag, 0) === 1,
-  onProgress:  (progress) => parentPort.postMessage({ type: 'progress', progress }),
+  onProgress:  _sendProgress,
   resumeTs,
   runTs,
   storeFn,

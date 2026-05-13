@@ -1,6 +1,6 @@
 import { workerData, parentPort } from 'worker_threads'
-import { readdirSync, statSync } from 'fs'
-import { unlink } from 'fs/promises'
+import { readdirSync } from 'fs'
+import { unlink, stat } from 'fs/promises'
 import { join } from 'path'
 import { CLEAR_BATCH } from './constants.js'
 
@@ -8,32 +8,53 @@ const { storeDir, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
 const files = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
-const total   = files.length
-const BATCH   = CLEAR_BATCH
-
-let deleted = 0
-let failed  = 0
+const total = files.length
 
 async function run() {
-  for (let i = 0; i < files.length; i += BATCH) {
-    if (Atomics.load(cancelFlag, 0)) break
+  let idx          = 0
+  let deleted      = 0
+  let failed       = 0
+  let disconnected = false
+  let lastProgressTs = 0
 
-    const batch   = files.slice(i, i + BATCH)
-    const results = await Promise.allSettled(batch.map(f => unlink(join(storeDir, f))))
-    for (const r of results) {
-      if (r.status === 'fulfilled' || r.reason?.code === 'ENOENT') deleted++
-      else {
-        try { statSync(storeDir) } catch {
-          parentPort.postMessage({ type: 'store-disconnected' }); return
-        }
-        failed++
-      }
+  function reportProgress() {
+    const now = Date.now()
+    if (now - lastProgressTs >= 200 || idx >= total) {
+      lastProgressTs = now
+      parentPort.postMessage({ type: 'progress', progress: { current: Math.min(idx, total), total, deleted, failed } })
     }
-
-    parentPort.postMessage({ type: 'progress', progress: { current: i + batch.length, total, deleted, failed } })
   }
 
-  parentPort.postMessage({ type: 'done', result: { total, deleted, failed } })
+  async function worker() {
+    while (true) {
+      if (Atomics.load(cancelFlag, 0) !== 0 || disconnected) break
+      const i = idx++
+      if (i >= total) break
+
+      try {
+        await unlink(join(storeDir, files[i]))
+        deleted++
+      } catch (e) {
+        if (e.code === 'ENOENT') {
+          deleted++
+        } else {
+          try { await stat(storeDir) } catch {
+            disconnected = true
+            parentPort.postMessage({ type: 'store-disconnected' })
+            break
+          }
+          failed++
+        }
+      }
+      reportProgress()
+    }
+  }
+
+  await Promise.all(Array.from({ length: CLEAR_BATCH }, worker))
+
+  if (!disconnected) {
+    parentPort.postMessage({ type: 'done', result: { total, deleted, failed } })
+  }
 }
 
 run().catch(e => parentPort.postMessage({ type: 'error', error: e.message }))

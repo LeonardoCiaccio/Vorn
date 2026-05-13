@@ -1,6 +1,6 @@
 import { ipcMain, Notification, app }                                      from 'electron'
 import { logger }                                                          from '../vorn/logger.js'
-import { isAbsolute, resolve, sep }                                        from 'path'
+import { isAbsolute, resolve }                                              from 'path'
 import { accessSync, constants }                                           from 'fs'
 import { createTask, cancelTask, listTasks, finishTask, failTask }         from '../vorn/taskManager.js'
 import { extractByHash }                                                   from '../vorn/restore.js'
@@ -168,28 +168,6 @@ export function registerTaskHandlers(mainWindow) {
     logger.info(`Task prune started [${task.id}]`)
     spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, _onDone(task, mainWindow))
     return { taskId: task.id }
-  })
-
-  ipcMain.handle('vorn:resume-prune', (_, { orphanListPath, nextIndex }) => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
-    if (!orphanListPath || typeof orphanListPath !== 'string') throw new Error('orphanListPath non valido')
-    const resolvedOrphan = resolve(orphanListPath)
-    const resolvedStore  = resolve(ctx.activeStore)
-    if (!resolvedOrphan.startsWith(resolvedStore + sep))
-      throw new Error('orphanListPath fuori dallo store')
-    if (!Number.isInteger(nextIndex) || nextIndex < 0) throw new Error('nextIndex non valido')
-    if (listTasks().some(t => t.status === 'running'))
-      throw new Error('Impossibile riprendere: operazioni in corso')
-    const task = createTask('prune', null)
-    logger.info(`Task prune resumed [${task.id}] from index=${nextIndex}`)
-    spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore, orphanListPath: resolvedOrphan, startIndex: nextIndex }, task.id, mainWindow, _onDone(task, mainWindow))
-    return { taskId: task.id }
-  })
-
-  ipcMain.handle('vorn:pause-prune', (_, taskId) => {
-    const entry = ctx.activeWorkers.get(taskId)
-    if (entry) Atomics.store(entry.cancelFlag, 0, 2)
-    return true
   })
 
   ipcMain.handle('vorn:extract-hash', async (_, { hashVorn, destDir, filename }) => {

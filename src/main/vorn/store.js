@@ -1,32 +1,32 @@
-import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, openSync, writeSync, closeSync, truncateSync, writeFileSync, fsyncSync } from 'fs'
+import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'fs'
+import { access, writeFile, truncate, open, unlink } from 'fs/promises'
 import { join, basename } from 'path'
 import { createHash } from 'crypto'
-import { readVornMeta, readVorn, writeVornFromSource, contentStream, VORN_HEADER_SIZE, VORN_SEPARATOR_LEN, readVornContentLen } from './format.js'
+import { readVornMeta, readVorn, writeVornFromSource, contentStream, VORN_HEADER_SIZE, VORN_SEPARATOR_LEN } from './format.js'
 import { withFileLock } from './fileLock.js'
 
 function _walChecksum(metaJson) {
   return createHash('sha256').update(metaJson).digest('hex').slice(0, 16)
 }
 
-function _updateMeta(filePath, meta) {
-  const contentLen = readVornContentLen(filePath)
-  const metaJson   = JSON.stringify(meta)
-  const metaBuf    = Buffer.from(metaJson, 'utf8')
-  const tmpPath    = filePath + '.mtmp'
+async function _updateMeta(filePath, meta, contentLen) {
+  const metaJson = JSON.stringify(meta)
+  const metaBuf  = Buffer.from(metaJson, 'utf8')
+  const tmpPath  = filePath + '.mtmp'
 
-  writeFileSync(tmpPath, JSON.stringify({ meta, checksum: _walChecksum(metaJson) })) // WAL con checksum
+  await writeFile(tmpPath, JSON.stringify({ meta, checksum: _walChecksum(metaJson) }))
 
-  truncateSync(filePath, VORN_HEADER_SIZE + Number(contentLen) + VORN_SEPARATOR_LEN)
+  await truncate(filePath, VORN_HEADER_SIZE + Number(contentLen) + VORN_SEPARATOR_LEN)
 
-  const fdw = openSync(filePath, 'a')
+  const fh = await open(filePath, 'a')
   try {
-    writeSync(fdw, metaBuf)
-    fsyncSync(fdw) // flush su disco garantito prima di rimuovere il WAL
+    await fh.write(metaBuf)
+    await fh.sync() // flush asincrono: cede l'event loop durante l'attesa disco
   } finally {
-    closeSync(fdw)
+    await fh.close()
   }
 
-  try { unlinkSync(tmpPath) } catch { /* non-critico */ }
+  try { await unlink(tmpPath) } catch { /* non-critico */ }
 }
 
 export function toStoreKey(hash, compressionType) {
@@ -115,7 +115,8 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
   const p   = vornPath(storeDir, key)
 
   return withFileLock(p, async () => {
-    if (!existsSync(p)) {
+    const pExists = await access(p).then(() => true).catch(() => false)
+    if (!pExists) {
       const meta = {
         hash_vorn:       hashVorn,
         bytes,
@@ -127,18 +128,18 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
       return { outcome: 'new', storeKey: key }
     }
 
-    const { meta } = readVornMeta(p)
+    const { meta, contentLen } = readVornMeta(p)
     if (!meta.records) meta.records = []
 
     const rec = meta.records.find(r => r.id === sessionId)
     if (rec) {
       if (!rec.paths.includes(relPath)) {
         rec.paths.push(relPath)
-        _updateMeta(p, meta)
+        await _updateMeta(p, meta, contentLen)
       }
     } else {
       meta.records.push({ id: sessionId, session: sessionName, paths: [relPath] })
-      _updateMeta(p, meta)
+      await _updateMeta(p, meta, contentLen)
     }
     return { outcome: 'dedup', storeKey: key }
   })

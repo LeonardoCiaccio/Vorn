@@ -1,6 +1,6 @@
 import { Worker } from 'worker_threads'
 import { join }   from 'path'
-import { statSync } from 'fs'
+import { stat }   from 'fs/promises'
 import { storeBlob }                                         from './vorn/store.js'
 import { releaseLock }                                       from './vorn/lockFile.js'
 import { setTaskCancelFn, updateTaskProgress }               from './vorn/taskManager.js'
@@ -26,8 +26,7 @@ export function startStoreWatch(mainWindow) {
   stopStoreWatch()
   ctx.storeWatcher = setInterval(() => {
     if (ctx.appClosing || !ctx.activeStore) return stopStoreWatch()
-    try { statSync(ctx.activeStore) }
-    catch (e) { logger.warn(`Store health check failed (${e.code ?? e.message})`); triggerDisconnect(mainWindow) }
+    stat(ctx.activeStore).catch(e => { logger.warn(`Store health check failed (${e.code ?? e.message})`); triggerDisconnect(mainWindow) })
   }, 1000)
 }
 
@@ -64,7 +63,8 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
 
   // Guard: onDone può scattare una sola volta per worker indipendentemente
   // da quanti eventi (done + error, store-disconnected + error, ecc.) arrivino.
-  let _settled = false
+  let _settled    = false
+  let _lastProgress = null
   function _settle(result, error) {
     if (_settled) return
     _settled = true
@@ -83,9 +83,11 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
         .then(outcome => worker.postMessage({ type: 'store-result', id, outcome }))
         .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message, code: err.code }))
     } else if (type === 'progress') {
+      _lastProgress = msg.progress
       updateTaskProgress(taskId, msg.progress)
       _send(mainWindow, 'vorn:task-progress', { taskId, ...msg.progress })
     } else if (type === 'done') {
+      if (_cancelTimer) { clearTimeout(_cancelTimer); _cancelTimer = null }
       ctx.activeWorkers.delete(taskId)
       _settle(msg.result, null)
     } else if (type === 'error') {
@@ -106,5 +108,38 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
     _settle(null, err.message)
   })
 
-  setTaskCancelFn(taskId, () => Atomics.store(cancelFlag, 0, 1))
+  // Se il worker esce senza aver mandato done/error (crash, terminate forzato),
+  // il task viene comunque risolto per non rimanere bloccato in stato running.
+  let _cancelTimer = null
+  worker.on('exit', (code) => {
+    if (_cancelTimer) { clearTimeout(_cancelTimer); _cancelTimer = null }
+    ctx.activeWorkers.delete(taskId)
+    if (!_settled) {
+      if (Atomics.load(cancelFlag, 0) !== 0) {
+        _settle({
+          status:     'cancelled',
+          orphanCount: _lastProgress?.orphanCount ?? 0,
+          deleted:     _lastProgress?.deleted     ?? 0,
+          failed:      _lastProgress?.failed      ?? 0,
+        }, null)
+      } else {
+        logger.warn(`Worker [${taskId}] exited unexpectedly (code ${code})`)
+        _settle(null, `Worker terminato inaspettatamente (code ${code})`)
+      }
+    }
+  })
+
+  setTaskCancelFn(taskId, () => {
+    Atomics.store(cancelFlag, 0, 1)
+    // Se il worker non risponde entro 8s dal cancel (es. unlink bloccata su rete),
+    // lo termina forzatamente. L'exit handler chiamerà _settle.
+    _cancelTimer = setTimeout(() => {
+      const entry = ctx.activeWorkers.get(taskId)
+      if (entry) {
+        logger.warn(`Worker [${taskId}] force-terminated: non ha risposto al cancel entro 3s`)
+        ctx.activeWorkers.delete(taskId)
+        entry.worker.terminate()
+      }
+    }, 8000)
+  })
 }

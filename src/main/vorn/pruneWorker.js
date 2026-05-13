@@ -1,32 +1,18 @@
 import { workerData, parentPort } from 'worker_threads'
-import { existsSync, readdirSync, readFileSync, writeFileSync, unlinkSync, statSync } from 'fs'
-import { unlink } from 'fs/promises'
+import { existsSync, readdirSync, readFileSync } from 'fs'
+import { unlink, stat } from 'fs/promises'
 import { join } from 'path'
 import { PRUNE_BATCH } from './constants.js'
 
-const { storeDir, cancelBuffer, orphanListPath = null, startIndex = 0 } = workerData
+const { storeDir, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
-const BATCH = PRUNE_BATCH
-
 async function run() {
-  // Segnale immediato che il worker è partito
   parentPort.postMessage({ type: 'progress', progress: { phase: 'scanning', scanned: 0, totalSessions: 0 } })
 
+  // Phase 1: scan tutti i run per raccogliere gli hash referenziati
   let orphans = null
-
-  if (orphanListPath) {
-    try {
-      orphans = JSON.parse(readFileSync(orphanListPath, 'utf8'))
-      try { unlinkSync(orphanListPath) } catch { /* non-critico */ }
-    } catch {
-      parentPort.postMessage({ type: 'error', error: 'File di pausa non leggibile — riavviare il prune' })
-      return
-    }
-  }
-
-  if (!orphans) {
-    // Phase 1: scan tutti i run per raccogliere gli hash referenziati
+  {
     const sessionsRoot = join(storeDir, 'vorn', 'sessions')
     const sessionDirs  = existsSync(sessionsRoot)
       ? readdirSync(sessionsRoot, { withFileTypes: true }).filter(e => e.isDirectory())
@@ -36,7 +22,7 @@ async function run() {
     const referenced    = new Set()
 
     for (let si = 0; si < sessionDirs.length; si++) {
-      if (Atomics.load(cancelFlag, 0) === 1) {
+      if (Atomics.load(cancelFlag, 0) !== 0) {
         parentPort.postMessage({ type: 'done', result: { status: 'cancelled', deleted: 0, failed: 0, orphanCount: 0 } })
         return
       }
@@ -48,6 +34,10 @@ async function run() {
 
       for (const runFile of readdirSync(runsPath)) {
         if (!runFile.endsWith('.json')) continue
+        if (Atomics.load(cancelFlag, 0) !== 0) {
+          parentPort.postMessage({ type: 'done', result: { status: 'cancelled', deleted: 0, failed: 0, orphanCount: 0 } })
+          return
+        }
         try {
           const run = JSON.parse(readFileSync(join(runsPath, runFile), 'utf8'))
           for (const fileInfo of Object.values(run.files ?? {})) {
@@ -58,10 +48,20 @@ async function run() {
       }
     }
 
+    if (Atomics.load(cancelFlag, 0) !== 0) {
+      parentPort.postMessage({ type: 'done', result: { status: 'cancelled', deleted: 0, failed: 0, orphanCount: 0 } })
+      return
+    }
+
     parentPort.postMessage({ type: 'progress', progress: { phase: 'computing', scanned: totalSessions, totalSessions } })
 
     const allStoreFiles = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
     orphans = allStoreFiles.map(f => f.slice(0, -5)).filter(h => !referenced.has(h))
+  }
+
+  if (Atomics.load(cancelFlag, 0) !== 0) {
+    parentPort.postMessage({ type: 'done', result: { status: 'cancelled', orphanCount: orphans.length, deleted: 0, failed: 0 } })
+    return
   }
 
   const orphanCount = orphans.length
@@ -71,46 +71,53 @@ async function run() {
     return
   }
 
-  const toDelete = startIndex > 0 ? orphans.slice(startIndex) : orphans
-  let deleted = 0
-  let failed  = 0
+  // Phase 2: delete orphans con worker pool
+  const toDelete = orphans
+  let localIdx       = 0
+  let deleted        = 0
+  let failed         = 0
+  let disconnected   = false
+  let lastProgressTs = 0
 
-  for (let i = 0; i < toDelete.length; i += BATCH) {
-    const flag = Atomics.load(cancelFlag, 0)
-    if (flag === 1) {
-      parentPort.postMessage({ type: 'done', result: { status: 'cancelled', orphanCount, deleted, failed } })
-      return
+  function reportDeleteProgress() {
+    const now = Date.now()
+    if (now - lastProgressTs >= 200 || localIdx >= toDelete.length) {
+      lastProgressTs = now
+      parentPort.postMessage({
+        type: 'progress',
+        progress: { phase: 'deleting', orphanCount, current: Math.min(localIdx, toDelete.length), total: orphanCount, deleted, failed },
+      })
     }
-    if (flag === 2) {
-      const nextIndex = startIndex + i
-      const pausePath = join(storeDir, 'vorn', 'prune-pause.json')
-      try { writeFileSync(pausePath, JSON.stringify(orphans), 'utf8') } catch (e) {
-        parentPort.postMessage({ type: 'error', error: `Impossibile salvare stato pausa: ${e.message}` })
-        return
-      }
-      parentPort.postMessage({ type: 'done', result: { status: 'paused', orphanCount, deleted, failed, orphanListPath: pausePath, nextIndex } })
-      return
-    }
+  }
 
-    const batch   = toDelete.slice(i, i + BATCH)
-    const results = await Promise.allSettled(batch.map(hash => unlink(join(storeDir, hash + '.vorn'))))
-
-    for (const r of results) {
-      if (r.status === 'fulfilled' || r.reason?.code === 'ENOENT') {
+  async function deleteWorker() {
+    let i
+    while (Atomics.load(cancelFlag, 0) === 0 && !disconnected && (i = localIdx++) < toDelete.length) {
+      try {
+        await unlink(join(storeDir, toDelete[i] + '.vorn'))
         deleted++
-      } else {
-        try { statSync(storeDir) } catch {
-          parentPort.postMessage({ type: 'store-disconnected' })
-          return
+      } catch (e) {
+        if (e.code === 'ENOENT') {
+          deleted++
+        } else {
+          try { await stat(storeDir) } catch { disconnected = true }
+          failed++
         }
-        failed++
       }
+      reportDeleteProgress()
     }
+  }
 
-    parentPort.postMessage({
-      type: 'progress',
-      progress: { phase: 'deleting', orphanCount, current: startIndex + i + batch.length, total: orphanCount, deleted, failed },
-    })
+  await Promise.all(Array.from({ length: PRUNE_BATCH }, deleteWorker))
+
+  if (disconnected) {
+    parentPort.postMessage({ type: 'store-disconnected' })
+    return
+  }
+
+  if (Atomics.load(cancelFlag, 0) !== 0) {
+    parentPort.postMessage({ type: 'done', result: { status: 'cancelled', orphanCount, deleted, failed } })
+    return
   }
 
   parentPort.postMessage({ type: 'done', result: { status: 'done', orphanCount, deleted, failed } })
