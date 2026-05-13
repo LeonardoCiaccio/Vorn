@@ -35,7 +35,7 @@ export function updateTaskProgress(taskId, progress) {
 export function finishTask(taskId, result) {
   const t = tasks.get(taskId)
   if (!t) return
-  t.status    = result.status === 'paused' ? 'paused' : 'done'
+  t.status    = result.status === 'paused' || result.status === 'cancelled' ? result.status : 'done'
   t.result    = result
   t._cancelFn = null
 }

@@ -49,6 +49,21 @@ function _logTaskErrors(task, result) {
   }
 }
 
+function _backupOnDone(task, storeDir, runTs, mainWindow) {
+  return (result, error) => {
+    if (!error) {
+      try {
+        const run = loadRun(storeDir, task.sessionName, runTs)
+        if (run.status === 'running') {
+          run.status = 'paused'
+          saveRun(storeDir, task.sessionName, run)
+        }
+      } catch { /* run non trovato o store non raggiungibile */ }
+    }
+    _onDone(task, mainWindow)(result, error)
+  }
+}
+
 function _onDone(task, mainWindow) {
   return (result, error) => {
     if (error) {
@@ -95,7 +110,8 @@ export function registerTaskHandlers(mainWindow) {
     }
     const task = createTask('backup', sessionName)
     logger.info(`Task backup started [${task.id}] session="${sessionName}"${resumeTs ? ` resume=${resumeTs}` : ''}`)
-    spawnWorker('backupWorker.js', { storeDir: ctx.activeStore, sessionName, resumeTs, runTs }, task.id, mainWindow, _onDone(task, mainWindow))
+    const storeDir = ctx.activeStore
+    spawnWorker('backupWorker.js', { storeDir, sessionName, resumeTs, runTs }, task.id, mainWindow, _backupOnDone(task, storeDir, runTs, mainWindow))
     return { taskId: task.id }
   })
 
