@@ -228,6 +228,13 @@
       "title": "Löschung bestätigen",
       "message": "Sie sind dabei, {count} Sitzung zu löschen. | Sie sind dabei, {count} Sitzungen zu löschen."
     },
+    "queue": {
+      "start": "Sequenz starten",
+      "startCount": "Sequenz starten ({n})",
+      "banner": "Sequenz läuft · {n} Sitzungen verbleibend",
+      "cancel": "Warteschlange abbrechen",
+      "inQueue": "In Warteschlange"
+    },
     "noSessions": "Keine Sitzungen",
     "noSessionsHelp": "Erstellen Sie Ihre erste Sitzung, um mit der Sicherung zu beginnen",
     "drop": {
@@ -437,5 +444,12 @@
     "badgeFile": "Datei",
     "badgeFiltered": "gefiltert",
     "empty": "Kein Inhalt"
+  },
+
+  "queueWarning": {
+    "title": "Sequenz ausstehend",
+    "body": "Es befinden sich {n} Sitzungen in der Warteschlange. Wenn Sie den Speicher wechseln, wird die Warteschlange abgebrochen.",
+    "keepQueue": "Sequenz fortsetzen",
+    "cancelAndSwitch": "Warteschlange abbrechen und Speicher wechseln"
   }
 }

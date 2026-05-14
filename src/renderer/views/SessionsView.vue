@@ -26,6 +26,14 @@
             {{ $t('sessions.select') }}
           </button>
           <button
+            @click="handleStartQueue"
+            :disabled="!sessions.length || queueState.active || anyBackupRunning"
+            class="flex items-center gap-2 px-4 py-2 rounded-md border border-emerald-600/40 text-emerald-400 hover:bg-emerald-500/10 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <QueueListIcon class="w-4 h-4" />
+            {{ $t('sessions.queue.start') }}
+          </button>
+          <button
             @click="askDeleteAll"
             :disabled="!sessions.length || anyRunning"
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-300 hover:text-red-400 hover:border-red-600/50 hover:bg-red-500/5 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -41,6 +49,14 @@
             class="flex items-center gap-2 px-4 py-2 rounded-md border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800 text-sm font-medium transition-colors"
           >
             {{ $t('sessions.cancel') }}
+          </button>
+          <button
+            @click="handleStartQueue"
+            :disabled="!selected.size || queueState.active || anyBackupRunning"
+            class="flex items-center gap-2 px-4 py-2 rounded-md border border-emerald-600/40 text-emerald-400 hover:bg-emerald-500/10 text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <QueueListIcon class="w-4 h-4" />
+            {{ selected.size ? $t('sessions.queue.startCount', { n: selected.size }) : $t('sessions.queue.start') }}
           </button>
           <button
             @click="askDeleteSelected"
@@ -78,6 +94,26 @@
           <p class="text-sm font-semibold text-indigo-300">{{ $t('sessions.drop.title') }}</p>
           <p class="text-xs text-gray-500">{{ $t('sessions.drop.sub') }}</p>
         </div>
+      </div>
+    </Transition>
+
+    <!-- Queue banner -->
+    <Transition name="drop-fade">
+      <div
+        v-if="queueState.active"
+        class="mx-8 mt-4 px-4 py-3 bg-indigo-950/40 border border-indigo-800/40 rounded-md flex items-center gap-2.5 shrink-0"
+      >
+        <QueueListIcon class="w-4 h-4 text-indigo-400 shrink-0" />
+        <p class="text-sm text-indigo-300 flex-1">
+          {{ $t('sessions.queue.banner', { n: queueState.pending.length }) }}
+        </p>
+        <button
+          @click="cancelQueue"
+          class="flex items-center gap-1 text-xs text-indigo-400 hover:text-white transition-colors"
+        >
+          <XMarkIcon class="w-3.5 h-3.5" />
+          {{ $t('sessions.queue.cancel') }}
+        </button>
       </div>
     </Transition>
 
@@ -163,6 +199,12 @@
                     <span class="text-xs font-mono text-indigo-300">
                       {{ progressPct(session.name) }}%
                     </span>
+                  </div>
+                </template>
+                <template v-else-if="isInQueue(session.name)">
+                  <div class="flex items-center gap-1.5">
+                    <QueueListIcon class="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span class="text-xs text-indigo-400">{{ $t('sessions.queue.inQueue') }}</span>
                   </div>
                 </template>
                 <StatusBadge v-else-if="session.runs.length" :status="session.runs[0].status" />
@@ -337,8 +379,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, PauseIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon, PencilSquareIcon } from '@heroicons/vue/24/outline'
-import { state, selectSession, deleteSession, getActiveTask, startBackup, cancelTask, formatTs, formatBytes, anyBackupRunning } from '../stores/vorn.js'
+import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, PauseIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon, PencilSquareIcon, QueueListIcon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { state, selectSession, deleteSession, getActiveTask, startBackup, cancelTask, formatTs, formatBytes, anyBackupRunning, queueState, startQueue, cancelQueue } from '../stores/vorn.js'
 import { isExecutable } from '../utils/executable.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
@@ -439,6 +481,18 @@ function toggleAll() {
 
 function _resumeTs(session) {
   return session.runs.find(r => r.status === 'paused')?.ts ?? null
+}
+
+function isInQueue(sessionName) {
+  return queueState.active && queueState.pending.includes(sessionName) && !getActiveTask(sessionName)
+}
+
+function handleStartQueue() {
+  const names = selectionMode.value && selected.value.size
+    ? [...selected.value]
+    : sessions.value.map(s => s.name)
+  if (selectionMode.value) exitSelection()
+  startQueue(names)
 }
 
 

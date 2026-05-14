@@ -228,6 +228,13 @@
       "title": "Confirmar exclusão",
       "message": "Você está prestes a excluir {count} sessão. | Você está prestes a excluir {count} sessões."
     },
+    "queue": {
+      "start": "Iniciar sequência",
+      "startCount": "Iniciar sequência ({n})",
+      "banner": "Sequência em curso · {n} sessões restantes",
+      "cancel": "Cancelar fila",
+      "inQueue": "Na fila"
+    },
     "noSessions": "Sem sessões",
     "noSessionsHelp": "Crie sua primeira sessão para começar o backup",
     "drop": {
@@ -437,5 +444,12 @@
     "badgeFile": "arquivo",
     "badgeFiltered": "filtrado",
     "empty": "Sem conteúdo"
+  },
+
+  "queueWarning": {
+    "title": "Sequência pendente",
+    "body": "Há {n} sessões aguardando na fila. Se você mudar o repositório, a fila será cancelada.",
+    "keepQueue": "Continuar sequência",
+    "cancelAndSwitch": "Cancelar fila e mudar repositório"
   }
 }

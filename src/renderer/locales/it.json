@@ -228,6 +228,13 @@
       "title": "Conferma eliminazione",
       "message": "Stai per eliminare {count} sessione. | Stai per eliminare {count} sessioni."
     },
+    "queue": {
+      "start": "Avvia sequenza",
+      "startCount": "Avvia sequenza ({n})",
+      "banner": "Sequenza in corso · {n} sessioni rimanenti",
+      "cancel": "Annulla coda",
+      "inQueue": "In coda"
+    },
     "noSessions": "Nessuna sessione",
     "noSessionsHelp": "Crea la tua prima sessione per iniziare a fare backup",
     "drop": {
@@ -437,5 +444,12 @@
     "badgeFile": "file",
     "badgeFiltered": "filtrato",
     "empty": "Nessun contenuto"
+  },
+
+  "queueWarning": {
+    "title": "Sequenza in sospeso",
+    "body": "Ci sono {n} sessioni in attesa nella sequenza. Se cambi store la coda verrà annullata.",
+    "keepQueue": "Continua sequenza",
+    "cancelAndSwitch": "Annulla coda e cambia store"
   }
 }

@@ -228,6 +228,13 @@
       "title": "Confirmar eliminación",
       "message": "Está a punto de eliminar {count} sesión. | Está a punto de eliminar {count} sesiones."
     },
+    "queue": {
+      "start": "Iniciar secuencia",
+      "startCount": "Iniciar secuencia ({n})",
+      "banner": "Secuencia en curso · {n} sesiones restantes",
+      "cancel": "Cancelar cola",
+      "inQueue": "En cola"
+    },
     "noSessions": "No hay sesiones",
     "noSessionsHelp": "Cree su primera sesión para empezar a hacer copias de seguridad",
     "drop": {
@@ -437,5 +444,12 @@
     "badgeFile": "archivo",
     "badgeFiltered": "filtrado",
     "empty": "Sin contenido"
+  },
+
+  "queueWarning": {
+    "title": "Secuencia pendiente",
+    "body": "Hay {n} sesiones en espera en la cola. Si cambia de almacén, la cola se cancelará.",
+    "keepQueue": "Continuar secuencia",
+    "cancelAndSwitch": "Cancelar cola y cambiar almacén"
   }
 }

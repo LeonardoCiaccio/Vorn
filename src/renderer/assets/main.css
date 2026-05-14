@@ -225,11 +225,17 @@ html.light .border-red-900\/50 {
 html.light .bg-indigo-500\/5 {
   background-color: rgba(99, 102, 241, 0.08) !important;
 }
+html.light .bg-indigo-950\/40 {
+  background-color: rgba(99, 102, 241, 0.07) !important;
+}
 html.light .bg-indigo-950\/20 {
   background-color: rgba(99, 102, 241, 0.08) !important;
 }
 html.light .bg-indigo-950\/10 {
   background-color: rgba(99, 102, 241, 0.05) !important;
+}
+html.light .border-indigo-800\/40 {
+  border-color: rgba(99, 102, 241, 0.22) !important;
 }
 
 /* ── Hover rows ── */
