@@ -1,10 +1,10 @@
-import { statSync, existsSync } from 'fs'
 import { basename, relative, join } from 'path'
 import { vornHash } from './hash.js'
 import { storeBlob, toStoreKey } from './store.js'
 import { getSession, saveRun, loadRun } from './sessions.js'
 import { walk, matchPattern } from './scanner.js'
-import { dbGetFile, dbUpsertFile, dbPruneOrphans } from './db.js'
+import { dbGetFile, dbUpsertFileMany, dbPruneOrphans } from './db.js'
+import { safeStatSync, safeExistsSync } from './safeFs.js'
 import { SAVE_INTERVAL_FILES, SAVE_INTERVAL_MS } from './constants.js'
 
 export async function backup(storeDir, sessionName, opts = {}) {
@@ -66,8 +66,10 @@ export async function backup(storeDir, sessionName, opts = {}) {
   const errors   = [...(run.errors ?? []), ...scanErrors]
   let current    = alreadyDone.size
 
-  let lastSaveCount = current
-  let lastSaveTime  = Date.now()
+  let lastSaveCount  = current
+  let lastSaveTime   = Date.now()
+  let pendingUpserts = []
+  let lastError      = null
 
   for (let i = 0; i < allFiles.length; i++) {
     if (isCancelled?.()) break
@@ -82,8 +84,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
     current++
 
     let stat
-    try { stat = statSync(filePath) }
-    catch (e) { errors.push({ path: filePath, error: e.code ?? e.message, phase: 'stat' }); continue }
+    try { stat = safeStatSync(filePath) }
+    catch (e) { lastError = { path: filePath, error: e.code ?? e.message, phase: 'stat' }; errors.push(lastError); continue }
 
     const bytes = stat.size
     const mtime = stat.mtimeMs
@@ -95,13 +97,13 @@ export async function backup(storeDir, sessionName, opts = {}) {
       // File invariato — verifica che il .vorn esista ancora nello store.
       // Controlla prima la chiave compressa della sessione corrente, poi quella non compressa.
       const storeKey   = toStoreKey(dbRecord.hash, compressionType)
-      const vornExists = existsSync(join(storeDir, storeKey + '.vorn'))
+      const vornExists = safeExistsSync(join(storeDir, storeKey + '.vorn'))
       if (vornExists) {
         // Dedup completo: nessun hashing, nessuna lettura del file
         filesDedup++
         bytesTotal += bytes
         run.files[relPath] = storeKey
-        onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew })
+        onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew })
         if (current - lastSaveCount >= SAVE_INTERVAL_FILES || Date.now() - lastSaveTime >= SAVE_INTERVAL_MS) {
           run.files_new = filesNew; run.files_dedup = filesDedup; run.bytes_total = bytesTotal; run.bytes_new = bytesNew; run.errors = errors
           saveRun(storeDir, sessionName, run)
@@ -116,7 +118,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
     // Hash necessario: file nuovo, modificato, o .vorn mancante con hash sconosciuto
     if (!hashVorn) {
       try { hashVorn = vornHash(filePath, isCancelled) }
-      catch (e) { errors.push({ path: filePath, error: e.code ?? e.message, phase: 'hash' }); continue }
+      catch (e) { lastError = { path: filePath, error: e.code ?? e.message, phase: 'hash' }; errors.push(lastError); continue }
       if (hashVorn === null) break // cancellato durante l'hashing
     }
 
@@ -125,7 +127,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
     try {
       const { outcome, storeKey } = await _storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath, compressionType)
       run.files[relPath] = storeKey
-      dbUpsertFile(filePath, mtime, bytes, hashVorn)
+      pendingUpserts.push({ path: filePath, mtime, size: bytes, hash: hashVorn })
       if (isCancelled?.()) break // cancellato durante lo store
       if (outcome === 'new') { filesNew++; bytesNew += bytes }
       else                   { filesDedup++ }
@@ -140,7 +142,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
         saveRun(storeDir, sessionName, run)
         throw e
       }
-      errors.push({ path: filePath, error: e.code ?? e.message, phase: 'store' })
+      lastError = { path: filePath, error: e.code ?? e.message, phase: 'store' }; errors.push(lastError)
     }
 
     onProgress?.({
@@ -149,6 +151,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
       files_new:   filesNew,
       files_dedup: filesDedup,
       errors:      errors.length,
+      last_error:  lastError,
       file:        filePath,
       bytes_total: bytesTotal,
       bytes_new:   bytesNew,
@@ -156,6 +159,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
     // Salvataggio intermedio periodico
     if (current - lastSaveCount >= SAVE_INTERVAL_FILES || Date.now() - lastSaveTime >= SAVE_INTERVAL_MS) {
+      dbUpsertFileMany(pendingUpserts)
+      pendingUpserts = []
       run.files_new    = filesNew
       run.files_dedup  = filesDedup
       run.bytes_total  = bytesTotal
@@ -166,6 +171,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
       lastSaveTime  = Date.now()
     }
   }
+
+  dbUpsertFileMany(pendingUpserts)
 
   run.status       = isCancelled?.() ? 'paused' : 'done'
   run.duration_sec = prevDurationSec + Math.round((Date.now() - startTime) / 1000)

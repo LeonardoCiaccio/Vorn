@@ -7,11 +7,25 @@
   <p>A fast, ultra-secure, cross-platform desktop backup tool with content-addressable storage and automatic deduplication.</p>
 
   <p>
-    <img src="https://img.shields.io/badge/version-0.8.15-blue?style=flat-square" alt="Version" />
+    <img src="https://img.shields.io/github/v/release/LeonardoCiaccio/Vorn?style=flat-square&label=version&color=blue" alt="Version" />
     <img src="https://img.shields.io/badge/license-AGPL--3.0-green?style=flat-square" alt="License" />
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square" alt="Platforms" />
     <img src="https://img.shields.io/badge/Electron-41-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron" />
     <img src="https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vue.js&logoColor=white" alt="Vue 3" />
+  </p>
+
+  <p>
+    <a href="https://github.com/LeonardoCiaccio/Vorn/releases/latest/download/Vorn-Windows.exe">
+      <img src="https://img.shields.io/badge/Download-Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows" />
+    </a>
+    &nbsp;
+    <a href="https://github.com/LeonardoCiaccio/Vorn/releases/latest/download/Vorn-macOS.dmg">
+      <img src="https://img.shields.io/badge/Download-macOS-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" />
+    </a>
+    &nbsp;
+    <a href="https://github.com/LeonardoCiaccio/Vorn/releases/latest/download/Vorn-Linux.AppImage">
+      <img src="https://img.shields.io/badge/Download-Linux-E95420?style=for-the-badge&logo=linux&logoColor=white" alt="Download for Linux" />
+    </a>
   </p>
 </div>
 
@@ -80,9 +94,9 @@ Everything runs locally. No accounts, no cloud services, no telemetry. Your data
 
 ## Building from source
 
-Vorn is distributed as source code only. You build it yourself for your platform — this takes about 5 minutes and requires only free, open-source tools.
+Pre-built binaries are available on the [Releases](https://github.com/LeonardoCiaccio/Vorn/releases) page for Windows, macOS, and Linux. Building from source is only needed if you want to modify the code or build for a specific configuration.
 
-> **Why?** Vorn uses [better-sqlite3](https://github.com/WiseLibs/better-sqlite3), a native Node.js addon that must be compiled specifically for the Electron version on your machine. The build process handles this automatically.
+> **Why does building require extra tools?** Vorn uses [better-sqlite3](https://github.com/WiseLibs/better-sqlite3), a native Node.js addon that must be compiled specifically for the Electron version on your machine. The build process handles this automatically.
 
 ---
 

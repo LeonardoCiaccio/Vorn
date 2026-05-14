@@ -93,8 +93,11 @@
       <div class="flex items-center gap-4 mt-1.5 text-[10px] text-gray-600">
         <span class="text-emerald-500">{{ $t('sessionDetail.progress.new', { n: backupProgress.files_new ?? 0 }) }}</span>
         <span>{{ $t('sessionDetail.progress.dedup', { n: backupProgress.files_dedup ?? 0 }) }}</span>
-        <span v-if="backupProgress.errors">{{ $t('sessionDetail.progress.errors', { n: backupProgress.errors }) }}</span>
+        <span v-if="backupProgress.errors" class="text-amber-400">{{ $t('sessionDetail.progress.errors', { n: backupProgress.errors }) }}</span>
         <span>{{ $t('sessionDetail.progress.written', { n: formatBytes(backupProgress.bytes_new ?? 0) }) }}</span>
+        <span v-if="backupProgress.last_error" class="text-amber-400/70 font-mono truncate max-w-65" :title="backupProgress.last_error.path">
+          {{ backupProgress.last_error.path.split(/[\\/]/).at(-1) }} ({{ backupProgress.last_error.error }})
+        </span>
       </div>
     </div>
 
