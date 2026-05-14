@@ -76,7 +76,8 @@
       <div class="flex items-center justify-between mb-1.5">
         <span class="text-xs text-gray-400 flex items-center gap-1.5">
           <template v-if="backupProgress.file">
-            <span v-if="isExecutable(backupProgress.file)" class="text-red-400 font-semibold shrink-0">{{ $t('common.avScan') }}</span>{{ backupProgress.file.split(/[\\/]/).at(-1) }}
+            <span v-if="isStoreSlow" class="text-red-400 font-semibold shrink-0">{{ $t('common.storeLento') }}</span>
+            <span>{{ backupProgress.file.split(/[\\/]/).at(-1) }}</span>
             <span v-if="backupProgress.storing" class="text-indigo-400 font-mono shrink-0">{{ $t('common.storing') }}</span>
             <span v-else-if="backupProgress.compressing" class="text-emerald-400 font-mono shrink-0">{{ $t('common.compressing') }}</span>
             <span v-else-if="backupProgress.bytes_compressing_total > 0" class="text-emerald-500 font-mono shrink-0">{{ $t('common.compressing') }} {{ formatBytes(backupProgress.bytes_compressing ?? 0) }}/{{ formatBytes(backupProgress.bytes_compressing_total) }}</span>
@@ -710,7 +711,6 @@ function formatDuration(sec) {
   return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`
 }
 import StatusBadge from '../components/StatusBadge.vue'
-import { isExecutable } from '../utils/executable.js'
 import RestoreModal from '../components/RestoreModal.vue'
 import FileTree from '../components/FileTree.vue'
 
@@ -729,6 +729,30 @@ const restoreProgress = computed(() => isRestoring.value ? activeTask.value?.pro
 
 const lastRestoreTask = computed(() => getLastTask(session.value?.name, 'restore'))
 const restoreResult   = computed(() => lastRestoreTask.value?.status !== 'running' ? lastRestoreTask.value?.result : null)
+
+const STORE_SLOW_MS = 7000
+const isStoreSlow = ref(false)
+let _storeSlowTimer = null
+let _storeSlowFile  = null
+
+watch(backupProgress, p => {
+  const file = p?.file ?? null
+  if (file !== _storeSlowFile) {
+    clearTimeout(_storeSlowTimer)
+    _storeSlowTimer = null
+    isStoreSlow.value = false
+    _storeSlowFile = file
+    if (file) _storeSlowTimer = setTimeout(() => { isStoreSlow.value = true }, STORE_SLOW_MS)
+  }
+}, { immediate: true })
+watch(isRunning, running => {
+  if (!running) {
+    clearTimeout(_storeSlowTimer)
+    _storeSlowTimer = null
+    isStoreSlow.value = false
+    _storeSlowFile = null
+  }
+})
 
 const progressPct = computed(() => {
   const p = backupProgress.value
@@ -808,14 +832,12 @@ function closeRunDetail() {
   errorsExpanded.value   = false
 }
 
-const cancelling = ref(false)
-
-watch(isRunning, (v) => { if (!v) cancelling.value = false })
+const cancelling = computed(() => activeTask.value?.cancelling ?? false)
 
 function handleBackup() { startBackup(session.value.name, pausedRun.value?.ts ?? null) }
 
 function handleCancel() {
-  if (activeTask.value) { cancelling.value = true; cancelTask(activeTask.value.id) }
+  if (activeTask.value) cancelTask(activeTask.value.id)
 }
 
 async function confirmDeleteSelectedRun() {

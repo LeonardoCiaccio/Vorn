@@ -43,7 +43,8 @@ function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, re
 let _lastProgressTs = 0
 function _sendProgress(progress) {
   const now = Date.now()
-  if (now - _lastProgressTs >= 200 || progress.current === progress.total) {
+  const isStateChange = progress.storing || progress.compressing
+  if (isStateChange || now - _lastProgressTs >= 200 || progress.current === progress.total) {
     _lastProgressTs = now
     parentPort.postMessage({ type: 'progress', progress })
   }

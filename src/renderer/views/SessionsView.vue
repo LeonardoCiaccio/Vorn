@@ -306,8 +306,8 @@
                       {{ $t('sessions.progress.errors', { n: activeTask(session.name).progress.errors }) }}
                     </span>
                     <div v-if="activeTask(session.name).progress?.file" class="ml-auto flex items-center gap-1.5 min-w-0">
-                      <span v-if="isExecutable(activeTask(session.name).progress.file)" class="text-red-400 text-[10px] font-semibold shrink-0">
-                        {{ $t('common.avScan') }}
+                      <span v-if="isStoreSlow(session.name)" class="text-red-400 text-[10px] font-semibold shrink-0">
+                        {{ $t('common.storeLento') }}
                       </span>
                       <span class="text-gray-600 font-mono truncate max-w-72">
                         {{ activeTask(session.name).progress.file.split(/[\\/]/).at(-1) }}
@@ -389,16 +389,58 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, PauseIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon, PencilSquareIcon, QueueListIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { state, selectSession, deleteSession, getActiveTask, startBackup, cancelTask, formatTs, formatBytes, anyBackupRunning, queueState, startQueue, cancelQueue } from '../stores/vorn.js'
-import { isExecutable } from '../utils/executable.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
 import EditSessionModal from '../components/EditSessionModal.vue'
 
 const { t } = useI18n()
+
+const STORE_SLOW_MS = 7000
+const _isStoreSlow  = ref({})
+const _storeTimers  = {}
+const _storeFiles   = {}
+
+const _activeFiles = computed(() => {
+  const out = {}
+  for (const s of state.sessions ?? []) {
+    out[s.name] = getActiveTask(s.name)?.progress?.file ?? null
+  }
+  return out
+})
+watch(_activeFiles, (curr, prev) => {
+  if (!prev) prev = {}
+  for (const [name, file] of Object.entries(curr)) {
+    if (file !== (prev[name] ?? null)) {
+      clearTimeout(_storeTimers[name])
+      delete _storeTimers[name]
+      if (_isStoreSlow.value[name]) {
+        const next = { ..._isStoreSlow.value }
+        delete next[name]
+        _isStoreSlow.value = next
+      }
+      _storeFiles[name] = file
+      if (file) {
+        _storeTimers[name] = setTimeout(() => {
+          _isStoreSlow.value = { ..._isStoreSlow.value, [name]: true }
+        }, STORE_SLOW_MS)
+      }
+    }
+  }
+  for (const name of Object.keys(_storeTimers)) {
+    if (!curr[name]) {
+      clearTimeout(_storeTimers[name])
+      delete _storeTimers[name]
+    }
+  }
+}, { immediate: true })
+
+function isStoreSlow(sessionName) {
+  return _isStoreSlow.value[sessionName] ?? false
+}
 
 // ── Path utilities ────────────────────────────────────────────────────────────
 

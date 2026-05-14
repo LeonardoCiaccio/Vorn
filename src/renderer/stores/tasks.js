@@ -44,7 +44,10 @@ export function getLastTask(sessionName, type) {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null
 }
 
-export function cancelTask(taskId) { window.vorn.cancelTask(taskId) }
+export function cancelTask(taskId) {
+  if (state.tasks[taskId]) state.tasks[taskId].cancelling = true
+  window.vorn.cancelTask(taskId)
+}
 
 export const anyBackupRunning = computed(() =>
   Object.values(state.tasks).some(t => t.type === 'backup' && t.status === 'running')
