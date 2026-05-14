@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install
-      - run: npm run package
+      - run: npm run package -- --publish never
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install
-      - run: npm run package
+      - run: npm run package -- --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - uses: softprops/action-gh-release@v2
@@ -47,7 +47,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install
-      - run: npm run package
+      - run: npm run package -- --publish never
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
