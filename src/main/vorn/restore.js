@@ -1,4 +1,5 @@
-import { mkdirSync, existsSync, readdirSync } from 'fs'
+import { mkdirSync, existsSync } from 'fs'
+import { readdir } from 'fs/promises'
 import { join, basename, dirname, resolve, sep } from 'path'
 import { pipeline } from 'stream/promises'
 import { extractContent } from './store.js'
@@ -57,7 +58,7 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
 
 export async function extractFromStore(storeDir, destDir, sessionFilter, { onProgress, isCancelled } = {}) {
   destDir = resolve(destDir)
-  const allFiles = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+  const allFiles = (await readdir(storeDir)).filter(f => f.endsWith('.vorn'))
   const total      = allFiles.length
   const sessionNames = new Set()
   const noRecords  = []

@@ -45,11 +45,36 @@ export function ensureStore(storeDir) {
 // offset=0 forza il rebuild (usato dal pulsante refresh).
 
 let _listCache = null // { dir: string, files: string[] }
+let _metaCache = null // { dir: string, entries: Map<filename, fileInfo> }
 
-export function invalidateListCache() { _listCache = null }
+export function invalidateListCache() { _listCache = null; _metaCache = null }
 
 export function getCachedFileList(storeDir) {
   return _listCache?.dir === storeDir ? _listCache.files : null
+}
+
+function _getCachedMeta(storeDir, filename) {
+  if (_metaCache?.dir !== storeDir) _metaCache = { dir: storeDir, entries: new Map() }
+  if (_metaCache.entries.has(filename)) return _metaCache.entries.get(filename)
+  const p = join(storeDir, filename)
+  const st = statSync(p)
+  let records = [], compressedType = null, content_hash = null
+  try {
+    const meta    = readVornMeta(p).meta
+    records        = meta?.records        ?? []
+    compressedType = meta?.compressedType ?? null
+    content_hash   = meta?.hash_vorn      ?? null
+  } catch { /* skip unreadable */ }
+  const info = {
+    hash_vorn: basename(filename, '.vorn'),
+    content_hash, compressedType,
+    bytes_file: st.size,
+    ctime:      st.birthtimeMs,
+    mtime:      st.mtimeMs,
+    records,
+  }
+  _metaCache.entries.set(filename, info)
+  return info
 }
 
 export function countStoreFiles(storeDir) {
@@ -80,26 +105,7 @@ export function listStoreFiles(storeDir, offset = 0, limit = 20, matchHashes = n
     : _listCache.files
 
   const slice = pool.slice(offset, offset + limit)
-  const files = slice.map(f => {
-    const p = join(storeDir, f)
-    const st = statSync(p)
-    let records = [], compressedType = null, content_hash = null
-    try {
-      const meta    = readVornMeta(p).meta
-      records        = meta?.records        ?? []
-      compressedType = meta?.compressedType ?? null
-      content_hash   = meta?.hash_vorn      ?? null
-    } catch { /* skip unreadable */ }
-    return {
-      hash_vorn:      basename(f, '.vorn'),
-      content_hash,
-      compressedType,
-      bytes_file:     st.size,
-      ctime:          st.birthtimeMs,
-      mtime:          st.mtimeMs,
-      records,
-    }
-  })
+  const files = slice.map(f => _getCachedMeta(storeDir, f))
 
   return { files, total: pool.length }
 }
@@ -150,6 +156,7 @@ export function deleteStoreEntry(storeDir, hashVorn) {
   if (!existsSync(p)) throw new Error('ERR_ENTRY_NOT_FOUND')
   unlinkSync(p)
   if (_listCache) _listCache.files = _listCache.files.filter(f => f !== hashVorn + '.vorn')
+  _metaCache?.entries.delete(hashVorn + '.vorn')
 }
 
 // ── Read-only (nessun lock necessario) ───────────────────────────────────────
