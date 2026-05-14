@@ -41,6 +41,9 @@ Everything runs locally. No accounts, no cloud services, no telemetry. Your data
 > [!IMPORTANT]
 > **FAT32 is not supported.** Vorn requires a filesystem that guarantees atomic writes and supports files larger than 4 GB. FAT32 cannot provide the reliability guarantees that the `.vorn` format depends on. Use **NTFS**, **exFAT**, **APFS**, or **ext4** for your store destination. Vorn will refuse to open a store on a FAT32 volume.
 
+> [!WARNING]
+> **Do not use compression with a Google Drive store.** If your store folder lives inside a Google Drive directory synced to your computer, disable compression for all sessions pointing to that store. Google Drive silently re-encodes or modifies synced files in ways that corrupt the compressed payload inside each `.vorn` container, causing integrity checks to fail. Use Vorn's compression-free mode and let Google Drive handle the sync as-is.
+
 1. **Create a Store**: Choose a destination folder (e.g., an external drive or NAS) where Vorn will safely pack your files.
 2. **Setup a Session**: Give it a name and select the folders you want to protect.
 3. **Run Backup**: Hit the backup button. Vorn will scan, deduplicate, and secure your files into the store.
