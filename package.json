@@ -56,7 +56,10 @@
       "artifactName": "Vorn-Linux.${ext}"
     },
     "mac": {
-      "target": "dmg",
+      "target": {
+        "target": "dmg",
+        "arch": ["universal"]
+      },
       "icon": "build/icon.png",
       "artifactName": "Vorn-macOS.${ext}"
     }
