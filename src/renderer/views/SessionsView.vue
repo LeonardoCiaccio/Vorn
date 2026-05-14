@@ -235,10 +235,12 @@
                     <button
                       v-if="activeTask(session.name)"
                       @click.stop="cancelTask(activeTask(session.name).id)"
-                      class="p-1.5 rounded-md text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+                      :disabled="activeTask(session.name).cancelling"
+                      class="p-1.5 rounded-md text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       :title="$t('sessions.actions.suspend')"
                     >
-                      <PauseIcon class="w-3.5 h-3.5" />
+                      <ArrowPathIcon v-if="activeTask(session.name).cancelling" class="w-3.5 h-3.5 animate-spin" />
+                      <PauseIcon v-else class="w-3.5 h-3.5" />
                     </button>
                     <button
                       v-else
@@ -306,12 +308,7 @@
                       {{ $t('sessions.progress.errors', { n: activeTask(session.name).progress.errors }) }}
                     </span>
                     <div v-if="activeTask(session.name).progress?.file" class="ml-auto flex items-center gap-1.5 min-w-0">
-                      <span v-if="isStoreSlow(session.name)" class="text-red-400 text-[10px] font-semibold shrink-0">
-                        {{ $t('common.storeLento') }}
-                      </span>
-                      <span class="text-gray-600 font-mono truncate max-w-72">
-                        {{ activeTask(session.name).progress.file.split(/[\\/]/).at(-1) }}
-                      </span>
+                      <span class="text-gray-600 font-mono truncate max-w-72"><span v-if="isStoreSlow(session.name)" class="text-red-400 font-semibold not-mono">{{ $t('common.storeLento') }}</span>{{ (isStoreSlow(session.name) ? ' ' : '') + activeTask(session.name).progress.file.split(/[\\/]/).at(-1) }}</span>
                       <span v-if="activeTask(session.name).progress?.storing" class="text-indigo-400 font-mono shrink-0">
                         {{ $t('common.storing') }}
                       </span>

@@ -76,8 +76,7 @@
       <div class="flex items-center justify-between mb-1.5">
         <span class="text-xs text-gray-400 flex items-center gap-1.5">
           <template v-if="backupProgress.file">
-            <span v-if="isStoreSlow" class="text-red-400 font-semibold shrink-0">{{ $t('common.storeLento') }}</span>
-            <span>{{ backupProgress.file.split(/[\\/]/).at(-1) }}</span>
+            <span class="shrink-0"><span v-if="isStoreSlow" class="text-red-400 font-semibold">{{ $t('common.storeLento') }}</span>{{ (isStoreSlow ? ' ' : '') + backupProgress.file.split(/[\\/]/).at(-1) }}</span>
             <span v-if="backupProgress.storing" class="text-indigo-400 font-mono shrink-0">{{ $t('common.storing') }}</span>
             <span v-else-if="backupProgress.compressing" class="text-emerald-400 font-mono shrink-0">{{ $t('common.compressing') }}</span>
             <span v-else-if="backupProgress.bytes_compressing_total > 0" class="text-emerald-500 font-mono shrink-0">{{ $t('common.compressing') }} {{ formatBytes(backupProgress.bytes_compressing ?? 0) }}/{{ formatBytes(backupProgress.bytes_compressing_total) }}</span>
