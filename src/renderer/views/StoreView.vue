@@ -5,9 +5,8 @@
     <div class="px-8 py-6 border-b border-gray-800 flex items-center justify-between shrink-0">
       <div>
         <h1 class="text-xl font-semibold text-white">{{ $t('store.title') }}</h1>
-        <p class="text-sm text-gray-500 mt-0.5 font-mono">
-          {{ state.activeStore }}
-          <span v-if="storeFileCount !== null" class="text-gray-600"> · {{ storeFileCount.toLocaleString() }} vorn</span>
+        <p v-if="storeFileCount !== null" class="text-sm text-gray-600 mt-0.5 font-mono">
+          {{ storeFileCount.toLocaleString() }} vorn
         </p>
       </div>
       <div class="flex items-center gap-2">
