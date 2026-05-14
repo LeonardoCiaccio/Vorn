@@ -108,7 +108,7 @@ export function listStoreFiles(storeDir, offset = 0, limit = 20, matchHashes = n
 // Ritorna 'new' se il file è stato creato, 'dedup' se già esisteva.
 // Qualsiasi altro chiamante che arriva sullo stesso hash aspetta in coda.
 
-export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath, compressionType = null, compTmpPath = null, compressedHash = null) {
+export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath, compressionType = null, compTmpPath = null, compressedHash = null, signal = null) {
   ensureStore(storeDir)
 
   const key = toStoreKey(hashVorn, compressionType)
@@ -123,7 +123,7 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
         compressedType:  compressionType ?? null,
         records:         [{ id: sessionId, session: sessionName, paths: [relPath] }],
       }
-      await writeVornFromSource(p, meta, sourcePath, compressionType, compTmpPath, compressedHash)
+      await writeVornFromSource(p, meta, sourcePath, compressionType, compTmpPath, compressedHash, signal)
       _listCache = null
       return { outcome: 'new', storeKey: key }
     }

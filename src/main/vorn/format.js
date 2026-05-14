@@ -2,6 +2,8 @@ import { openSync, readSync, writeSync, fsyncSync, closeSync, truncateSync, crea
 import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
 import { createHash } from 'crypto'
+import { tmpdir } from 'os'
+import { basename } from 'path'
 import { compressToTemp, decompressStream, cleanupTemp } from './compress.js'
 import { vornHash } from './hash.js'
 import { safeCreateReadStream } from './safeFs.js'
@@ -112,7 +114,7 @@ export async function readVorn(filePath) {
 
 // ── Scrittura .vorn da sorgente (creazione iniziale) ─────────────────────────
 
-export async function writeVornFromSource(destPath, meta, sourcePath, compressionType = null, precompressedPath = null, precompressedHash = null) {
+export async function writeVornFromSource(destPath, meta, sourcePath, compressionType = null, precompressedPath = null, precompressedHash = null, signal = null) {
   const tmpPath = destPath + '.tmp'
 
   let contentLen
@@ -126,7 +128,7 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
       meta.compressed_hash  = precompressedHash
       meta.bytes_compressed = Number(contentLen)
     } else {
-      ownedCtmp = destPath + '.ctmp'
+      ownedCtmp = join(tmpdir(), basename(destPath) + '.ctmp')
       try {
         const compressedSize  = await compressToTemp(sourcePath, ownedCtmp, compressionType)
         contentLen            = BigInt(compressedSize)
@@ -158,7 +160,8 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
         yield SEPARATOR
         yield metaBuf
       },
-      createWriteStream(tmpPath)
+      createWriteStream(tmpPath),
+      ...(signal ? [{ signal }] : [])
     )
     renameSync(tmpPath, destPath)
   } catch (e) {

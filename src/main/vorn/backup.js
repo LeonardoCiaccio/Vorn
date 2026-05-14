@@ -1,4 +1,5 @@
 import { basename, relative, join } from 'path'
+import { tmpdir } from 'os'
 import { vornHash } from './hash.js'
 import { storeBlob, toStoreKey } from './store.js'
 import { getSession, saveRun, loadRun } from './sessions.js'
@@ -134,7 +135,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
       const storeKey   = toStoreKey(hashVorn, compressionType)
       const vornExists = safeExistsSync(join(storeDir, storeKey + '.vorn'))
       if (!vornExists) {
-        compTmpPath = join(storeDir, storeKey + '.ctmp')
+        compTmpPath = join(tmpdir(), storeKey + '.ctmp')
         try {
           onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew, compressing: true })
           const compressedSize = await compressToTemp(filePath, compTmpPath, compressionType, (bytesCompressed) => {
