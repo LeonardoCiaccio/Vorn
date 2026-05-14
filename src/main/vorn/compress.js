@@ -19,9 +19,18 @@ export function decompressStream(inputStream, type) {
 
 // Comprime sourcePath in tmpPath, ritorna la size compressa.
 // Il chiamante è responsabile di eliminare tmpPath se non serve più.
-export async function compressToTemp(sourcePath, tmpPath, type) {
+export async function compressToTemp(sourcePath, tmpPath, type, onProgress = null) {
+  const total = statSync(sourcePath).size
+  let bytesIn = 0
   await pipeline(
     safeCreateReadStream(sourcePath),
+    async function* (source) {
+      for await (const chunk of source) {
+        bytesIn += chunk.length
+        onProgress?.(bytesIn, total)
+        yield chunk
+      }
+    },
     _compressor(type),
     createWriteStream(tmpPath)
   )

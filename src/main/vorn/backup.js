@@ -6,6 +6,7 @@ import { walk, matchPattern } from './scanner.js'
 import { dbGetFile, dbUpsertFileMany, dbPruneOrphans } from './db.js'
 import { safeStatSync, safeExistsSync } from './safeFs.js'
 import { SAVE_INTERVAL_FILES, SAVE_INTERVAL_MS } from './constants.js'
+import { compressToTemp, cleanupTemp } from './compress.js'
 
 export async function backup(storeDir, sessionName, opts = {}) {
   const { onProgress, isCancelled, resumeTs, runTs, storeFn } = opts
@@ -117,21 +118,53 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
     // Hash necessario: file nuovo, modificato, o .vorn mancante con hash sconosciuto
     if (!hashVorn) {
-      try { hashVorn = vornHash(filePath, isCancelled) }
+      try {
+        hashVorn = vornHash(filePath, isCancelled, (bytesHashed) => {
+          onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew, bytes_hashing: bytesHashed, bytes_hashing_total: bytes })
+        })
+      }
       catch (e) { lastError = { path: filePath, error: e.code ?? e.message, phase: 'hash' }; errors.push(lastError); continue }
       if (hashVorn === null) break // cancellato durante l'hashing
     }
 
+    // Compressione nel worker (prima del store-request) per non bloccare il Main Process
+    let compTmpPath    = null
+    let compressedHash = null
+    if (compressionType) {
+      const storeKey   = toStoreKey(hashVorn, compressionType)
+      const vornExists = safeExistsSync(join(storeDir, storeKey + '.vorn'))
+      if (!vornExists) {
+        compTmpPath = join(storeDir, storeKey + '.ctmp')
+        try {
+          onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew, compressing: true })
+          const compressedSize = await compressToTemp(filePath, compTmpPath, compressionType, (bytesCompressed) => {
+            onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew, bytes_compressing: bytesCompressed, bytes_compressing_total: bytes })
+          })
+          if (isCancelled?.()) { cleanupTemp(compTmpPath); break }
+          compressedHash = vornHash(compTmpPath, isCancelled, (bytesHashed) => {
+            onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew, bytes_hashing: bytesHashed, bytes_hashing_total: compressedSize })
+          })
+          if (compressedHash === null) { cleanupTemp(compTmpPath); break }
+        } catch (e) {
+          cleanupTemp(compTmpPath); compTmpPath = null
+          lastError = { path: filePath, error: e.code ?? e.message, phase: 'compress' }; errors.push(lastError); continue
+        }
+      }
+    }
+
+    onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew, storing: true })
+
     bytesTotal += bytes
 
     try {
-      const { outcome, storeKey } = await _storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath, compressionType)
+      const { outcome, storeKey } = await _storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath, compressionType, compTmpPath, compressedHash)
       run.files[relPath] = storeKey
       pendingUpserts.push({ path: filePath, mtime, size: bytes, hash: hashVorn })
-      if (isCancelled?.()) break // cancellato durante lo store
+      if (isCancelled?.()) { cleanupTemp(compTmpPath); break }
       if (outcome === 'new') { filesNew++; bytesNew += bytes }
       else                   { filesDedup++ }
     } catch (e) {
+      cleanupTemp(compTmpPath)
       if (e.code === 'ENOSPC') {
         run.status      = 'error'
         run.files_new   = filesNew
@@ -143,6 +176,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
         throw e
       }
       lastError = { path: filePath, error: e.code ?? e.message, phase: 'store' }; errors.push(lastError)
+    } finally {
+      cleanupTemp(compTmpPath)
     }
 
     onProgress?.({

@@ -78,7 +78,10 @@
     "stop": "Stopp",
     "operationWait": "Vorgang läuft — bitte warten",
     "cannotUndo": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
-    "avScan": "Virenscan"
+    "avScan": "Virenscan",
+    "storing": "Archivierung…",
+    "compressing": "Komprimierung…",
+    "errStoreTimeout": "Store-Timeout — mögliche Antivirensperrung"
   },
 
   "status": {

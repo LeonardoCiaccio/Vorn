@@ -74,12 +74,12 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
   worker.on('message', (msg) => {
     const { type } = msg
     if (type === 'store-request') {
-      const { id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType } = msg
+      const { id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash } = msg
       if (!ctx.activeStore) {
         worker.postMessage({ type: 'store-result', id, error: 'ERR_STORE_DISCONNECTED' })
         return
       }
-      storeBlob(ctx.activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType)
+      storeBlob(ctx.activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash)
         .then(outcome => worker.postMessage({ type: 'store-result', id, outcome }))
         .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message, code: err.code }))
     } else if (type === 'progress') {

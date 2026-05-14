@@ -77,6 +77,10 @@
         <span class="text-xs text-gray-400 flex items-center gap-1.5">
           <template v-if="backupProgress.file">
             <span v-if="isExecutable(backupProgress.file)" class="text-red-400 font-semibold shrink-0">{{ $t('common.avScan') }}</span>{{ backupProgress.file.split(/[\\/]/).at(-1) }}
+            <span v-if="backupProgress.storing" class="text-indigo-400/70 font-mono shrink-0">{{ $t('common.storing') }}</span>
+            <span v-else-if="backupProgress.compressing" class="text-emerald-400/70 font-mono shrink-0">{{ $t('common.compressing') }}</span>
+            <span v-else-if="backupProgress.bytes_compressing_total > 0" class="text-emerald-400/50 font-mono shrink-0">{{ $t('common.compressing') }} {{ formatBytes(backupProgress.bytes_compressing ?? 0) }}/{{ formatBytes(backupProgress.bytes_compressing_total) }}</span>
+            <span v-else-if="backupProgress.bytes_hashing_total > 0" class="text-gray-600 font-mono shrink-0">{{ formatBytes(backupProgress.bytes_hashing ?? 0) }}/{{ formatBytes(backupProgress.bytes_hashing_total) }}</span>
           </template>
           <template v-else>{{ $t('sessionDetail.preparing') }}</template>
         </span>
@@ -96,7 +100,7 @@
         <span v-if="backupProgress.errors" class="text-amber-400">{{ $t('sessionDetail.progress.errors', { n: backupProgress.errors }) }}</span>
         <span>{{ $t('sessionDetail.progress.written', { n: formatBytes(backupProgress.bytes_new ?? 0) }) }}</span>
         <span v-if="backupProgress.last_error" class="text-amber-400/70 font-mono truncate max-w-65" :title="backupProgress.last_error.path">
-          {{ backupProgress.last_error.path.split(/[\\/]/).at(-1) }} ({{ backupProgress.last_error.error }})
+          {{ backupProgress.last_error.path.split(/[\\/]/).at(-1) }} ({{ backupProgress.last_error.error === 'ERR_STORE_TIMEOUT' ? $t('common.errStoreTimeout') : backupProgress.last_error.error }})
         </span>
       </div>
     </div>

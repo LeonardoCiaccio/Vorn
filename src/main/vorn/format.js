@@ -5,6 +5,7 @@ import { createHash } from 'crypto'
 import { compressToTemp, decompressStream, cleanupTemp } from './compress.js'
 import { vornHash } from './hash.js'
 import { safeCreateReadStream } from './safeFs.js'
+import { logger } from './logger.js'
 
 function _walChecksum(metaJson) {
   return createHash('sha256').update(metaJson).digest('hex').slice(0, 16)
@@ -112,28 +113,44 @@ export async function readVorn(filePath) {
 
 // ── Scrittura .vorn da sorgente (creazione iniziale) ─────────────────────────
 
-export async function writeVornFromSource(destPath, meta, sourcePath, compressionType = null) {
+export async function writeVornFromSource(destPath, meta, sourcePath, compressionType = null, precompressedPath = null, precompressedHash = null) {
   const tmpPath = destPath + '.tmp'
+  const t0 = Date.now()
+  logger.info(`[writeVorn] START  src="${sourcePath}" compression=${compressionType ?? 'none'} precompressed=${!!precompressedPath}`)
 
   let contentLen
   let contentSource
-  let compTmpPath = null
+  let ownedCtmp = null // file ctmp creato qui (da pulire nel finally)
 
   if (compressionType) {
-    compTmpPath = destPath + '.ctmp'
-    try {
-      const compressedSize = await compressToTemp(sourcePath, compTmpPath, compressionType)
-      contentLen    = BigInt(compressedSize)
-      contentSource = compTmpPath
-      meta.compressed_hash  = vornHash(compTmpPath)
-      meta.bytes_compressed = compressedSize
-    } catch (e) {
-      cleanupTemp(compTmpPath)
-      throw e
+    if (precompressedPath) {
+      // Già compresso nel backupWorker — il Main Process non fa lavoro pesante
+      contentLen            = BigInt(statSync(precompressedPath).size)
+      contentSource         = precompressedPath
+      meta.compressed_hash  = precompressedHash
+      meta.bytes_compressed = Number(contentLen)
+      logger.info(`[writeVorn] PRECOMPRESSED contentLen=${contentLen} (${Date.now() - t0}ms)`)
+    } else {
+      // Fallback (chiamate non provenienti dal backup, es. test o uso diretto)
+      ownedCtmp = destPath + '.ctmp'
+      try {
+        logger.info(`[writeVorn] COMPRESS start (${Date.now() - t0}ms)`)
+        const compressedSize = await compressToTemp(sourcePath, ownedCtmp, compressionType)
+        logger.info(`[writeVorn] COMPRESS done compressedSize=${compressedSize} (${Date.now() - t0}ms)`)
+        contentLen            = BigInt(compressedSize)
+        contentSource         = ownedCtmp
+        meta.compressed_hash  = vornHash(ownedCtmp)
+        meta.bytes_compressed = compressedSize
+      } catch (e) {
+        logger.error(`[writeVorn] COMPRESS error: ${e.message} (${Date.now() - t0}ms)`)
+        cleanupTemp(ownedCtmp); ownedCtmp = null
+        throw e
+      }
     }
   } else {
-    contentLen   = BigInt(statSync(sourcePath).size)
+    contentLen    = BigInt(statSync(sourcePath).size)
     contentSource = sourcePath
+    logger.info(`[writeVorn] NO_COMPRESS contentLen=${contentLen} (${Date.now() - t0}ms)`)
   }
 
   const header = Buffer.alloc(HEADER_SIZE)
@@ -143,6 +160,7 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
   const metaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
 
   try {
+    logger.info(`[writeVorn] PIPELINE start tmpPath="${tmpPath}" (${Date.now() - t0}ms)`)
     await pipeline(
       safeCreateReadStream(contentSource),
       async function* (source) {
@@ -153,12 +171,15 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
       },
       createWriteStream(tmpPath)
     )
+    logger.info(`[writeVorn] PIPELINE done, renaming (${Date.now() - t0}ms)`)
     renameSync(tmpPath, destPath)
+    logger.info(`[writeVorn] RENAME done (${Date.now() - t0}ms)`)
   } catch (e) {
+    logger.error(`[writeVorn] PIPELINE/RENAME error: ${e.message} (${Date.now() - t0}ms)`)
     if (existsSync(tmpPath)) unlinkSync(tmpPath)
     throw e
   } finally {
-    if (compTmpPath) cleanupTemp(compTmpPath)
+    if (ownedCtmp) cleanupTemp(ownedCtmp)
   }
 }
 

@@ -312,6 +312,18 @@
                       <span class="text-gray-600 font-mono truncate max-w-72">
                         {{ activeTask(session.name).progress.file.split(/[\\/]/).at(-1) }}
                       </span>
+                      <span v-if="activeTask(session.name).progress?.storing" class="text-indigo-400/70 font-mono shrink-0">
+                        {{ $t('common.storing') }}
+                      </span>
+                      <span v-else-if="activeTask(session.name).progress?.compressing" class="text-emerald-400/70 font-mono shrink-0">
+                        {{ $t('common.compressing') }}
+                      </span>
+                      <span v-else-if="activeTask(session.name).progress?.bytes_compressing_total > 0" class="text-emerald-400/50 font-mono shrink-0">
+                        {{ $t('common.compressing') }} {{ formatBytes(activeTask(session.name).progress.bytes_compressing ?? 0) }}/{{ formatBytes(activeTask(session.name).progress.bytes_compressing_total) }}
+                      </span>
+                      <span v-else-if="activeTask(session.name).progress?.bytes_hashing_total > 0" class="text-gray-600 font-mono shrink-0">
+                        {{ formatBytes(activeTask(session.name).progress.bytes_hashing ?? 0) }}/{{ formatBytes(activeTask(session.name).progress.bytes_hashing_total) }}
+                      </span>
                     </div>
                   </div>
                 </div>

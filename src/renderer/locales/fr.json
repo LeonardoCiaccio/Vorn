@@ -78,7 +78,10 @@
     "stop": "Arrêter",
     "operationWait": "Opération en cours — veuillez patienter",
     "cannotUndo": "Cette opération ne peut pas être annulée.",
-    "avScan": "Scan Antivirus"
+    "avScan": "Scan Antivirus",
+    "storing": "Archivage…",
+    "compressing": "Compression…",
+    "errStoreTimeout": "Délai d'attente dépassé — possible blocage antivirus"
   },
 
   "status": {
