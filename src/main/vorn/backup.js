@@ -139,8 +139,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
           onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew, compressing: true })
           const compressedSize = await compressToTemp(filePath, compTmpPath, compressionType, (bytesCompressed) => {
             onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew, bytes_compressing: bytesCompressed, bytes_compressing_total: bytes })
-          })
-          if (isCancelled?.()) { cleanupTemp(compTmpPath); break }
+          }, isCancelled)
+          if (compressedSize === null || isCancelled?.()) { cleanupTemp(compTmpPath); break }
           compressedHash = vornHash(compTmpPath, isCancelled, (bytesHashed) => {
             onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew, bytes_hashing: bytesHashed, bytes_hashing_total: compressedSize })
           })

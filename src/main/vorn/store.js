@@ -4,7 +4,6 @@ import { join, basename } from 'path'
 import { createHash } from 'crypto'
 import { readVornMeta, readVorn, writeVornFromSource, contentStream, VORN_HEADER_SIZE, VORN_SEPARATOR_LEN } from './format.js'
 import { withFileLock } from './fileLock.js'
-import { logger } from './logger.js'
 
 function _walChecksum(metaJson) {
   return createHash('sha256').update(metaJson).digest('hex').slice(0, 16)
@@ -114,11 +113,8 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
 
   const key = toStoreKey(hashVorn, compressionType)
   const p   = vornPath(storeDir, key)
-  const t0  = Date.now()
-  logger.info(`[storeBlob] START  src="${sourcePath}" bytes=${bytes} compression=${compressionType ?? 'none'} key=${key}`)
 
   return withFileLock(p, async () => {
-    logger.info(`[storeBlob] LOCK   acquired for key=${key} (${Date.now() - t0}ms)`)
     const pExists = await access(p).then(() => true).catch(() => false)
     if (!pExists) {
       const meta = {
@@ -127,14 +123,11 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
         compressedType:  compressionType ?? null,
         records:         [{ id: sessionId, session: sessionName, paths: [relPath] }],
       }
-      logger.info(`[storeBlob] WRITE  new file, calling writeVornFromSource (${Date.now() - t0}ms)`)
       await writeVornFromSource(p, meta, sourcePath, compressionType, compTmpPath, compressedHash)
-      logger.info(`[storeBlob] DONE   new file written (${Date.now() - t0}ms)`)
       _listCache = null
       return { outcome: 'new', storeKey: key }
     }
 
-    logger.info(`[storeBlob] DEDUP  file exists, updating metadata (${Date.now() - t0}ms)`)
     const { meta, contentLen } = readVornMeta(p)
     if (!meta.records) meta.records = []
 
@@ -148,7 +141,6 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
       meta.records.push({ id: sessionId, session: sessionName, paths: [relPath] })
       await _updateMeta(p, meta, contentLen)
     }
-    logger.info(`[storeBlob] DONE   dedup (${Date.now() - t0}ms)`)
     return { outcome: 'dedup', storeKey: key }
   })
 }

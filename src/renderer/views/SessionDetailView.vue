@@ -77,10 +77,10 @@
         <span class="text-xs text-gray-400 flex items-center gap-1.5">
           <template v-if="backupProgress.file">
             <span v-if="isExecutable(backupProgress.file)" class="text-red-400 font-semibold shrink-0">{{ $t('common.avScan') }}</span>{{ backupProgress.file.split(/[\\/]/).at(-1) }}
-            <span v-if="backupProgress.storing" class="text-indigo-400/70 font-mono shrink-0">{{ $t('common.storing') }}</span>
-            <span v-else-if="backupProgress.compressing" class="text-emerald-400/70 font-mono shrink-0">{{ $t('common.compressing') }}</span>
-            <span v-else-if="backupProgress.bytes_compressing_total > 0" class="text-emerald-400/50 font-mono shrink-0">{{ $t('common.compressing') }} {{ formatBytes(backupProgress.bytes_compressing ?? 0) }}/{{ formatBytes(backupProgress.bytes_compressing_total) }}</span>
-            <span v-else-if="backupProgress.bytes_hashing_total > 0" class="text-gray-600 font-mono shrink-0">{{ formatBytes(backupProgress.bytes_hashing ?? 0) }}/{{ formatBytes(backupProgress.bytes_hashing_total) }}</span>
+            <span v-if="backupProgress.storing" class="text-indigo-400 font-mono shrink-0">{{ $t('common.storing') }}</span>
+            <span v-else-if="backupProgress.compressing" class="text-emerald-400 font-mono shrink-0">{{ $t('common.compressing') }}</span>
+            <span v-else-if="backupProgress.bytes_compressing_total > 0" class="text-emerald-500 font-mono shrink-0">{{ $t('common.compressing') }} {{ formatBytes(backupProgress.bytes_compressing ?? 0) }}/{{ formatBytes(backupProgress.bytes_compressing_total) }}</span>
+            <span v-else-if="backupProgress.bytes_hashing_total > 0" class="text-gray-500 font-mono shrink-0">{{ formatBytes(backupProgress.bytes_hashing ?? 0) }}/{{ formatBytes(backupProgress.bytes_hashing_total) }}</span>
           </template>
           <template v-else>{{ $t('sessionDetail.preparing') }}</template>
         </span>

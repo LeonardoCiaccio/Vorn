@@ -19,22 +19,32 @@ export function decompressStream(inputStream, type) {
 
 // Comprime sourcePath in tmpPath, ritorna la size compressa.
 // Il chiamante è responsabile di eliminare tmpPath se non serve più.
-export async function compressToTemp(sourcePath, tmpPath, type, onProgress = null) {
+export async function compressToTemp(sourcePath, tmpPath, type, onProgress = null, isCancelled = null) {
   const total = statSync(sourcePath).size
   let bytesIn = 0
-  await pipeline(
-    safeCreateReadStream(sourcePath),
-    async function* (source) {
-      for await (const chunk of source) {
-        bytesIn += chunk.length
-        onProgress?.(bytesIn, total)
-        yield chunk
-      }
-    },
-    _compressor(type),
-    createWriteStream(tmpPath)
-  )
-  return statSync(tmpPath).size
+  const ac = new AbortController()
+  const cancelPoll = setInterval(() => { if (isCancelled?.()) ac.abort() }, 100)
+  try {
+    await pipeline(
+      safeCreateReadStream(sourcePath),
+      async function* (source) {
+        for await (const chunk of source) {
+          bytesIn += chunk.length
+          onProgress?.(bytesIn, total)
+          yield chunk
+        }
+      },
+      _compressor(type),
+      createWriteStream(tmpPath),
+      { signal: ac.signal }
+    )
+    return statSync(tmpPath).size
+  } catch (e) {
+    if (e.name === 'AbortError' || isCancelled?.()) return null
+    throw e
+  } finally {
+    clearInterval(cancelPoll)
+  }
 }
 
 export function cleanupTemp(tmpPath) {
