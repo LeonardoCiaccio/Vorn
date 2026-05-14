@@ -21,6 +21,7 @@ jobs:
       - run: npm run package
       - uses: softprops/action-gh-release@v2
         with:
+          generate_release_notes: true
           files: release/Vorn-Windows.exe
 
   build-macos:
@@ -37,6 +38,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - uses: softprops/action-gh-release@v2
         with:
+          generate_release_notes: true
           files: release/Vorn-macOS.dmg
 
   build-linux:
@@ -51,4 +53,5 @@ jobs:
       - run: npm run package
       - uses: softprops/action-gh-release@v2
         with:
+          generate_release_notes: true
           files: release/Vorn-Linux.AppImage
