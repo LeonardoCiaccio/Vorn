@@ -401,17 +401,20 @@ const _isStoreSlow  = ref({})
 const _storeTimers  = {}
 const _storeFiles   = {}
 
-const _activeFiles = computed(() => {
+const _activeStates = computed(() => {
   const out = {}
   for (const s of state.sessions ?? []) {
-    out[s.name] = getActiveTask(s.name)?.progress?.file ?? null
+    const p = getActiveTask(s.name)?.progress
+    out[s.name] = { file: p?.file ?? null, storing: p?.storing ?? false }
   }
   return out
 })
-watch(_activeFiles, (curr, prev) => {
+watch(_activeStates, (curr, prev) => {
   if (!prev) prev = {}
-  for (const [name, file] of Object.entries(curr)) {
-    if (file !== (prev[name] ?? null)) {
+  for (const [name, { file, storing }] of Object.entries(curr)) {
+    const prevFile = prev[name]?.file ?? null
+
+    if (file !== prevFile) {
       clearTimeout(_storeTimers[name])
       delete _storeTimers[name]
       if (_isStoreSlow.value[name]) {
@@ -420,10 +423,19 @@ watch(_activeFiles, (curr, prev) => {
         _isStoreSlow.value = next
       }
       _storeFiles[name] = file
-      if (file) {
-        _storeTimers[name] = setTimeout(() => {
-          _isStoreSlow.value = { ..._isStoreSlow.value, [name]: true }
-        }, STORE_SLOW_MS)
+    }
+
+    if (storing && !_storeTimers[name] && file) {
+      _storeTimers[name] = setTimeout(() => {
+        _isStoreSlow.value = { ..._isStoreSlow.value, [name]: true }
+      }, STORE_SLOW_MS)
+    } else if (!storing && _storeTimers[name]) {
+      clearTimeout(_storeTimers[name])
+      delete _storeTimers[name]
+      if (_isStoreSlow.value[name]) {
+        const next = { ..._isStoreSlow.value }
+        delete next[name]
+        _isStoreSlow.value = next
       }
     }
   }

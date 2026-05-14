@@ -128,7 +128,7 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
       meta.compressed_hash  = precompressedHash
       meta.bytes_compressed = Number(contentLen)
     } else {
-      ownedCtmp = join(tmpdir(), basename(destPath) + '.ctmp')
+      ownedCtmp = join(tmpdir(), 'vorn_' + basename(destPath) + '.ctmp')
       try {
         const compressedSize  = await compressToTemp(sourcePath, ownedCtmp, compressionType)
         contentLen            = BigInt(compressedSize)

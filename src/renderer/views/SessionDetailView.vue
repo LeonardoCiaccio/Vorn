@@ -735,13 +735,22 @@ let _storeSlowTimer = null
 let _storeSlowFile  = null
 
 watch(backupProgress, p => {
-  const file = p?.file ?? null
+  const file    = p?.file    ?? null
+  const storing = p?.storing ?? false
+
   if (file !== _storeSlowFile) {
     clearTimeout(_storeSlowTimer)
     _storeSlowTimer = null
     isStoreSlow.value = false
     _storeSlowFile = file
-    if (file) _storeSlowTimer = setTimeout(() => { isStoreSlow.value = true }, STORE_SLOW_MS)
+  }
+
+  if (storing && !_storeSlowTimer) {
+    _storeSlowTimer = setTimeout(() => { isStoreSlow.value = true }, STORE_SLOW_MS)
+  } else if (!storing && _storeSlowTimer) {
+    clearTimeout(_storeSlowTimer)
+    _storeSlowTimer = null
+    isStoreSlow.value = false
   }
 }, { immediate: true })
 watch(isRunning, running => {

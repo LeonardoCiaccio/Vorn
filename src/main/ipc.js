@@ -1,4 +1,7 @@
 import { app }              from 'electron'
+import { readdirSync, unlinkSync } from 'fs'
+import { tmpdir }           from 'os'
+import { join }             from 'path'
 import { ctx, stopStoreWatch, triggerDisconnect } from './workerManager.js'
 import { releaseLock }      from './vorn/lockFile.js'
 import { closeDb }          from './vorn/db.js'
@@ -8,7 +11,19 @@ import { registerTaskHandlers }    from './handlers/taskHandlers.js'
 import { registerSystemHandlers }  from './handlers/systemHandlers.js'
 import { logger }                  from './vorn/logger.js'
 
+function _cleanupVornTemps() {
+  try {
+    const tmp = tmpdir()
+    for (const f of readdirSync(tmp)) {
+      if (f.startsWith('vorn_') && f.endsWith('.ctmp')) {
+        try { unlinkSync(join(tmp, f)) } catch { }
+      }
+    }
+  } catch { }
+}
+
 export function registerIpcHandlers(mainWindow) {
+  _cleanupVornTemps()
 
   app.once('before-quit', (e) => {
     ctx.appClosing = true
