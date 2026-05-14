@@ -235,10 +235,12 @@
                     <button
                       v-if="activeTask(session.name)"
                       @click.stop="cancelTask(activeTask(session.name).id)"
-                      class="p-1.5 rounded-md text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+                      :disabled="activeTask(session.name).cancelling"
+                      class="p-1.5 rounded-md text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       :title="$t('sessions.actions.suspend')"
                     >
-                      <PauseIcon class="w-3.5 h-3.5" />
+                      <ArrowPathIcon v-if="activeTask(session.name).cancelling" class="w-3.5 h-3.5 animate-spin" />
+                      <PauseIcon v-else class="w-3.5 h-3.5" />
                     </button>
                     <button
                       v-else
@@ -306,11 +308,18 @@
                       {{ $t('sessions.progress.errors', { n: activeTask(session.name).progress.errors }) }}
                     </span>
                     <div v-if="activeTask(session.name).progress?.file" class="ml-auto flex items-center gap-1.5 min-w-0">
-                      <span v-if="isExecutable(activeTask(session.name).progress.file)" class="text-red-400 text-[10px] font-semibold shrink-0">
-                        {{ $t('common.avScan') }}
+                      <span class="text-gray-600 font-mono truncate max-w-72"><span v-if="isStoreSlow(session.name)" class="text-red-400 font-semibold not-mono">{{ $t('common.storeLento') }}</span>{{ (isStoreSlow(session.name) ? ' ' : '') + activeTask(session.name).progress.file.split(/[\\/]/).at(-1) }}</span>
+                      <span v-if="activeTask(session.name).progress?.storing" class="text-indigo-400 font-mono shrink-0">
+                        {{ $t('common.storing') }}
                       </span>
-                      <span class="text-gray-600 font-mono truncate max-w-72">
-                        {{ activeTask(session.name).progress.file.split(/[\\/]/).at(-1) }}
+                      <span v-else-if="activeTask(session.name).progress?.compressing" class="text-emerald-400 font-mono shrink-0">
+                        {{ $t('common.compressing') }}
+                      </span>
+                      <span v-else-if="activeTask(session.name).progress?.bytes_compressing_total > 0" class="text-emerald-500 font-mono shrink-0">
+                        {{ $t('common.compressing') }} {{ formatBytes(activeTask(session.name).progress.bytes_compressing ?? 0) }}/{{ formatBytes(activeTask(session.name).progress.bytes_compressing_total) }}
+                      </span>
+                      <span v-else-if="activeTask(session.name).progress?.bytes_hashing_total > 0" class="text-gray-500 font-mono shrink-0">
+                        {{ formatBytes(activeTask(session.name).progress.bytes_hashing ?? 0) }}/{{ formatBytes(activeTask(session.name).progress.bytes_hashing_total) }}
                       </span>
                     </div>
                   </div>
@@ -377,16 +386,70 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PlusIcon, FolderIcon, ArchiveBoxIcon, ArrowPathIcon, TrashIcon, PlayIcon, PauseIcon, CheckCircleIcon, ArrowDownTrayIcon, ExclamationCircleIcon, PencilSquareIcon, QueueListIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { state, selectSession, deleteSession, getActiveTask, startBackup, cancelTask, formatTs, formatBytes, anyBackupRunning, queueState, startQueue, cancelQueue } from '../stores/vorn.js'
-import { isExecutable } from '../utils/executable.js'
 import StatusBadge from '../components/StatusBadge.vue'
 import NewSessionModal from '../components/NewSessionModal.vue'
 import EditSessionModal from '../components/EditSessionModal.vue'
 
 const { t } = useI18n()
+
+const STORE_SLOW_MS = 7000
+const _isStoreSlow  = ref({})
+const _storeTimers  = {}
+const _storeFiles   = {}
+
+const _activeStates = computed(() => {
+  const out = {}
+  for (const s of state.sessions ?? []) {
+    const p = getActiveTask(s.name)?.progress
+    out[s.name] = { file: p?.file ?? null, storing: p?.storing ?? false }
+  }
+  return out
+})
+watch(_activeStates, (curr, prev) => {
+  if (!prev) prev = {}
+  for (const [name, { file, storing }] of Object.entries(curr)) {
+    const prevFile = prev[name]?.file ?? null
+
+    if (file !== prevFile) {
+      clearTimeout(_storeTimers[name])
+      delete _storeTimers[name]
+      if (_isStoreSlow.value[name]) {
+        const next = { ..._isStoreSlow.value }
+        delete next[name]
+        _isStoreSlow.value = next
+      }
+      _storeFiles[name] = file
+    }
+
+    if (storing && !_storeTimers[name] && file) {
+      _storeTimers[name] = setTimeout(() => {
+        _isStoreSlow.value = { ..._isStoreSlow.value, [name]: true }
+      }, STORE_SLOW_MS)
+    } else if (!storing && _storeTimers[name]) {
+      clearTimeout(_storeTimers[name])
+      delete _storeTimers[name]
+      if (_isStoreSlow.value[name]) {
+        const next = { ..._isStoreSlow.value }
+        delete next[name]
+        _isStoreSlow.value = next
+      }
+    }
+  }
+  for (const name of Object.keys(_storeTimers)) {
+    if (!curr[name]) {
+      clearTimeout(_storeTimers[name])
+      delete _storeTimers[name]
+    }
+  }
+}, { immediate: true })
+
+function isStoreSlow(sessionName) {
+  return _isStoreSlow.value[sessionName] ?? false
+}
 
 // ── Path utilities ────────────────────────────────────────────────────────────
 

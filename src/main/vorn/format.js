@@ -2,6 +2,8 @@ import { openSync, readSync, writeSync, fsyncSync, closeSync, truncateSync, crea
 import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
 import { createHash } from 'crypto'
+import { tmpdir } from 'os'
+import { basename } from 'path'
 import { compressToTemp, decompressStream, cleanupTemp } from './compress.js'
 import { vornHash } from './hash.js'
 import { safeCreateReadStream } from './safeFs.js'
@@ -112,27 +114,34 @@ export async function readVorn(filePath) {
 
 // ── Scrittura .vorn da sorgente (creazione iniziale) ─────────────────────────
 
-export async function writeVornFromSource(destPath, meta, sourcePath, compressionType = null) {
+export async function writeVornFromSource(destPath, meta, sourcePath, compressionType = null, precompressedPath = null, precompressedHash = null, signal = null) {
   const tmpPath = destPath + '.tmp'
 
   let contentLen
   let contentSource
-  let compTmpPath = null
+  let ownedCtmp = null
 
   if (compressionType) {
-    compTmpPath = destPath + '.ctmp'
-    try {
-      const compressedSize = await compressToTemp(sourcePath, compTmpPath, compressionType)
-      contentLen    = BigInt(compressedSize)
-      contentSource = compTmpPath
-      meta.compressed_hash  = vornHash(compTmpPath)
-      meta.bytes_compressed = compressedSize
-    } catch (e) {
-      cleanupTemp(compTmpPath)
-      throw e
+    if (precompressedPath) {
+      contentLen            = BigInt(statSync(precompressedPath).size)
+      contentSource         = precompressedPath
+      meta.compressed_hash  = precompressedHash
+      meta.bytes_compressed = Number(contentLen)
+    } else {
+      ownedCtmp = join(tmpdir(), 'vorn_' + basename(destPath) + '.ctmp')
+      try {
+        const compressedSize  = await compressToTemp(sourcePath, ownedCtmp, compressionType)
+        contentLen            = BigInt(compressedSize)
+        contentSource         = ownedCtmp
+        meta.compressed_hash  = vornHash(ownedCtmp)
+        meta.bytes_compressed = compressedSize
+      } catch (e) {
+        cleanupTemp(ownedCtmp); ownedCtmp = null
+        throw e
+      }
     }
   } else {
-    contentLen   = BigInt(statSync(sourcePath).size)
+    contentLen    = BigInt(statSync(sourcePath).size)
     contentSource = sourcePath
   }
 
@@ -151,14 +160,15 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
         yield SEPARATOR
         yield metaBuf
       },
-      createWriteStream(tmpPath)
+      createWriteStream(tmpPath),
+      ...(signal ? [{ signal }] : [])
     )
     renameSync(tmpPath, destPath)
   } catch (e) {
     if (existsSync(tmpPath)) unlinkSync(tmpPath)
     throw e
   } finally {
-    if (compTmpPath) cleanupTemp(compTmpPath)
+    if (ownedCtmp) cleanupTemp(ownedCtmp)
   }
 }
 

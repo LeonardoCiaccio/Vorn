@@ -78,7 +78,10 @@
     "stop": "Detener",
     "operationWait": "Operación en curso — por favor espere",
     "cannotUndo": "Esta operación no se puede deshacer.",
-    "avScan": "Escaneo Antivirus"
+    "storeLento": "Store lento",
+    "storing": "Archivando…",
+    "compressing": "Comprimiendo…",
+    "errStoreTimeout": "Tiempo de espera agotado — posible bloqueo antivirus"
   },
 
   "status": {

@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3'
-import { mkdirSync, existsSync } from 'fs'
+import { mkdirSync } from 'fs'
+import { safeExistsSync } from './safeFs.js'
 import { join } from 'path'
 import { homedir } from 'os'
 import { logger } from './logger.js'
@@ -44,6 +45,25 @@ export function dbUpsertFile(path, mtime, size, hash) {
   `).run(path, mtime, size, hash, new Date().toISOString())
 }
 
+export function dbUpsertFileMany(records) {
+  if (!records.length) return
+  const db   = getDb()
+  const stmt = db.prepare(`
+    INSERT INTO Files (path, mtime, size, hash, updated)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(path) DO UPDATE SET
+      mtime   = excluded.mtime,
+      size    = excluded.size,
+      hash    = excluded.hash,
+      updated = excluded.updated
+  `)
+  const now = new Date().toISOString()
+  db.transaction(() => {
+    for (const { path, mtime, size, hash } of records)
+      stmt.run(path, mtime, size, hash, now)
+  })()
+}
+
 // Rimuove dal DB le path che non esistono più sul filesystem.
 // Campiona 1000 record per rowid casuale (O(log n), nessuna full table scan)
 // e raggruppa i DELETE in una transaction per efficienza.
@@ -69,7 +89,7 @@ export function dbPruneOrphans() {
   try {
     db.transaction(() => {
       for (const { path } of rows) {
-        if (!existsSync(path)) { del.run(path); removed++ }
+        if (!safeExistsSync(path)) { del.run(path); removed++ }
       }
     })()
   } catch (e) {

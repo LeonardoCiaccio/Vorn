@@ -98,6 +98,7 @@ export function registerTaskHandlers(mainWindow) {
     // fare refreshSession prima che il worker abbia avuto tempo di crearlo.
     let runTs
     if (resumeTs) {
+      validateRunTs(resumeTs)
       runTs = resumeTs
       try {
         const run = loadRun(ctx.activeStore, sessionName, resumeTs)
@@ -124,6 +125,11 @@ export function registerTaskHandlers(mainWindow) {
     if (!isAbsolute(resolvedDest)) throw new Error('ERR_DEST_NOT_ABSOLUTE')
     try { accessSync(resolvedDest, constants.W_OK) }
     catch { throw new Error('ERR_DEST_NOT_WRITABLE') }
+    if (selectedFiles !== null) {
+      if (!Array.isArray(selectedFiles) || selectedFiles.length > 100_000) throw new Error('ERR_INVALID_SELECTED_FILES')
+      for (const f of selectedFiles)
+        if (typeof f !== 'string' || f.length === 0 || f.length > 4096 || f.includes('\x00')) throw new Error('ERR_INVALID_SELECTED_FILES')
+    }
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
       throw new Error('ERR_OPERATION_IN_PROGRESS')
     const task = createTask('restore', sessionName)
@@ -192,6 +198,10 @@ export function registerTaskHandlers(mainWindow) {
     if (!destDir || typeof destDir !== 'string') throw new Error('ERR_INVALID_DEST_DIR')
     const resolvedDest = resolve(destDir)
     if (!isAbsolute(resolvedDest)) throw new Error('ERR_DEST_NOT_ABSOLUTE')
+    if (filename !== undefined && filename !== null) {
+      if (typeof filename !== 'string' || filename.length === 0 || filename.length > 255 || filename.includes('\x00'))
+        throw new Error('ERR_INVALID_FILENAME')
+    }
     return extractByHash(ctx.activeStore, hashVorn, resolvedDest, filename)
   })
 }

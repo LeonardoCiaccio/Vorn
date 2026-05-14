@@ -78,7 +78,10 @@
     "stop": "Stop",
     "operationWait": "Operation in progress — please wait",
     "cannotUndo": "This operation cannot be undone.",
-    "avScan": "Antivirus Scan"
+    "storeLento": "Slow store",
+    "storing": "Storing…",
+    "compressing": "Compressing…",
+    "errStoreTimeout": "Store timeout — possible antivirus interference"
   },
 
   "status": {

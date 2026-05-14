@@ -63,8 +63,9 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
 
   // Guard: onDone può scattare una sola volta per worker indipendentemente
   // da quanti eventi (done + error, store-disconnected + error, ecc.) arrivino.
-  let _settled    = false
+  let _settled      = false
   let _lastProgress = null
+  let _storeAc      = null
   function _settle(result, error) {
     if (_settled) return
     _settled = true
@@ -74,14 +75,17 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
   worker.on('message', (msg) => {
     const { type } = msg
     if (type === 'store-request') {
-      const { id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType } = msg
+      const { id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash } = msg
       if (!ctx.activeStore) {
         worker.postMessage({ type: 'store-result', id, error: 'ERR_STORE_DISCONNECTED' })
         return
       }
-      storeBlob(ctx.activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType)
+      const ac = new AbortController()
+      _storeAc = ac
+      storeBlob(ctx.activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, ac.signal)
         .then(outcome => worker.postMessage({ type: 'store-result', id, outcome }))
         .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message, code: err.code }))
+        .finally(() => { if (_storeAc === ac) _storeAc = null })
     } else if (type === 'progress') {
       _lastProgress = msg.progress
       updateTaskProgress(taskId, msg.progress)
@@ -136,6 +140,7 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
 
   setTaskCancelFn(taskId, () => {
     Atomics.store(cancelFlag, 0, 1)
+    _storeAc?.abort()
     // Se il worker non risponde entro 8s dal cancel (es. I/O bloccata su USB/rete),
     // risolve subito il task come 'cancelled' per sbloccare la UI, poi tenta il
     // terminate. Su Windows il thread potrebbe restare in un kernel-wait finché

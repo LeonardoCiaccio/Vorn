@@ -1,12 +1,12 @@
-import { readdirSync } from 'fs'
 import { join } from 'path'
+import { safeReaddirSync } from './safeFs.js'
 
 export function walk(dir, excludePaths = [], excludePatterns = [], _results = []) {
   const queue = [dir]
   while (queue.length) {
     const current = queue.pop()
     try {
-      for (const entry of readdirSync(current, { withFileTypes: true })) {
+      for (const entry of safeReaddirSync(current, { withFileTypes: true })) {
         const full = join(current, entry.name)
         if (excludePaths.some(p => full === p || full.startsWith(p + '\\') || full.startsWith(p + '/'))) continue
         const relFromRoot = full.slice(dir.length + 1).replace(/\\/g, '/')

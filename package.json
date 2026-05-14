@@ -1,6 +1,6 @@
 {
   "name": "vorn",
-  "version": "0.8.15",
+  "version": "0.9.0",
   "description": "Vorn — Vault Of Redundant Nodes",
   "license": "AGPL-3.0-only",
   "author": "Leonardo Ciaccio <leonardo.ciaccio@gmail.com>",
@@ -26,7 +26,8 @@
     "@noble/hashes": "^2.2.0",
     "better-sqlite3": "^12.9.0",
     "vue": "^3.5.13",
-    "vue-i18n": "^11.4.0"
+    "vue-i18n": "^11.4.0",
+    "vue-virtual-scroller": "^3.0.3"
   },
   "build": {
     "appId": "com.vorn.app",
@@ -35,20 +36,29 @@
       "output": "release"
     },
     "extraResources": [
-      { "from": "build/icon.png", "to": "icons/icon.png" },
-      { "from": "build/icon.ico", "to": "icons/icon.ico" }
+      {
+        "from": "build/icon.png",
+        "to": "icons/icon.png"
+      },
+      {
+        "from": "build/icon.ico",
+        "to": "icons/icon.ico"
+      }
     ],
     "win": {
       "target": "portable",
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "artifactName": "Vorn-Windows.${ext}"
     },
     "linux": {
       "target": "AppImage",
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "artifactName": "Vorn-Linux.${ext}"
     },
     "mac": {
       "target": "dmg",
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "artifactName": "Vorn-macOS.${ext}"
     }
   }
 }

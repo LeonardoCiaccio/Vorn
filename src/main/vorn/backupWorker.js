@@ -24,7 +24,7 @@ parentPort.on('message', (msg) => {
   }
 })
 
-function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType) {
+function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath = null, compressedHash = null) {
   return new Promise((resolve, reject) => {
     const id    = ++_reqId
     const timer = setTimeout(() => {
@@ -36,14 +36,15 @@ function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, re
       resolve: (outcome) => { clearTimeout(timer); resolve(outcome) },
       reject:  (err)     => { clearTimeout(timer); reject(err) },
     })
-    parentPort.postMessage({ type: 'store-request', id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType })
+    parentPort.postMessage({ type: 'store-request', id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash })
   })
 }
 
 let _lastProgressTs = 0
 function _sendProgress(progress) {
   const now = Date.now()
-  if (now - _lastProgressTs >= 200 || progress.current === progress.total) {
+  const isStateChange = progress.storing || progress.compressing
+  if (isStateChange || now - _lastProgressTs >= 200 || progress.current === progress.total) {
     _lastProgressTs = now
     parentPort.postMessage({ type: 'progress', progress })
   }

@@ -78,7 +78,10 @@
     "stop": "Parar",
     "operationWait": "Operação em curso — por favor aguarde",
     "cannotUndo": "Esta operação não pode ser desfeita.",
-    "avScan": "Verificação de Antivírus"
+    "storeLento": "Store lento",
+    "storing": "Arquivando…",
+    "compressing": "Comprimindo…",
+    "errStoreTimeout": "Tempo limite excedido — possível bloqueio do antivírus"
   },
 
   "status": {
