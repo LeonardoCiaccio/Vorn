@@ -23,7 +23,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
   const scanErrors  = []
   for (const src of sources) {
     try {
-      const st = statSync(src)
+      const st = safeStatSync(src)
       if (st.isFile()) {
         if (!excPaths.some(p => src === p) && !excPats.some(pat => matchPattern(basename(src), pat)))
           allFiles.push(src)

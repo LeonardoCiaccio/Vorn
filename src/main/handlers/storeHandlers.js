@@ -19,7 +19,7 @@ function _getFilesystem(dirPath) {
     if (os === 'win32') {
       if (root.startsWith('\\\\')) return 'network'
       const letter = root[0].toUpperCase()
-      if (!letter || root[1] !== ':') return null
+      if (!/^[A-Z]$/.test(letter) || root[1] !== ':') return null
       const out = execFileSync(
         'powershell', ['-NoProfile', '-NonInteractive', '-Command',
           `(Get-Volume -DriveLetter '${letter}' -ErrorAction SilentlyContinue).FileSystem`],
