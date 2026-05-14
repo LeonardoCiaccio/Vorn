@@ -201,23 +201,23 @@ export function registerSystemHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:inspect-hash', (_, { hashVorn }) => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     assertHash(hashVorn)
     return getEntry(ctx.activeStore, hashVorn)
   })
   ipcMain.handle('vorn:count-store-files', () => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     return countStoreFiles(ctx.activeStore)
   })
   ipcMain.handle('vorn:list-store-files', (_, { offset, limit, query }) => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     return listStoreFiles(ctx.activeStore, offset, limit, query?.trim() ? _hashSetForQuery(ctx.activeStore, query.trim()) : null)
   })
   ipcMain.handle('vorn:delete-store-entry', (_, { hashVorn }) => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     assertHash(hashVorn)
     if (listTasks().some(t => t.status === 'running'))
-      throw new Error('Impossibile eliminare: operazioni in corso')
+      throw new Error('ERR_DELETE_IN_PROGRESS')
     deleteStoreEntry(ctx.activeStore, hashVorn)
   })
 }

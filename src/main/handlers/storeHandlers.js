@@ -64,7 +64,7 @@ function _cleanupResidualTemps(storeDir) {
 
 export function registerStoreHandlers(mainWindow) {
   ipcMain.handle('vorn:open-store', async (_, { storeDir }) => {
-    if (!existsSync(storeDir)) throw new Error('Cartella non trovata')
+    if (!existsSync(storeDir)) throw new Error('ERR_FOLDER_NOT_FOUND')
     const fs = _getFilesystem(storeDir)
     if (fs && FAT32_FS_NAMES.has(fs.toLowerCase())) throw new Error('ERR_FILESYSTEM_FAT32')
     const lockErr = checkLock(storeDir)

@@ -14,17 +14,17 @@ export function runPath(storeDir, name, ts)              { return join(runsDir(s
 // ── Validation ───────────────────────────────────────────────────────────────
 
 export function validateSessionName(name) {
-  if (!name || typeof name !== 'string') throw new Error('Nome sessione non valido')
-  if (name.length > 255) throw new Error('Nome sessione troppo lungo')
+  if (!name || typeof name !== 'string') throw new Error('ERR_INVALID_SESSION_NAME')
+  if (name.length > 255) throw new Error('ERR_SESSION_NAME_TOO_LONG')
   if (/[/\\]/.test(name) || name.includes('..') || name.includes('\x00'))
-    throw new Error(`Nome sessione non sicuro: "${name}"`)
+    throw new Error('ERR_UNSAFE_SESSION_NAME')
 }
 
 // Formato atteso: ISO-8601 prodotto da new Date().toISOString() (es. 2024-01-15T10:30:00.000Z)
 const _RUN_TS_RE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$/
 export function validateRunTs(ts) {
-  if (!ts || typeof ts !== 'string') throw new Error('runTs non valido')
-  if (!_RUN_TS_RE.test(ts)) throw new Error(`runTs non sicuro: "${ts}"`)
+  if (!ts || typeof ts !== 'string') throw new Error('ERR_INVALID_RUN_TS')
+  if (!_RUN_TS_RE.test(ts)) throw new Error('ERR_UNSAFE_RUN_TS')
 }
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ export function createSession(storeDir, session) {
 
 export function updateSession(storeDir, name, patch) {
   const session = getSession(storeDir, name)
-  if (!session) throw new Error(`Sessione non trovata: ${name}`)
+  if (!session) throw new Error('ERR_SESSION_NOT_FOUND')
   saveSession(storeDir, { ...session, ...patch })
 }
 
@@ -130,7 +130,7 @@ function _summarizeRun(run) {
 
 export function loadRun(storeDir, sessionName, ts) {
   const p = runPath(storeDir, sessionName, ts)
-  if (!existsSync(p)) throw new Error(`Run non trovato: ${ts}`)
+  if (!existsSync(p)) throw new Error('ERR_RUN_NOT_FOUND')
   return JSON.parse(readFileSync(p, 'utf8'))
 }
 

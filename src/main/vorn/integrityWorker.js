@@ -37,11 +37,11 @@ let ok = 0
       if (!isCompressed) {
         const storedBytes = meta.bytes ?? meta.content_length
         if (storedBytes !== undefined && Number(contentLen) !== storedBytes) {
-          issues.push(`Dimensione non corrispondente: header=${Number(contentLen)} B, metadati=${storedBytes} B`)
+          issues.push({ code: 'ERR_SIZE_MISMATCH', params: { header: Number(contentLen), meta: storedBytes } })
         }
       } else if (meta?.bytes_compressed !== undefined) {
         if (Number(contentLen) !== meta.bytes_compressed) {
-          issues.push(`Dimensione compressa non corrispondente: header=${Number(contentLen)} B, metadati=${meta.bytes_compressed} B`)
+          issues.push({ code: 'ERR_COMPRESSED_SIZE_MISMATCH', params: { header: Number(contentLen), meta: meta.bytes_compressed } })
         }
       }
 
@@ -72,14 +72,14 @@ let ok = 0
       }
 
       if (computedHash !== refHash) {
-        issues.push(`Hash corrotto: atteso ${refHash.slice(0, 12)}…, calcolato ${computedHash.slice(0, 12)}…`)
+        issues.push({ code: 'ERR_HASH_CORRUPT', params: { expected: refHash.slice(0, 12), computed: computedHash.slice(0, 12) } })
       }
 
       if (issues.length === 0) ok++
       else errors.push({ hashVorn: storeKey, issues })
 
     } catch (err) {
-      errors.push({ hashVorn: storeKey, issues: [`Errore lettura: ${err.message}`] })
+      errors.push({ hashVorn: storeKey, issues: [{ code: err.message }] })
     }
 
     parentPort.postMessage({

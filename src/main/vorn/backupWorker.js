@@ -19,7 +19,7 @@ parentPort.on('message', (msg) => {
       else           p.resolve(msg.outcome)
     }
   } else if (msg?.type === 'store-disconnected') {
-    for (const p of _pending.values()) p.reject(new Error('Store non raggiungibile'))
+    for (const p of _pending.values()) p.reject(new Error('ERR_STORE_UNREACHABLE'))
     _pending.clear()
   }
 })
@@ -29,7 +29,7 @@ function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, re
     const id    = ++_reqId
     const timer = setTimeout(() => {
       _pending.delete(id)
-      reject(new Error('Store request timeout'))
+      reject(new Error('ERR_STORE_TIMEOUT'))
     }, STORE_REQUEST_TIMEOUT_MS)
 
     _pending.set(id, {

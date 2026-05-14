@@ -3,7 +3,7 @@
 
     <!-- Breadcrumb -->
     <div class="flex items-center gap-1 px-2 py-1.5 bg-gray-800/60 border border-gray-700 rounded-md overflow-x-auto whitespace-nowrap scrollbar-none">
-      <button @click="goHome" class="shrink-0 text-gray-500 hover:text-indigo-400 transition-colors" :title="'Home'">
+      <button @click="goHome" class="shrink-0 text-gray-500 hover:text-indigo-400 transition-colors" :title="$t('folderBrowser.home')">
         <HomeIcon class="w-3.5 h-3.5" />
       </button>
       <template v-for="(seg, i) in pathSegments" :key="i">

@@ -8,6 +8,7 @@ import { invalidateListCache }                                             from 
 import { ctx, spawnWorker }                                                from '../workerManager.js'
 import { loadRun, saveRun, validateSessionName, validateRunTs }            from '../vorn/sessions.js'
 import { loadSettings }                                                    from '../vorn/settings.js'
+import { getMainT }                                                        from '../vorn/mainI18n.js'
 import { assertHash }                                                      from './_validation.js'
 import { getAppIcon }                                                      from '../vorn/icon.js'
 
@@ -20,10 +21,9 @@ function _notifyRunDone(task, result, mainWindow) {
   if (!Notification.isSupported()) return
   if (task.type !== 'backup' || result?.status !== 'done') return
   const errors = result.errors?.length ?? 0
-  const body = errors > 0
-    ? `${result.files_total} file — ${errors} errori`
-    : `${result.files_total} file completati`
-  const notif = new Notification({ title: `Backup completato — ${task.sessionName}`, body, icon: getAppIcon() })
+  const t      = getMainT()
+  const body   = t.backupDoneBody(result.files_total, errors)
+  const notif  = new Notification({ title: t.backupDoneTitle(task.sessionName), body, icon: getAppIcon() })
   notif.on('click', () => {
     if (mainWindow.isDestroyed()) return
     if (mainWindow.isMinimized()) mainWindow.restore()
@@ -90,10 +90,10 @@ export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:task-list',   ()           => listTasks())
 
   ipcMain.handle('vorn:start-backup', (_, { sessionName, resumeTs = null }) => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     validateSessionName(sessionName)
     if (listTasks().some(t => t.type === 'backup' && t.status === 'running'))
-      throw new Error('BACKUP_IN_PROGRESS')
+      throw new Error('ERR_BACKUP_IN_PROGRESS')
     // Scrivi il run su disco prima di avviare il worker — il watcher potrebbe
     // fare refreshSession prima che il worker abbia avuto tempo di crearlo.
     let runTs
@@ -116,16 +116,16 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:start-restore', (_, { sessionName, runTs, destDir, selectedFiles = null }) => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     validateSessionName(sessionName)
     validateRunTs(runTs)
-    if (!destDir || typeof destDir !== 'string') throw new Error('destDir non valido')
+    if (!destDir || typeof destDir !== 'string') throw new Error('ERR_INVALID_DEST_DIR')
     const resolvedDest = resolve(destDir)
-    if (!isAbsolute(resolvedDest)) throw new Error('destDir deve essere un percorso assoluto')
+    if (!isAbsolute(resolvedDest)) throw new Error('ERR_DEST_NOT_ABSOLUTE')
     try { accessSync(resolvedDest, constants.W_OK) }
-    catch { throw new Error(`destDir non scrivibile: ${destDir}`) }
+    catch { throw new Error('ERR_DEST_NOT_WRITABLE') }
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
-      throw new Error(`Operazione già in corso: ${sessionName}`)
+      throw new Error('ERR_OPERATION_IN_PROGRESS')
     const task = createTask('restore', sessionName)
     logger.info(`Task restore started [${task.id}] session="${sessionName}" runTs=${runTs} dest="${resolvedDest}"`)
     spawnWorker('restoreWorker.js', { storeDir: ctx.activeStore, sessionName, runTs, destDir: resolvedDest, selectedFiles }, task.id, mainWindow,
@@ -138,9 +138,9 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:start-integrity', () => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     if (listTasks().some(t => t.type === 'integrity' && t.status === 'running'))
-      throw new Error('Verifica integrità già in corso')
+      throw new Error('ERR_INTEGRITY_RUNNING')
     const task = createTask('integrity', null)
     logger.info(`Task integrity started [${task.id}]`)
     spawnWorker('integrityWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, _onDone(task, mainWindow))
@@ -148,9 +148,9 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:start-clear-store', () => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     if (listTasks().some(t => t.status === 'running'))
-      throw new Error('Impossibile svuotare: operazioni in corso')
+      throw new Error('ERR_CANNOT_CLEAR')
     const task = createTask('clear', null)
     logger.info(`Task clear-store started [${task.id}]`)
     spawnWorker('clearWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, (result, error) => {
@@ -161,15 +161,15 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:start-extract-store', (_, { destDir, sessionFilter = null }) => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
-    if (!destDir || typeof destDir !== 'string') throw new Error('destDir non valido')
+    if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
+    if (!destDir || typeof destDir !== 'string') throw new Error('ERR_INVALID_DEST_DIR')
     const resolvedDest = resolve(destDir)
-    if (!isAbsolute(resolvedDest)) throw new Error('destDir deve essere un percorso assoluto')
+    if (!isAbsolute(resolvedDest)) throw new Error('ERR_DEST_NOT_ABSOLUTE')
     try { accessSync(resolvedDest, constants.W_OK) }
-    catch { throw new Error(`destDir non scrivibile: ${destDir}`) }
-    if (sessionFilter !== null && typeof sessionFilter !== 'string') throw new Error('sessionFilter non valido')
+    catch { throw new Error('ERR_DEST_NOT_WRITABLE') }
+    if (sessionFilter !== null && typeof sessionFilter !== 'string') throw new Error('ERR_INVALID_SESSION_FILTER')
     if (listTasks().some(t => t.type === 'extract-store' && t.status === 'running'))
-      throw new Error('Estrazione store già in corso')
+      throw new Error('ERR_EXTRACTION_RUNNING')
     const task = createTask('extract-store', null)
     logger.info(`Task extract-store started [${task.id}] dest="${resolvedDest}"`)
     spawnWorker('extractStoreWorker.js', { storeDir: ctx.activeStore, destDir: resolvedDest, sessionFilter }, task.id, mainWindow, _onDone(task, mainWindow))
@@ -177,9 +177,9 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:start-prune', () => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     if (listTasks().some(t => t.status === 'running'))
-      throw new Error('Impossibile pulire: operazioni in corso')
+      throw new Error('ERR_CANNOT_PRUNE')
     const task = createTask('prune', null)
     logger.info(`Task prune started [${task.id}]`)
     spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, _onDone(task, mainWindow))
@@ -187,11 +187,11 @@ export function registerTaskHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:extract-hash', async (_, { hashVorn, destDir, filename }) => {
-    if (!ctx.activeStore) throw new Error('Nessuno store aperto')
+    if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     assertHash(hashVorn)
-    if (!destDir || typeof destDir !== 'string') throw new Error('destDir non valido')
+    if (!destDir || typeof destDir !== 'string') throw new Error('ERR_INVALID_DEST_DIR')
     const resolvedDest = resolve(destDir)
-    if (!isAbsolute(resolvedDest)) throw new Error('destDir deve essere un percorso assoluto')
+    if (!isAbsolute(resolvedDest)) throw new Error('ERR_DEST_NOT_ABSOLUTE')
     return extractByHash(ctx.activeStore, hashVorn, resolvedDest, filename)
   })
 }

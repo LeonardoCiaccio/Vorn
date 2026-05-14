@@ -5,12 +5,12 @@ import { safeCreateReadStream } from './safeFs.js'
 
 function _compressor(type) {
   if (type === 'gzip') return createGzip()
-  throw new Error(`Tipo di compressione non supportato: ${type}`)
+  throw new Error('ERR_COMPRESSION_NOT_SUPPORTED')
 }
 
 function _decompressor(type) {
   if (type === 'gzip') return createGunzip()
-  throw new Error(`Tipo di compressione non supportato: ${type}`)
+  throw new Error('ERR_COMPRESSION_NOT_SUPPORTED')
 }
 
 export function decompressStream(inputStream, type) {

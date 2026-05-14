@@ -114,8 +114,7 @@ export async function extractByHash(storeDir, storeKey, destDir, filename) {
   const vornFilePath = join(storeDir, storeKey + '.vorn')
   const { contentLen } = readVornMeta(vornFilePath)
   if (Number(contentLen) > EXTRACT_MAX_BYTES) {
-    const mb = Math.round(Number(contentLen) / 1024 / 1024)
-    throw new Error(`File troppo grande per l'estrazione diretta (${mb} MB). Limite: 500 MB.`)
+    throw new Error('ERR_FILE_TOO_LARGE_EXTRACT')
   }
   const outPath = join(destDir, basename(filename || storeKey))
   mkdirSync(destDir, { recursive: true })

@@ -147,7 +147,7 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
 
 export function deleteStoreEntry(storeDir, hashVorn) {
   const p = vornPath(storeDir, hashVorn)
-  if (!existsSync(p)) throw new Error(`Entry non trovata: ${hashVorn}`)
+  if (!existsSync(p)) throw new Error('ERR_ENTRY_NOT_FOUND')
   unlinkSync(p)
   if (_listCache) _listCache.files = _listCache.files.filter(f => f !== hashVorn + '.vorn')
 }

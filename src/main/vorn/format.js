@@ -28,10 +28,10 @@ export function readVornContentLen(filePath) {
 function _getContentInfo(fd) {
   const headerBuf = Buffer.alloc(HEADER_SIZE)
   const n = readSync(fd, headerBuf, 0, HEADER_SIZE, 0)
-  if (n < HEADER_SIZE) throw new Error('File troppo piccolo per header VORN')
+  if (n < HEADER_SIZE) throw new Error('ERR_FILE_TOO_SMALL')
 
   const magic = headerBuf.subarray(0, 4)
-  if (!magic.equals(MAGIC)) throw new Error('Firma VORN non valida')
+  if (!magic.equals(MAGIC)) throw new Error('ERR_INVALID_VORN_SIGNATURE')
 
   // Lunghezza a 64 bit Big-Endian
   const contentLen = headerBuf.readBigUInt64BE(4)
@@ -48,7 +48,7 @@ export function readVornMeta(filePath) {
 
     const sepBuf = Buffer.alloc(SEPARATOR.length)
     readSync(fd, sepBuf, 0, SEPARATOR.length, metaOffset)
-    if (!sepBuf.equals(SEPARATOR)) throw new Error('Separatore non trovato nella posizione attesa')
+    if (!sepBuf.equals(SEPARATOR)) throw new Error('ERR_SEPARATOR_NOT_FOUND')
 
     const fileSize = statSync(filePath).size
     const metaSize = fileSize - Number(metaOffset) - SEPARATOR.length
@@ -61,21 +61,20 @@ export function readVornMeta(filePath) {
     }
 
     if (!meta) {
-      // Metadati assenti o corrotti: tenta recovery dal file WAL
       const tmpPath = filePath + '.mtmp'
-      if (!existsSync(tmpPath)) throw new Error('Metadati corrotti e nessun file di recovery trovato')
+      if (!existsSync(tmpPath)) throw new Error('ERR_METADATA_CORRUPT')
       let recovered
       try {
         const walData = JSON.parse(readFileSync(tmpPath, 'utf8'))
         if (walData.checksum !== undefined) {
           const expected = createHash('sha256').update(JSON.stringify(walData.meta)).digest('hex').slice(0, 16)
-          if (walData.checksum !== expected) throw new Error('WAL checksum non valido')
+          if (walData.checksum !== expected) throw new Error('ERR_WAL_INVALID')
           recovered = walData.meta
         } else {
-          recovered = walData // backward compat: WAL scritto prima dell'introduzione del checksum
+          recovered = walData
         }
       } catch (e) {
-        throw new Error(`Metadati corrotti e WAL non valido: ${e.message}`)
+        throw new Error(e.message === 'ERR_WAL_INVALID' ? 'ERR_WAL_INVALID' : 'ERR_WAL_INVALID')
       }
       closeSync(fd); fd = null
       const truncateAt = HEADER_SIZE + Number(contentLen) + SEPARATOR.length
@@ -101,7 +100,7 @@ export async function readVorn(filePath) {
   const { meta, contentLen } = readVornMeta(filePath)
   if (contentLen === 0n) return { meta, content: Buffer.alloc(0) }
   if (contentLen > BigInt(READ_VORN_MAX_BYTES))
-    throw new Error(`readVorn: file troppo grande (${contentLen} byte). Usa contentStream per file grandi.`)
+    throw new Error('ERR_FILE_TOO_LARGE')
   const stream = contentStream(filePath)
   const chunks = []
   return new Promise((resolve, reject) => {

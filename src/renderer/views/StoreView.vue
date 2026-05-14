@@ -545,7 +545,7 @@
               <ul class="space-y-1">
                 <li v-for="(issue, j) in entry.issues" :key="j" class="flex items-start gap-2">
                   <ExclamationTriangleIcon class="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                  <span class="text-xs text-gray-400">{{ issue }}</span>
+                  <span class="text-xs text-gray-400">{{ translateIssue(issue) }}</span>
                 </li>
               </ul>
             </div>
@@ -834,7 +834,16 @@ import {
 import { state, clearState, integrityState, pruneState, fetchStorePage, startIntegrity, startClearStore, startPrune, cancelTask, formatTs, formatBytes, closeStore, queueState, cancelQueue } from '../stores/vorn.js'
 import ExtractFromStoreModal from '../components/ExtractFromStoreModal.vue'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
+
+function translateIssue(issue) {
+  if (typeof issue === 'string') {
+    const key = `ipcErrors.${issue}`
+    return te(key) ? t(key) : issue
+  }
+  const key = `ipcErrors.${issue.code}`
+  return te(key) ? t(key, issue.params ?? {}) : issue.code
+}
 
 const anyTaskRunning = computed(() => Object.values(state.tasks).some(task => task.status === 'running'))
 

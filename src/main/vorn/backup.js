@@ -12,7 +12,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
   const _storeBlob = storeFn ?? storeBlob
 
   const session = getSession(storeDir, sessionName)
-  if (!session) throw new Error(`Sessione non trovata: ${sessionName}`)
+  if (!session) throw new Error('ERR_SESSION_NOT_FOUND')
 
   const compressionType = session.compressionType ?? null
   const sources  = session.sources ?? []
@@ -42,11 +42,11 @@ export async function backup(storeDir, sessionName, opts = {}) {
     try {
       run = loadRun(storeDir, sessionName, resumeTs)
       if (run.compressionType !== undefined && run.compressionType !== compressionType) {
-        throw new Error(`Impossibile riprendere: la sessione ha cambiato tipo di compressione (era ${run.compressionType ?? 'nessuna'}, ora ${compressionType ?? 'nessuna'})`)
+        throw new Error('ERR_COMPRESSION_TYPE_CHANGED')
       }
       alreadyDone = new Set(Object.keys(run.files ?? {}))
     } catch (e) {
-      if (e.message.startsWith('Impossibile riprendere')) throw e
+      if (e.message === 'ERR_COMPRESSION_TYPE_CHANGED') throw e
       /* run non trovato: parte da zero */
     }
   }

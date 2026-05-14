@@ -76,7 +76,7 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
     if (type === 'store-request') {
       const { id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType } = msg
       if (!ctx.activeStore) {
-        worker.postMessage({ type: 'store-result', id, error: 'Store disconnesso' })
+        worker.postMessage({ type: 'store-result', id, error: 'ERR_STORE_DISCONNECTED' })
         return
       }
       storeBlob(ctx.activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType)
@@ -97,7 +97,7 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
       const level = msg.level === 'warn' ? 'warn' : msg.level === 'error' ? 'error' : 'info'
       logger[level](`[worker:${taskId}] ${msg.message}`)
     } else if (type === 'store-disconnected') {
-      _settle(null, 'Store non raggiungibile')
+      _settle(null, 'ERR_STORE_UNREACHABLE')
       triggerDisconnect(mainWindow)
     }
   })
@@ -129,7 +129,7 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
         }, null)
       } else {
         logger.warn(`Worker [${taskId}] exited unexpectedly (code ${code})`)
-        _settle(null, `Worker terminato inaspettatamente (code ${code})`)
+        _settle(null, 'ERR_WORKER_CRASHED')
       }
     }
   })

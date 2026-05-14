@@ -9,9 +9,9 @@ export function checkLock(storeDir) {
   if (!existsSync(lp)) return null
   try {
     const lock = JSON.parse(readFileSync(lp, 'utf8'))
-    try   { process.kill(lock.pid, 0); return `Store in uso (PID ${lock.pid}) su ${lock.machine}` }
+    try   { process.kill(lock.pid, 0); return 'ERR_STORE_IN_USE' }
     catch (e) {
-      if (e.code !== 'ESRCH') return `Store in uso (PID ${lock.pid}) su ${lock.machine}`
+      if (e.code !== 'ESRCH') return 'ERR_STORE_IN_USE'
       try { unlinkSync(lp) } catch { /* già rimosso */ }
       return null
     }
@@ -28,7 +28,7 @@ export function acquireLock(storeDir) {
     writeSync(fd, data)
     fsyncSync(fd)
   } catch (e) {
-    if (e.code === 'EEXIST') throw new Error('Store già bloccato da un altro processo')
+    if (e.code === 'EEXIST') throw new Error('ERR_STORE_LOCKED')
     throw e
   } finally {
     if (fd !== undefined) closeSync(fd)
