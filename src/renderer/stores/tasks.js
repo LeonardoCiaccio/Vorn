@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { state } from './vorn.js'
 import { refreshSession } from './sessions.js'
 
@@ -49,6 +49,51 @@ export function cancelTask(taskId) { window.vorn.cancelTask(taskId) }
 export const anyBackupRunning = computed(() =>
   Object.values(state.tasks).some(t => t.type === 'backup' && t.status === 'running')
 )
+
+// ── Queue sequenziale ─────────────────────────────────────────────────────────
+
+export const queueState = reactive({
+  pending: [],   // nomi sessioni ancora da avviare (inclusa quella corrente)
+  active:  false,
+})
+
+export function cancelQueue() {
+  queueState.pending = []
+  queueState.active  = false
+}
+
+let _queueWatcherInit = false
+
+export async function startQueue(sessionNames) {
+  if (!_queueWatcherInit) {
+    _queueWatcherInit = true
+    watch(anyBackupRunning, (running, wasRunning) => {
+      if (wasRunning && !running && queueState.active) {
+        queueState.pending.shift()
+        _advanceQueue()
+      }
+    })
+  }
+  queueState.pending = [...sessionNames]
+  queueState.active  = true
+  await _advanceQueue()
+}
+
+async function _advanceQueue() {
+  if (!queueState.active || queueState.pending.length === 0) {
+    queueState.active = false
+    return
+  }
+  const name     = queueState.pending[0]
+  const session  = state.sessions.find(s => s.name === name)
+  const resumeTs = session?.runs?.find(r => r.status === 'paused')?.ts ?? null
+  try {
+    await startBackup(name, resumeTs)
+  } catch {
+    queueState.pending.shift()
+    _advanceQueue()
+  }
+}
 
 // ── Avvio task ────────────────────────────────────────────────────────────────
 

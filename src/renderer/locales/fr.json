@@ -228,6 +228,13 @@
       "title": "Confirmer la suppression",
       "message": "Vous êtes sur le point de supprimer {count} session. | Vous êtes sur le point de supprimer {count} sessions."
     },
+    "queue": {
+      "start": "Lancer la séquence",
+      "startCount": "Lancer la séquence ({n})",
+      "banner": "Séquence en cours · {n} sessions restantes",
+      "cancel": "Annuler la file",
+      "inQueue": "En file"
+    },
     "noSessions": "Aucune session",
     "noSessionsHelp": "Créez votre première session pour commencer la sauvegarde",
     "drop": {
@@ -437,5 +444,12 @@
     "badgeFile": "fichier",
     "badgeFiltered": "filtré",
     "empty": "Aucun contenu"
+  },
+
+  "queueWarning": {
+    "title": "Séquence en attente",
+    "body": "Il y a {n} sessions en attente dans la file. Si vous changez de dépôt, la file sera annulée.",
+    "keepQueue": "Continuer la séquence",
+    "cancelAndSwitch": "Annuler la file et changer de dépôt"
   }
 }

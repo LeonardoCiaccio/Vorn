@@ -5,9 +5,8 @@
     <div class="px-8 py-6 border-b border-gray-800 flex items-center justify-between shrink-0">
       <div>
         <h1 class="text-xl font-semibold text-white">{{ $t('store.title') }}</h1>
-        <p class="text-sm text-gray-500 mt-0.5 font-mono">
-          {{ state.activeStore }}
-          <span v-if="storeFileCount !== null" class="text-gray-600"> · {{ storeFileCount.toLocaleString() }} vorn</span>
+        <p v-if="storeFileCount !== null" class="text-sm text-gray-600 mt-0.5 font-mono">
+          {{ storeFileCount.toLocaleString() }} vorn
         </p>
       </div>
       <div class="flex items-center gap-2">
@@ -16,7 +15,7 @@
           {{ $t('store.refresh') }}
         </button>
         <button
-          @click="closeStore"
+          @click="handleCloseStore"
           :disabled="anyTaskRunning"
           :title="anyTaskRunning ? $t('common.operationWait') : ''"
           class="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-gray-300 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -747,6 +746,42 @@
   </div>
 
   <ExtractFromStoreModal v-if="showExtractModal" @close="showExtractModal = false" />
+
+  <!-- Modal: coda in sospeso al cambio store -->
+  <div
+    v-if="showQueueWarning"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
+    @click.self="showQueueWarning = false"
+  >
+    <div class="w-full max-w-md bg-gray-900 border border-gray-800 rounded-lg shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-800 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-md bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center shrink-0">
+          <ExclamationTriangleIcon class="w-4 h-4 text-indigo-400" />
+        </div>
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider">{{ $t('queueWarning.title') }}</h3>
+      </div>
+      <div class="px-6 py-5 space-y-3">
+        <p class="text-sm text-gray-300">{{ $t('queueWarning.body', { n: queueState.pending.length }) }}</p>
+        <ul class="space-y-1 max-h-32 overflow-y-auto">
+          <li v-for="name in queueState.pending" :key="name" class="text-xs text-gray-500 font-mono truncate">· {{ name }}</li>
+        </ul>
+      </div>
+      <div class="px-6 py-4 bg-gray-800/30 flex items-center justify-end gap-3">
+        <button
+          @click="showQueueWarning = false"
+          class="px-4 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-white transition-colors"
+        >
+          {{ $t('queueWarning.keepQueue') }}
+        </button>
+        <button
+          @click="confirmCloseStore"
+          class="px-5 py-2 rounded-md text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors"
+        >
+          {{ $t('queueWarning.cancelAndSwitch') }}
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -796,12 +831,28 @@ import {
   FolderOpenIcon,
   ScissorsIcon,
 } from '@heroicons/vue/24/outline'
-import { state, clearState, integrityState, pruneState, fetchStorePage, startIntegrity, startClearStore, startPrune, cancelTask, formatTs, formatBytes, closeStore } from '../stores/vorn.js'
+import { state, clearState, integrityState, pruneState, fetchStorePage, startIntegrity, startClearStore, startPrune, cancelTask, formatTs, formatBytes, closeStore, queueState, cancelQueue } from '../stores/vorn.js'
 import ExtractFromStoreModal from '../components/ExtractFromStoreModal.vue'
 
 const { t } = useI18n()
 
 const anyTaskRunning = computed(() => Object.values(state.tasks).some(task => task.status === 'running'))
+
+const showQueueWarning = ref(false)
+
+function handleCloseStore() {
+  if (queueState.active && queueState.pending.length > 0) {
+    showQueueWarning.value = true
+  } else {
+    closeStore()
+  }
+}
+
+function confirmCloseStore() {
+  cancelQueue()
+  showQueueWarning.value = false
+  closeStore()
+}
 
 const ITEMS_PER_PAGE = 20
 

@@ -147,4 +147,5 @@ export {
   startBackup, startRestore, startIntegrity, startClearStore, startExtractStore,
   startPrune,
   cancelTask, getActiveTask, getLastTask, anyBackupRunning,
+  queueState, startQueue, cancelQueue,
 }                                                  from './tasks.js'

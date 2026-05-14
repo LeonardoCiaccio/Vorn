@@ -228,6 +228,13 @@
       "title": "Confirm deletion",
       "message": "You are about to delete {count} session. | You are about to delete {count} sessions."
     },
+    "queue": {
+      "start": "Run sequence",
+      "startCount": "Run sequence ({n})",
+      "banner": "Sequence running · {n} sessions remaining",
+      "cancel": "Cancel queue",
+      "inQueue": "Queued"
+    },
     "noSessions": "No sessions",
     "noSessionsHelp": "Create your first session to start backing up",
     "drop": {
@@ -437,5 +444,12 @@
     "badgeFile": "file",
     "badgeFiltered": "filtered",
     "empty": "No content"
+  },
+
+  "queueWarning": {
+    "title": "Pending sequence",
+    "body": "There are {n} sessions waiting in the queue. If you switch store, the queue will be cancelled.",
+    "keepQueue": "Continue sequence",
+    "cancelAndSwitch": "Cancel queue and switch store"
   }
 }

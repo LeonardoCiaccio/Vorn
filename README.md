@@ -7,7 +7,7 @@
   <p>A fast, ultra-secure, cross-platform desktop backup tool with content-addressable storage and automatic deduplication.</p>
 
   <p>
-    <img src="https://img.shields.io/badge/version-0.8.13-blue?style=flat-square" alt="Version" />
+    <img src="https://img.shields.io/badge/version-0.8.14-blue?style=flat-square" alt="Version" />
     <img src="https://img.shields.io/badge/license-AGPL--3.0-green?style=flat-square" alt="License" />
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square" alt="Platforms" />
     <img src="https://img.shields.io/badge/Electron-41-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron" />

@@ -5,6 +5,10 @@
     <div class="flex items-baseline gap-1.5 mr-4">
       <span class="text-xs font-bold tracking-widest text-white uppercase">Vorn</span>
       <span class="text-[10px] text-gray-600">v{{ state.appInfo?.version ?? '…' }}</span>
+      <template v-if="state.activeStore">
+        <span class="text-gray-700 text-[10px] mx-0.5">·</span>
+        <span class="text-[10px] text-gray-600 font-mono" :title="state.activeStore">{{ truncatedStorePath }}</span>
+      </template>
     </div>
 
     <!-- Destra: nav + tema -->
@@ -71,6 +75,13 @@ import SettingsModal from './SettingsModal.vue'
 const { t } = useI18n()
 
 const currentView = computed(() => state.currentView)
+
+const MAX_PATH_LEN = 40
+const truncatedStorePath = computed(() => {
+  const p = state.activeStore
+  if (!p) return ''
+  return p.length > MAX_PATH_LEN ? '…' + p.slice(-(MAX_PATH_LEN - 1)) : p
+})
 
 const navItems = computed(() => [
   { id: 'sessions', label: t('nav.sessions'), icon: RectangleStackIcon },
