@@ -248,6 +248,7 @@
       "placeholder": "C:\\Percorso\\Destinazione",
       "confirm": "Conferma Ripristino",
       "fileRestored": "File ripristinato: {name}",
+      "filesRestored": "{n} file ripristinati",
       "restoreFailed": "Errore durante il ripristino"
     }
   },

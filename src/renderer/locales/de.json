@@ -248,6 +248,7 @@
       "placeholder": "C:\\Pfad\\Ziel",
       "confirm": "Wiederherstellung bestätigen",
       "fileRestored": "Datei wiederhergestellt: {name}",
+      "filesRestored": "{n} Dateien wiederhergestellt",
       "restoreFailed": "Fehler bei der Wiederherstellung"
     }
   },

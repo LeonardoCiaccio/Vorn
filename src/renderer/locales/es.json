@@ -248,6 +248,7 @@
       "placeholder": "C:\\Ruta\\Destino",
       "confirm": "Confirmar restauración",
       "fileRestored": "Archivo restaurado: {name}",
+      "filesRestored": "{n} archivos restaurados",
       "restoreFailed": "Error durante la restauración"
     }
   },

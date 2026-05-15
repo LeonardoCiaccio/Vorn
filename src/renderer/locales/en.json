@@ -248,6 +248,7 @@
       "placeholder": "C:\\Path\\Destination",
       "confirm": "Confirm Restore",
       "fileRestored": "File restored: {name}",
+      "filesRestored": "{n} files restored",
       "restoreFailed": "Error during restore"
     }
   },

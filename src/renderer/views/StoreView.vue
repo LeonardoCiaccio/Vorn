@@ -616,7 +616,13 @@
           <input type="radio" v-model="extractMode" value="original" class="mt-1 accent-indigo-500" :disabled="!extractOriginalInfo" />
           <div class="min-w-0">
             <p class="text-sm font-semibold" :class="extractOriginalInfo ? 'text-white' : 'text-gray-600'">{{ $t('store.restoreModal.originalPath') }}</p>
-            <p v-if="extractOriginalInfo" class="text-[10px] text-gray-500 break-all mt-1 font-mono leading-relaxed">{{ extractOriginalInfo.displayPath }}</p>
+            <div v-if="extractOriginalInfo" class="mt-1 space-y-1">
+              <p
+                v-for="(item, idx) in extractOriginalInfo"
+                :key="idx"
+                class="text-[10px] text-gray-500 break-all font-mono leading-relaxed"
+              >{{ item.displayPath }}</p>
+            </div>
             <p v-else class="text-[10px] text-amber-500/80 mt-1">{{ $t('store.restoreModal.notAvailable') }}</p>
           </div>
         </label>
@@ -914,36 +920,39 @@ let   _extractTimer     = null
 
 const extractOriginalInfo = computed(() => {
   if (!restoreRecord.value || !selectedEntry.value) return null
-  const relPath  = restoreRecord.value.paths[0] ?? ''
-
-  // Nuovo formato: path assoluta
-  if (/^[A-Za-z]:\//.test(relPath) || relPath.startsWith('/')) {
-    const winSep     = /^[A-Za-z]:\//.test(relPath) ? '\\' : '/'
-    const normalized = relPath.replace(/\//g, winSep)
-    const parts      = normalized.split(winSep)
-    const filename   = parts.at(-1) ?? selectedEntry.value.hash_vorn
-    const destDir    = parts.slice(0, -1).join(winSep) || winSep
-    return { destDir, filename, displayPath: normalized }
-  }
-
-  // Vecchio formato relativo (backward compat)
   const session = state.sessions.find(s => s.name === restoreRecord.value.session)
-  if (!session?.sources?.length) return null
-  const parts    = relPath.replace(/\\/g, '/').split('/').filter(Boolean)
-  const filename = parts.at(-1) ?? selectedEntry.value.hash_vorn
-  const relDir   = parts.slice(0, -1)
-  const src      = session.sources[0].replace(/[\\/]+$/, '')
-  const sep      = src.includes('\\') ? '\\' : '/'
-  const srcBase  = src.split(/[\\/]/).at(-1) ?? ''
-  const isFileSrc = srcBase.lastIndexOf('.') > 0
-  const hasSlash  = relPath.includes('/') || relPath.includes('\\')
-  const srcSegs   = src.split(/[\\/]/)
-  const root = isFileSrc
-    ? (hasSlash ? srcSegs.slice(0, -2) : srcSegs.slice(0, -1)).join(sep) || sep
-    : src
-  const destDir     = relDir.length ? root + sep + relDir.join(sep) : root
-  const displayPath = root + sep + relPath.replace(/\//g, sep)
-  return { destDir, filename, displayPath }
+
+  const items = (restoreRecord.value.paths ?? []).map(relPath => {
+    // Nuovo formato: path assoluta
+    if (/^[A-Za-z]:\//.test(relPath) || relPath.startsWith('/')) {
+      const winSep     = /^[A-Za-z]:\//.test(relPath) ? '\\' : '/'
+      const normalized = relPath.replace(/\//g, winSep)
+      const parts      = normalized.split(winSep)
+      const filename   = parts.at(-1) ?? selectedEntry.value.hash_vorn
+      const destDir    = parts.slice(0, -1).join(winSep) || winSep
+      return { destDir, filename, displayPath: normalized }
+    }
+
+    // Vecchio formato relativo (backward compat)
+    if (!session?.sources?.length) return null
+    const parts    = relPath.replace(/\\/g, '/').split('/').filter(Boolean)
+    const filename = parts.at(-1) ?? selectedEntry.value.hash_vorn
+    const relDir   = parts.slice(0, -1)
+    const src      = session.sources[0].replace(/[\\/]+$/, '')
+    const sep      = src.includes('\\') ? '\\' : '/'
+    const srcBase  = src.split(/[\\/]/).at(-1) ?? ''
+    const isFileSrc = srcBase.lastIndexOf('.') > 0
+    const hasSlash  = relPath.includes('/') || relPath.includes('\\')
+    const srcSegs   = src.split(/[\\/]/)
+    const root = isFileSrc
+      ? (hasSlash ? srcSegs.slice(0, -2) : srcSegs.slice(0, -1)).join(sep) || sep
+      : src
+    const destDir     = relDir.length ? root + sep + relDir.join(sep) : root
+    const displayPath = root + sep + relPath.replace(/\//g, sep)
+    return { destDir, filename, displayPath }
+  }).filter(Boolean)
+
+  return items.length ? items : null
 })
 
 function _fullPath(sessionName, relPath) {
@@ -972,8 +981,9 @@ function _fullPath(sessionName, relPath) {
 
 function openExtractModal(record) {
   restoreRecord.value     = record
-  const hasOriginal       = !!state.sessions.find(s => s.name === record.session)?.sources?.length
-  extractMode.value       = hasOriginal ? 'original' : 'custom'
+  const hasAbsolute       = record.paths?.some(p => /^[A-Za-z]:\//.test(p) || p.startsWith('/'))
+  const hasSession        = !!state.sessions.find(s => s.name === record.session)?.sources?.length
+  extractMode.value       = (hasAbsolute || hasSession) ? 'original' : 'custom'
   extractCustomPath.value = ''
 }
 
@@ -985,11 +995,28 @@ async function pickExtractDest() {
 async function confirmExtract() {
   if (!selectedEntry.value || !restoreRecord.value) return
   const hashVorn = selectedEntry.value.hash_vorn
+
+  if (extractMode.value === 'original') {
+    const items = extractOriginalInfo.value
+    if (!items?.length) return
+    restoreRecord.value = null
+    try {
+      for (const item of items) {
+        await window.vorn.extractHash(hashVorn, item.destDir, item.filename)
+      }
+      const label = items.length > 1
+        ? t('store.restoreModal.filesRestored', { n: items.length })
+        : t('store.restoreModal.fileRestored', { name: items[0].filename })
+      _showExtractResult(true, label)
+    } catch (e) {
+      _showExtractResult(false, e?.message ?? t('store.restoreModal.restoreFailed'))
+    }
+    return
+  }
+
   const relPath  = restoreRecord.value.paths[0] ?? hashVorn
   const filename = relPath.replace(/\\/g, '/').split('/').at(-1) ?? hashVorn
-  const destDir  = extractMode.value === 'original'
-    ? extractOriginalInfo.value?.destDir
-    : extractCustomPath.value
+  const destDir  = extractCustomPath.value
   if (!destDir) return
   restoreRecord.value = null
   try {
