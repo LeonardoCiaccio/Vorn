@@ -526,10 +526,16 @@
             <XMarkIcon class="w-5 h-5" />
           </button>
         </div>
-        <div class="px-6 py-4 border-b border-gray-800 grid grid-cols-3 gap-4 shrink-0">
+        <div class="px-6 py-4 border-b border-gray-800 grid grid-cols-4 gap-4 shrink-0">
           <div class="text-center">
-            <p class="text-2xl font-bold text-white">{{ integrityState.report.total }}</p>
-            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.integrityReport.checked') }}</p>
+            <p class="text-2xl font-bold text-indigo-400">{{ integrityState.report.vorn_total ?? integrityState.report.total }}</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.integrityReport.vorn') }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-2xl font-bold" :class="(integrityState.report.vornc_total ?? 0) ? 'text-violet-400' : 'text-gray-600'">
+              {{ integrityState.report.vornc_total ?? 0 }}
+            </p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.integrityReport.chunks') }}</p>
           </div>
           <div class="text-center">
             <p class="text-2xl font-bold text-emerald-400">{{ integrityState.report.ok }}</p>

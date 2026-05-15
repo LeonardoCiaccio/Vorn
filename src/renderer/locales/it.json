@@ -208,7 +208,8 @@
     },
     "integrityReport": {
       "title": "Report Integrità",
-      "checked": "Totali",
+      "vorn": "VORN",
+      "chunks": "Chunk",
       "ok": "Integri",
       "corrupt": "Corrotti",
       "allOk": "Tutti i file verificati sono integri",

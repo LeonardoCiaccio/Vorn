@@ -208,7 +208,8 @@
     },
     "integrityReport": {
       "title": "Integritätsbericht",
-      "checked": "Gesamt",
+      "vorn": "VORN",
+      "chunks": "Chunks",
       "ok": "OK",
       "corrupt": "Beschädigt",
       "allOk": "Alle geprüften Dateien sind intakt",

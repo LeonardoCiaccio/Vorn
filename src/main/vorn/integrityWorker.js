@@ -9,10 +9,12 @@ const HEADER_SIZE = 12
 const { storeDir, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
-let files = []
+let files = [], vorn_total = 0, vornc_total = 0
 try {
   const vorn  = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
   const vornc = readdirSync(storeDir).filter(f => f.endsWith('.vornc'))
+  vorn_total  = vorn.length
+  vornc_total = vornc.length
   files = [...vorn, ...vornc]
 } catch { /* poller nel main process gestirà la disconnessione */ }
 
@@ -100,5 +102,5 @@ let ok = 0
     })
   }
 
-  parentPort.postMessage({ type: 'done', result: { total, ok, errors } })
+  parentPort.postMessage({ type: 'done', result: { total, vorn_total, vornc_total, ok, errors } })
 })()
