@@ -48,5 +48,6 @@ export async function compressToTemp(sourcePath, tmpPath, type, onProgress = nul
 }
 
 export function cleanupTemp(tmpPath) {
+  if (!tmpPath) return
   try { if (existsSync(tmpPath)) unlinkSync(tmpPath) } catch { /* non-critico */ }
 }
