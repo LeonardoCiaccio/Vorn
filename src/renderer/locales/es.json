@@ -59,7 +59,8 @@
     "ERR_WORKER_CRASHED": "El proceso de copia de seguridad se detuvo inesperadamente",
     "ERR_SIZE_MISMATCH": "Tamaño no coincidente: encabezado={header} B, metadatos={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Tamaño comprimido no coincidente: encabezado={header} B, metadatos={meta} B",
-    "ERR_HASH_CORRUPT": "Hash corrupto: esperado {expected}…, calculado {computed}…"
+    "ERR_HASH_CORRUPT": "Hash corrupto: esperado {expected}…, calculado {computed}…",
+    "ERR_CHUNK_MISSING": "Fragmento faltante: {chunkKey}"
   },
 
   "nav": {

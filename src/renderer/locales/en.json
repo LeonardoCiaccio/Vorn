@@ -59,7 +59,8 @@
     "ERR_WORKER_CRASHED": "The backup process stopped unexpectedly",
     "ERR_SIZE_MISMATCH": "Size mismatch: header={header} B, metadata={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Compressed size mismatch: header={header} B, metadata={meta} B",
-    "ERR_HASH_CORRUPT": "Corrupted hash: expected {expected}…, computed {computed}…"
+    "ERR_HASH_CORRUPT": "Corrupted hash: expected {expected}…, computed {computed}…",
+    "ERR_CHUNK_MISSING": "Missing chunk: {chunkKey}"
   },
 
   "nav": {

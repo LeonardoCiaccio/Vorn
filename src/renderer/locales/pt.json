@@ -59,7 +59,8 @@
     "ERR_WORKER_CRASHED": "O processo de cópia de segurança terminou inesperadamente",
     "ERR_SIZE_MISMATCH": "Tamanho não correspondente: cabeçalho={header} B, metadados={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Tamanho comprimido não correspondente: cabeçalho={header} B, metadados={meta} B",
-    "ERR_HASH_CORRUPT": "Hash corrompido: esperado {expected}…, calculado {computed}…"
+    "ERR_HASH_CORRUPT": "Hash corrompido: esperado {expected}…, calculado {computed}…",
+    "ERR_CHUNK_MISSING": "Fragmento ausente: {chunkKey}"
   },
 
   "nav": {

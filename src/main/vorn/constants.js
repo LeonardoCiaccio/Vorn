@@ -7,3 +7,4 @@ export const EXTRACT_MAX_BYTES        = 500 * 1024 * 1024  // 500 MB — limite 
 export const CLEAR_BATCH              = 64                 // unlink in parallelo per clearWorker
 export const PRUNE_BATCH              = 32                 // unlink in parallelo per pruneWorker
 export const STORE_REQUEST_TIMEOUT_MS = 600_000            // timeout IPC store-request → main (AV scan su file grandi può richiedere minuti)
+export const KNOWN_COMPRESSION_TYPES  = ['gzip']           // tipi di compressione supportati — usato per la ricerca cross-strategy

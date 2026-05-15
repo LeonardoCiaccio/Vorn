@@ -122,7 +122,10 @@ export async function backup(storeDir, sessionName, opts = {}) {
     let compressedHash = null
     if (compressionType && strategy !== 'chunks') {
       const storeKey   = toStoreKey(hashVorn, compressionType)
+      // Salta la compressione se esiste già qualsiasi .vorn per questo hash
+      // (sia hash_gzip.vorn che hash.vorn — manifest chunked o plain)
       const vornExists = safeExistsSync(join(storeDir, storeKey + '.vorn'))
+                      || safeExistsSync(join(storeDir, hashVorn + '.vorn'))
       if (!vornExists) {
         compTmpPath = join(tmpdir(), 'vorn_' + storeKey + '.ctmp')
         try {

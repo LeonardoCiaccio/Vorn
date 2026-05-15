@@ -8,7 +8,7 @@ import { createHash } from 'crypto'
 import { readVornMeta, readVorn, writeVornFromSource, writeVornManifest, contentStream, VORN_HEADER_SIZE, VORN_SEPARATOR_LEN } from './format.js'
 import { withFileLock } from './fileLock.js'
 import { vornHash } from './hash.js'
-import { CHUNK_THRESHOLD_BYTES, CHUNK_SIZE_BYTES } from './constants.js'
+import { CHUNK_THRESHOLD_BYTES, CHUNK_SIZE_BYTES, KNOWN_COMPRESSION_TYPES } from './constants.js'
 
 function _walChecksum(metaJson) {
   return createHash('sha256').update(metaJson).digest('hex').slice(0, 16)
@@ -222,14 +222,20 @@ async function storeChunked(storeDir, hashVorn, bytes, sourcePath, sessionId, se
 }
 
 // ── Cerca qualsiasi .vorn esistente per questo hash (cross-strategy) ─────────
-// Priorità: manifest chunked (hash.vorn) > compresso (hash_gzip.vorn) > plain (hash.vorn)
-// In pratica: controlla hash.vorn, poi toStoreKey(hash, compressionType).vorn se diverso.
+// Priorità: 1) hash.vorn (manifest chunks o plain)  2) hash_CT.vorn della sessione
+//           3) tutti gli altri tipi noti (KNOWN_COMPRESSION_TYPES) — evita duplicati
 function _findExistingVornKey(storeDir, hashVorn, compressionType) {
   // 1. Manifest chunked / plain — chiave base senza suffisso
   if (existsSync(vornPath(storeDir, hashVorn))) return hashVorn
-  // 2. Blob compresso con il tipo della sessione corrente
+  // 2. Blob compresso con il tipo della sessione corrente (priorità)
   if (compressionType) {
     const k = toStoreKey(hashVorn, compressionType)
+    if (existsSync(vornPath(storeDir, k))) return k
+  }
+  // 3. Fallback: tutti gli altri tipi noti (cross-strategy dedup)
+  for (const ct of KNOWN_COMPRESSION_TYPES) {
+    if (ct === compressionType) continue
+    const k = toStoreKey(hashVorn, ct)
     if (existsSync(vornPath(storeDir, k))) return k
   }
   return null
@@ -294,10 +300,17 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
         const expectedMinSize = VORN_HEADER_SIZE + Number(contentLen) + VORN_SEPARATOR_LEN
         const actualSize = statSync(p).size
         if (actualSize < expectedMinSize) {
-          // Blob corrotto: riscrivi usando compressionType originale dal meta
+          // Blob corrotto: incorpora il record nella meta e riscrivi tutto in una sola passata.
+          // Non usare _upsertRecord dopo: writeVornFromSource cambia la dimensione compressa
+          // (non deterministica al 100%), quindi il contentLen letto prima non sarebbe più valido.
           const metaComprType = meta.compressedType ?? null
-          await writeVornFromSource(p, { ...meta, records: meta.records ?? [] }, sourcePath, metaComprType, null, null, signal)
+          if (!meta.records) meta.records = []
+          const rec = meta.records.find(r => r.id === sessionId)
+          if (rec) { if (!rec.paths.includes(relPath)) rec.paths.push(relPath) }
+          else meta.records.push({ id: sessionId, session: sessionName, paths: [relPath] })
+          await writeVornFromSource(p, meta, sourcePath, metaComprType, null, null, signal)
           _listCache = null
+          return { outcome: 'dedup', storeKey: existingKey }
         }
       }
 

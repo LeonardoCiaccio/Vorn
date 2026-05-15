@@ -59,7 +59,8 @@
     "ERR_WORKER_CRASHED": "Der Sicherungsprozess wurde unerwartet beendet",
     "ERR_SIZE_MISMATCH": "Größenabweichung: Header={header} B, Metadaten={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Komprimierte Größenabweichung: Header={header} B, Metadaten={meta} B",
-    "ERR_HASH_CORRUPT": "Hash beschädigt: erwartet {expected}…, berechnet {computed}…"
+    "ERR_HASH_CORRUPT": "Hash beschädigt: erwartet {expected}…, berechnet {computed}…",
+    "ERR_CHUNK_MISSING": "Fehlender Block: {chunkKey}"
   },
 
   "nav": {

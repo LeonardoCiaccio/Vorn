@@ -59,7 +59,8 @@
     "ERR_WORKER_CRASHED": "Il processo di backup si è interrotto inaspettatamente",
     "ERR_SIZE_MISMATCH": "Dimensione non corrispondente: header={header} B, metadati={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Dimensione compressa non corrispondente: header={header} B, metadati={meta} B",
-    "ERR_HASH_CORRUPT": "Hash corrotto: atteso {expected}…, calcolato {computed}…"
+    "ERR_HASH_CORRUPT": "Hash corrotto: atteso {expected}…, calcolato {computed}…",
+    "ERR_CHUNK_MISSING": "Chunk mancante: {chunkKey}"
   },
 
   "nav": {
