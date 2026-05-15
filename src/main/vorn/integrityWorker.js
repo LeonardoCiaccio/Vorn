@@ -36,10 +36,19 @@ let ok = 0
     try {
       const { meta, contentLen } = readVornMeta(filePath)
 
-      // Chunk .vornc: verifica che sia ancora referenziato da almeno un manifest.
+      // Chunk .vornc: verifica che sia referenziato da almeno un manifest chunked valido.
+      // Non basta che il .vorn esista: deve essere strategy='chunks' e includere questa chiave.
       if (isChunk) {
         const refs = meta?.references ?? []
-        if (refs.length === 0 || !refs.some(r => existsSync(join(storeDir, r + '.vorn')))) {
+        const hasValidParent = refs.some(r => {
+          const parentPath = join(storeDir, r + '.vorn')
+          if (!existsSync(parentPath)) return false
+          try {
+            const parentMeta = readVornMeta(parentPath).meta
+            return parentMeta?.strategy === 'chunks' && (parentMeta.chunks ?? []).includes(storeKey)
+          } catch { return false }
+        })
+        if (!hasValidParent) {
           issues.push({ code: 'ERR_CHUNK_ORPHAN', params: { chunkKey: storeKey } })
         }
       }
