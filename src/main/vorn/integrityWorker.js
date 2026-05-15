@@ -36,6 +36,14 @@ let ok = 0
     try {
       const { meta, contentLen } = readVornMeta(filePath)
 
+      // Chunk .vornc: verifica che sia ancora referenziato da almeno un manifest.
+      if (isChunk) {
+        const refs = meta?.references ?? []
+        if (refs.length === 0 || !refs.some(r => existsSync(join(storeDir, r + '.vorn')))) {
+          issues.push({ code: 'ERR_CHUNK_ORPHAN', params: { chunkKey: storeKey } })
+        }
+      }
+
       // Manifest .vorn: non ha contenuto, verifica solo che i chunk esistano.
       if (meta?.strategy === 'chunks') {
         for (const chunkKey of meta.chunks ?? []) {

@@ -60,7 +60,8 @@
     "ERR_SIZE_MISMATCH": "Size mismatch: header={header} B, metadata={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Compressed size mismatch: header={header} B, metadata={meta} B",
     "ERR_HASH_CORRUPT": "Corrupted hash: expected {expected}…, computed {computed}…",
-    "ERR_CHUNK_MISSING": "Missing chunk: {chunkKey}"
+    "ERR_CHUNK_MISSING": "Missing chunk: {chunkKey}",
+    "ERR_CHUNK_ORPHAN": "Orphan chunk (no parent manifest): {chunkKey}"
   },
 
   "nav": {

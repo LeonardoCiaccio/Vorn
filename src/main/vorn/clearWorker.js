@@ -7,7 +7,7 @@ import { CLEAR_BATCH } from './constants.js'
 const { storeDir, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
-const files = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+const files = readdirSync(storeDir).filter(f => f.endsWith('.vorn') || f.endsWith('.vornc'))
 const total = files.length
 
 async function run() {

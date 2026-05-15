@@ -60,7 +60,8 @@
     "ERR_SIZE_MISMATCH": "Tamanho não correspondente: cabeçalho={header} B, metadados={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Tamanho comprimido não correspondente: cabeçalho={header} B, metadados={meta} B",
     "ERR_HASH_CORRUPT": "Hash corrompido: esperado {expected}…, calculado {computed}…",
-    "ERR_CHUNK_MISSING": "Fragmento ausente: {chunkKey}"
+    "ERR_CHUNK_MISSING": "Fragmento ausente: {chunkKey}",
+    "ERR_CHUNK_ORPHAN": "Fragmento órfão (sem manifesto pai): {chunkKey}"
   },
 
   "nav": {

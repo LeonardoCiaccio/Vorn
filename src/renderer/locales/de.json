@@ -60,7 +60,8 @@
     "ERR_SIZE_MISMATCH": "Größenabweichung: Header={header} B, Metadaten={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Komprimierte Größenabweichung: Header={header} B, Metadaten={meta} B",
     "ERR_HASH_CORRUPT": "Hash beschädigt: erwartet {expected}…, berechnet {computed}…",
-    "ERR_CHUNK_MISSING": "Fehlender Block: {chunkKey}"
+    "ERR_CHUNK_MISSING": "Fehlender Block: {chunkKey}",
+    "ERR_CHUNK_ORPHAN": "Verwaister Block (kein übergeordnetes Manifest): {chunkKey}"
   },
 
   "nav": {

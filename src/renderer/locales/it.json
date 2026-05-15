@@ -60,7 +60,8 @@
     "ERR_SIZE_MISMATCH": "Dimensione non corrispondente: header={header} B, metadati={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Dimensione compressa non corrispondente: header={header} B, metadati={meta} B",
     "ERR_HASH_CORRUPT": "Hash corrotto: atteso {expected}…, calcolato {computed}…",
-    "ERR_CHUNK_MISSING": "Chunk mancante: {chunkKey}"
+    "ERR_CHUNK_MISSING": "Chunk mancante: {chunkKey}",
+    "ERR_CHUNK_ORPHAN": "Chunk orfano (nessun manifest padre): {chunkKey}"
   },
 
   "nav": {
