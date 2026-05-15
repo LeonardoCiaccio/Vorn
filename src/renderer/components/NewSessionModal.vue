@@ -185,7 +185,7 @@ const form = reactive({
   excludePaths:       [],
   patterns:           [...state.defaultExcludePatterns],
   compressionEnabled: true,
-  strategy:           null,
+  strategy:           'chunks',
 })
 const saving     = ref(false)
 const error      = ref('')
