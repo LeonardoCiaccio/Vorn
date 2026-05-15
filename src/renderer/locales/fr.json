@@ -389,6 +389,7 @@
     "patternsHelp": "Appliqué au nom de fichier/dossier. Utilisez * comme joker.",
     "patternPlaceholder": "ex: *.bak ou .cache",
     "resetPatterns": "Réinitialiser tous les modèles",
+    "dedupNote": "Les fichiers déjà présents et intacts dans le dépôt ne sont pas retraités : la compression et le découpage s'appliquent uniquement aux nouveaux fichiers.",
     "create": "Créer la session",
     "sourcesCount": "{count} source sélectionnée | {count} sources sélectionnées",
     "excludedCount": "· {count} exclus",

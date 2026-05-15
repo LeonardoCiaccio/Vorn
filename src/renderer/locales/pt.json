@@ -389,6 +389,7 @@
     "patternsHelp": "Aplicado ao nome do arquivo/pasta. Use * como curinga.",
     "patternPlaceholder": "ex: *.bak ou .cache",
     "resetPatterns": "Redefinir todos os padrões",
+    "dedupNote": "Os arquivos já presentes e intactos no repositório não são reprocessados: compressão e fragmentação aplicam-se apenas a arquivos novos.",
     "create": "Criar sessão",
     "sourcesCount": "{count} origem selecionada | {count} origens selecionadas",
     "excludedCount": "· {count} excluídos",

@@ -398,6 +398,7 @@
     "patternsHelp": "Applied to file/folder name. Use * as wildcard.",
     "patternPlaceholder": "e.g. *.bak or .cache",
     "resetPatterns": "Reset all patterns",
+    "dedupNote": "Files already present and intact in the store are not reprocessed: compression and chunking apply only to new files.",
     "create": "Create session",
     "sourcesCount": "{count} source selected | {count} sources selected",
     "excludedCount": "· {count} excluded",

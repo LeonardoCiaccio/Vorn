@@ -389,6 +389,7 @@
     "patternsHelp": "Auf Datei-/Ordnernamen angewendet. Verwenden Sie * als Platzhalter.",
     "patternPlaceholder": "z. B. *.bak oder .cache",
     "resetPatterns": "Alle Muster zurücksetzen",
+    "dedupNote": "Bereits vorhandene und intakte Dateien im Speicher werden nicht erneut verarbeitet: Komprimierung und Chunking gelten nur für neue Dateien.",
     "create": "Sitzung erstellen",
     "sourcesCount": "{count} Quelle ausgewählt | {count} Quellen ausgewählt",
     "excludedCount": "· {count} ausgeschlossen",

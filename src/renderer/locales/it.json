@@ -398,6 +398,7 @@
     "patternsHelp": "Applicati su nome file/cartella. Usa * come wildcard.",
     "patternPlaceholder": "es. *.bak oppure .cache",
     "resetPatterns": "Azzera tutti i pattern",
+    "dedupNote": "I file già presenti e integri nello store non vengono riprocessati: compressione e chunking si applicano solo ai file nuovi.",
     "create": "Crea sessione",
     "sourcesCount": "{count} sorgente selezionate | {count} sorgenti selezionate",
     "excludedCount": "· {count} esclusi",

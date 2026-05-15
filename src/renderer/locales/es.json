@@ -389,6 +389,7 @@
     "patternsHelp": "Aplicado al nombre del archivo/carpeta. Use * como comodín.",
     "patternPlaceholder": "ej. *.bak o .cache",
     "resetPatterns": "Restablecer todos los patrones",
+    "dedupNote": "Los archivos ya presentes e intactos en el almacén no se reprocesarán: la compresión y el fragmentación solo se aplican a los archivos nuevos.",
     "create": "Crear sesión",
     "sourcesCount": "{count} origen seleccionado | {count} orígenes seleccionados",
     "excludedCount": "· {count} excluidos",

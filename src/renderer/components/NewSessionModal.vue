@@ -133,6 +133,12 @@
               </div>
             </div>
 
+            <!-- Nota dedup -->
+            <div class="flex items-start gap-2 px-3 py-2.5 rounded-md bg-indigo-500/8 border border-indigo-500/15">
+              <InformationCircleIcon class="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+              <p class="text-[11px] text-indigo-300/80 leading-relaxed">{{ $t('newSession.dedupNote') }}</p>
+            </div>
+
             <!-- Spacer -->
             <div class="flex-1" />
 
@@ -165,7 +171,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderPlusIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+import { FolderPlusIcon, XMarkIcon, PlusIcon, ArrowPathIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { createSession, state } from '../stores/vorn.js'
 import SessionSourceTree from './SessionSourceTree.vue'
 import Toggle from './Toggle.vue'

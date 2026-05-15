@@ -173,6 +173,17 @@ html.light .bg-indigo-500 .text-white {
   color: #ffffff !important;
 }
 
+/* ── Nota dedup in NewSession/EditSession ── */
+html.light .text-indigo-300\/80 {
+  color: rgba(55, 48, 163, 0.9) !important; /* indigo-800 su sfondo chiaro */
+}
+html.light .bg-indigo-500\/8 {
+  background-color: rgba(99, 102, 241, 0.08) !important;
+}
+html.light .border-indigo-500\/15 {
+  border-color: rgba(99, 102, 241, 0.25) !important;
+}
+
 /* ── Badge indigo (bg semitrasparente) ── */
 html.light .bg-indigo-500\/5 {
   background-color: rgba(99, 102, 241, 0.1) !important;
