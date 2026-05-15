@@ -3,7 +3,7 @@ import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
 import { createHash } from 'crypto'
 import { tmpdir } from 'os'
-import { basename } from 'path'
+import { basename, join } from 'path'
 import { compressToTemp, decompressStream, cleanupTemp } from './compress.js'
 import { vornHash } from './hash.js'
 import { safeCreateReadStream } from './safeFs.js'
@@ -169,6 +169,32 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
     throw e
   } finally {
     if (ownedCtmp) cleanupTemp(ownedCtmp)
+  }
+}
+
+// ── Scrittura manifest .vorn (strategy: 'chunks') ────────────────────────────
+// Il manifest non ha contenuto: contentLen=0, i chunk sono nel metadata JSON.
+
+export function writeVornManifest(destPath, meta) {
+  const tmpPath = destPath + '.tmp'
+  const header  = Buffer.alloc(HEADER_SIZE)
+  MAGIC.copy(header)
+  header.writeBigUInt64BE(0n, 4)
+  const metaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
+  try {
+    const fd = openSync(tmpPath, 'w')
+    try {
+      writeSync(fd, header)
+      writeSync(fd, SEPARATOR)
+      writeSync(fd, metaBuf)
+      fsyncSync(fd)
+    } finally {
+      closeSync(fd)
+    }
+    renameSync(tmpPath, destPath)
+  } catch (e) {
+    try { unlinkSync(tmpPath) } catch { /* non-critico */ }
+    throw e
   }
 }
 

@@ -1,7 +1,7 @@
 import { ipcMain, Notification, app }                                      from 'electron'
 import { logger }                                                          from '../vorn/logger.js'
-import { isAbsolute, resolve }                                              from 'path'
-import { accessSync, constants }                                           from 'fs'
+import { isAbsolute, resolve, dirname }                                     from 'path'
+import { accessSync, mkdirSync, statSync, constants }                      from 'fs'
 import { createTask, cancelTask, listTasks, finishTask, failTask }         from '../vorn/taskManager.js'
 import { extractByHash }                                                   from '../vorn/restore.js'
 import { invalidateListCache }                                             from '../vorn/store.js'
@@ -120,11 +120,20 @@ export function registerTaskHandlers(mainWindow) {
     if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     validateSessionName(sessionName)
     validateRunTs(runTs)
-    if (!destDir || typeof destDir !== 'string') throw new Error('ERR_INVALID_DEST_DIR')
-    const resolvedDest = resolve(destDir)
-    if (!isAbsolute(resolvedDest)) throw new Error('ERR_DEST_NOT_ABSOLUTE')
-    try { accessSync(resolvedDest, constants.W_OK) }
-    catch { throw new Error('ERR_DEST_NOT_WRITABLE') }
+    // destDir = null → ripristino originale (path assolute dai run.files)
+    let resolvedDest = null
+    if (destDir !== null && destDir !== undefined) {
+      if (typeof destDir !== 'string') throw new Error('ERR_INVALID_DEST_DIR')
+      resolvedDest = resolve(destDir)
+      if (!isAbsolute(resolvedDest)) throw new Error('ERR_DEST_NOT_ABSOLUTE')
+      try { mkdirSync(resolvedDest, { recursive: true }) } catch (e) {
+        if (e.code === 'EEXIST') {
+          try { if (!statSync(resolvedDest).isDirectory()) resolvedDest = dirname(resolvedDest) } catch { /* ignore */ }
+        }
+      }
+      try { accessSync(resolvedDest, constants.W_OK) }
+      catch { throw new Error('ERR_DEST_NOT_WRITABLE') }
+    }
     if (selectedFiles !== null) {
       if (!Array.isArray(selectedFiles) || selectedFiles.length > 100_000) throw new Error('ERR_INVALID_SELECTED_FILES')
       for (const f of selectedFiles)
@@ -133,7 +142,7 @@ export function registerTaskHandlers(mainWindow) {
     if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
       throw new Error('ERR_OPERATION_IN_PROGRESS')
     const task = createTask('restore', sessionName)
-    logger.info(`Task restore started [${task.id}] session="${sessionName}" runTs=${runTs} dest="${resolvedDest}"`)
+    logger.info(`Task restore started [${task.id}] session="${sessionName}" runTs=${runTs} dest="${resolvedDest ?? 'original'}"`)
     spawnWorker('restoreWorker.js', { storeDir: ctx.activeStore, sessionName, runTs, destDir: resolvedDest, selectedFiles }, task.id, mainWindow,
       (result, error) => {
         if (error) { failTask(task.id, error);   _send(mainWindow, { taskId: task.id, error }) }
@@ -169,8 +178,13 @@ export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:start-extract-store', (_, { destDir, sessionFilter = null }) => {
     if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     if (!destDir || typeof destDir !== 'string') throw new Error('ERR_INVALID_DEST_DIR')
-    const resolvedDest = resolve(destDir)
+    let resolvedDest = resolve(destDir)
     if (!isAbsolute(resolvedDest)) throw new Error('ERR_DEST_NOT_ABSOLUTE')
+    try { mkdirSync(resolvedDest, { recursive: true }) } catch (e) {
+      if (e.code === 'EEXIST') {
+        try { if (!statSync(resolvedDest).isDirectory()) resolvedDest = dirname(resolvedDest) } catch { /* ignore */ }
+      }
+    }
     try { accessSync(resolvedDest, constants.W_OK) }
     catch { throw new Error('ERR_DEST_NOT_WRITABLE') }
     if (sessionFilter !== null && typeof sessionFilter !== 'string') throw new Error('ERR_INVALID_SESSION_FILTER')

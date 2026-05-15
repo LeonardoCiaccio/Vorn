@@ -15,8 +15,14 @@ function _safeJoin(baseDir, relPath) {
   return out
 }
 
+// Rileva se relPath è una path assoluta (nuovo formato)
+function _isAbsPath(relPath) {
+  return /^[A-Za-z]:\//.test(relPath) || relPath.startsWith('/')
+}
+
 export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) {
-  destDir = resolve(destDir)
+  if (destDir !== null && destDir !== undefined) destDir = resolve(destDir)
+  else destDir = null
   const { onProgress, isCancelled, selectedFiles } = opts
   const run = loadRun(storeDir, sessionName, runTs)
   const errors = []
@@ -37,13 +43,38 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
         onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
         continue
       }
-      const outPath = _safeJoin(destDir, relPath)
-      if (!outPath) {
-        errors.push({ path: relPath, storeKey, error: 'path_traversal' })
-        onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
-        continue
+
+      let outPath
+      if (_isAbsPath(relPath)) {
+        if (destDir === null) {
+          // Ripristino originale: usa il path assoluto direttamente
+          outPath = relPath.replace(/\//g, sep)
+        } else {
+          // Ripristino personalizzato: rimuovi drive root e join a destDir
+          const stripped = relPath.replace(/^[A-Za-z]:\//, '').replace(/^\//, '')
+          outPath = _safeJoin(destDir, stripped)
+          if (!outPath) {
+            errors.push({ path: relPath, storeKey, error: 'path_traversal' })
+            onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
+            continue
+          }
+        }
+      } else {
+        // Vecchio formato relativo
+        if (destDir === null) {
+          errors.push({ path: relPath, storeKey, error: 'no_dest_for_relative_path' })
+          onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
+          continue
+        }
+        outPath = _safeJoin(destDir, relPath)
+        if (!outPath) {
+          errors.push({ path: relPath, storeKey, error: 'path_traversal' })
+          onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
+          continue
+        }
       }
-      mkdirSync(join(outPath, '..'), { recursive: true })
+
+      mkdirSync(dirname(outPath), { recursive: true })
       await pipeline(extractContent(storeDir, storeKey), safeCreateWriteStream(outPath))
       restored++
     } catch (e) {
@@ -93,7 +124,12 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
         if (isCancelled?.()) break
         try {
           const folderName = `${rec.session}-${rec.id}`
-          const outPath    = _safeJoin(join(destDir, folderName), relPath)
+          const base       = join(destDir, folderName)
+          // Path assolute: rimuovi drive root prima di join a destDir/folderName
+          const stripped   = _isAbsPath(relPath)
+            ? relPath.replace(/^[A-Za-z]:\//, '').replace(/^\//, '')
+            : relPath
+          const outPath    = _safeJoin(base, stripped)
           if (!outPath) { errors.push({ hash: hashOnly, session: rec.session, path: relPath, error: 'path_traversal' }); continue }
           mkdirSync(dirname(outPath), { recursive: true })
           await pipeline(extractContent(storeDir, storeKey), safeCreateWriteStream(outPath))

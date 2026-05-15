@@ -75,14 +75,14 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
   worker.on('message', (msg) => {
     const { type } = msg
     if (type === 'store-request') {
-      const { id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash } = msg
+      const { id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, strategy } = msg
       if (!ctx.activeStore) {
         worker.postMessage({ type: 'store-result', id, error: 'ERR_STORE_DISCONNECTED' })
         return
       }
       const ac = new AbortController()
       _storeAc = ac
-      storeBlob(ctx.activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, ac.signal)
+      storeBlob(ctx.activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, ac.signal, strategy)
         .then(outcome => worker.postMessage({ type: 'store-result', id, outcome }))
         .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message, code: err.code }))
         .finally(() => { if (_storeAc === ac) _storeAc = null })

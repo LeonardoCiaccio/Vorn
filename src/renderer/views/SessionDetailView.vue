@@ -97,6 +97,10 @@
       <div class="flex items-center gap-4 mt-1.5 text-[10px] text-gray-600">
         <span class="text-emerald-500">{{ $t('sessionDetail.progress.new', { n: backupProgress.files_new ?? 0 }) }}</span>
         <span>{{ $t('sessionDetail.progress.dedup', { n: backupProgress.files_dedup ?? 0 }) }}</span>
+        <template v-if="backupProgress.chunks_new != null || backupProgress.chunks_dedup != null">
+          <span class="text-emerald-400/70">{{ $t('sessionDetail.progress.chunks_new', { n: backupProgress.chunks_new ?? 0 }) }}</span>
+          <span class="text-gray-600">{{ $t('sessionDetail.progress.chunks_dedup', { n: backupProgress.chunks_dedup ?? 0 }) }}</span>
+        </template>
         <span v-if="backupProgress.errors" class="text-amber-400">{{ $t('sessionDetail.progress.errors', { n: backupProgress.errors }) }}</span>
         <span>{{ $t('sessionDetail.progress.written', { n: formatBytes(backupProgress.bytes_new ?? 0) }) }}</span>
         <span v-if="backupProgress.last_error" class="text-amber-400/70 font-mono truncate max-w-65" :title="backupProgress.last_error.path">
@@ -626,7 +630,7 @@
     <RestoreModal
       :show="showRestoreModal"
       :run-ts="selectedRun?.ts"
-      :original-path="session?.sources[0]"
+      :original-path="_restoreDest(session?.sources)"
       :selected-files="selectedFiles.length ? selectedFiles : null"
       @close="showRestoreModal = false"
       @confirm="onRestoreConfirm"
@@ -854,6 +858,11 @@ async function confirmDeleteSelectedRun() {
   const runTs       = selectedRun.value.ts
   closeRunDetail()
   await deleteRun(sessionName, runTs)
+}
+
+function _restoreDest(_sources) {
+  // relPaths ora sono path assolute: il ripristino originale scrive direttamente alle path originali
+  return null
 }
 
 function handleRestore() {

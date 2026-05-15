@@ -29,7 +29,8 @@
             <input type="radio" v-model="mode" value="original" class="mt-1 accent-indigo-500" />
             <div class="min-w-0">
               <p class="text-sm font-semibold text-white">{{ $t('restore.originalPath') }}</p>
-              <p class="text-[10px] text-gray-500 truncate mt-1 font-mono">{{ originalPath }}</p>
+              <p v-if="originalPath !== null" class="text-[10px] text-gray-500 truncate mt-1 font-mono">{{ originalPath }}</p>
+              <p v-else class="text-[10px] text-indigo-400/70 mt-1 italic">{{ $t('restore.originalLocations') }}</p>
             </div>
           </label>
 
@@ -89,7 +90,7 @@ import { formatTs } from '../stores/vorn.js'
 const props = defineProps({
   show: Boolean,
   runTs: String,
-  originalPath: String,
+  originalPath: { type: String, default: null },
   selectedFiles: { type: Array, default: null },
 })
 

@@ -1,5 +1,5 @@
 import { workerData, parentPort } from 'worker_threads'
-import { readdirSync, openSync, closeSync } from 'fs'
+import { readdirSync, openSync, closeSync, existsSync } from 'fs'
 import { join } from 'path'
 import { readVornMeta, contentStream } from './format.js'
 import { hashFromFd, hashFromStream } from './hash.js'
@@ -11,7 +11,9 @@ const cancelFlag = new Int32Array(cancelBuffer)
 
 let files = []
 try {
-  files = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+  const vorn  = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+  const vornc = readdirSync(storeDir).filter(f => f.endsWith('.vornc'))
+  files = [...vorn, ...vornc]
 } catch { /* poller nel main process gestirà la disconnessione */ }
 
 const total  = files.length
@@ -23,13 +25,26 @@ let ok = 0
     if (Atomics.load(cancelFlag, 0)) break
 
     const filename     = files[i]
-    const storeKey     = filename.slice(0, -5)          // rimuove .vorn
+    const isChunk      = filename.endsWith('.vornc')
+    const storeKey     = isChunk ? filename.slice(0, -6) : filename.slice(0, -5)
     const expectedHash = storeKey.split('_')[0]         // solo i 64 hex, ignora suffisso _gzip ecc.
     const filePath     = join(storeDir, filename)
     const issues       = []
 
     try {
       const { meta, contentLen } = readVornMeta(filePath)
+
+      // Manifest .vorn: non ha contenuto, verifica solo che i chunk esistano.
+      if (meta?.strategy === 'chunks') {
+        for (const chunkKey of meta.chunks ?? []) {
+          if (!existsSync(join(storeDir, chunkKey + '.vornc')))
+            issues.push({ code: 'ERR_CHUNK_MISSING', params: { chunkKey } })
+        }
+        if (issues.length === 0) ok++
+        else errors.push({ hashVorn: storeKey, issues })
+        continue
+      }
+
       const isCompressed = !!(meta?.compressedType)
 
       // Check dimensione: per i file non compressi confronta contentLen con meta.bytes.
@@ -46,9 +61,6 @@ let ok = 0
       }
 
       // Check hash.
-      // Fast path: se meta.compressed_hash è disponibile, hash i byte compressi direttamente
-      // (nessuna decompressione). Disponibile per file scritti dopo l'introduzione del campo.
-      // Fallback: decomprime e hasha il contenuto originale (file scritti in precedenza).
       let computedHash, refHash
       if (isCompressed && meta?.compressed_hash) {
         const fd = openSync(filePath, 'r')

@@ -114,6 +114,27 @@
               <p class="text-[11px] text-gray-600">{{ $t('compression.help') }}</p>
             </div>
 
+            <!-- Strategia -->
+            <div>
+              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{{ $t('strategy.label') }}</label>
+              <p class="text-[11px] text-gray-600 mb-2">{{ $t('strategy.help') }}</p>
+              <div class="flex gap-2">
+                <button
+                  v-for="opt in [{ value: null, label: $t('strategy.standard') }, { value: 'chunks', label: $t('strategy.chunks') }]"
+                  :key="String(opt.value)"
+                  @click="form.strategy = opt.value"
+                  :class="[
+                    'flex-1 px-3 py-2 rounded-md text-xs font-medium border transition-colors',
+                    form.strategy === opt.value
+                      ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
+                      : 'bg-gray-800/40 border-gray-700/50 text-gray-500 hover:text-gray-300 hover:border-gray-600'
+                  ]"
+                >
+                  {{ opt.label }}
+                </button>
+              </div>
+            </div>
+
             <!-- Spacer -->
             <div class="flex-1" />
 
@@ -159,12 +180,27 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved'])
 
 const initialRoot = computed(() => {
-  const src = props.session.sources?.[0]
-  if (!src) return ''
-  const sep   = src.includes('\\') ? '\\' : '/'
-  const parts = src.split(sep).filter(Boolean)
-  parts.pop()
-  if (!parts.length) return src
+  const sources = props.session.sources ?? []
+  if (!sources.length) return ''
+  const sep     = sources[0].includes('\\') ? '\\' : '/'
+  const splitAll = sources.map(s => s.split(/[\\/]/).filter(Boolean))
+
+  let parts
+  if (splitAll.length === 1) {
+    // Sorgente singola: usa il genitore diretto
+    parts = splitAll[0].slice(0, -1)
+  } else {
+    // Sorgenti multiple: calcola il prefisso comune tra tutti i percorsi
+    const first = splitAll[0]
+    let commonLen = 0
+    for (let i = 0; i < first.length; i++) {
+      if (splitAll.every(p => p[i] === first[i])) commonLen = i + 1
+      else break
+    }
+    parts = first.slice(0, commonLen)
+  }
+
+  if (!parts.length) return sep === '\\' ? (splitAll[0][0] ?? '') + '\\' : '/'
   if (/^[a-zA-Z]:$/.test(parts[0]))
     return parts.length === 1 ? parts[0] + '\\' : parts[0] + '\\' + parts.slice(1).join('\\')
   return '/' + parts.join('/')
@@ -175,6 +211,7 @@ const form = reactive({
   excludePaths:       [...(props.session.excludes?.paths ?? [])],
   patterns:           [...(props.session.excludes?.patterns ?? [])],
   compressionEnabled: !!(props.session.compressionType),
+  strategy:           props.session.strategy ?? null,
 })
 const saving     = ref(false)
 const error      = ref('')
@@ -199,6 +236,7 @@ async function submit() {
       sources:         [...form.sources],
       excludes:        { paths: [...form.excludePaths], patterns: [...form.patterns] },
       compressionType: form.compressionEnabled ? 'gzip' : null,
+      strategy:        form.strategy,
     })
     emit('saved')
     emit('close')

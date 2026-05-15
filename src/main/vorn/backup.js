@@ -1,4 +1,4 @@
-import { basename, relative, join } from 'path'
+import { join, basename } from 'path'
 import { tmpdir } from 'os'
 import { vornHash } from './hash.js'
 import { storeBlob, toStoreKey } from './store.js'
@@ -6,7 +6,7 @@ import { getSession, saveRun, loadRun } from './sessions.js'
 import { walk, matchPattern } from './scanner.js'
 import { dbGetFile, dbUpsertFileMany, dbPruneOrphans } from './db.js'
 import { safeStatSync, safeExistsSync } from './safeFs.js'
-import { SAVE_INTERVAL_FILES, SAVE_INTERVAL_MS } from './constants.js'
+import { SAVE_INTERVAL_FILES, SAVE_INTERVAL_MS, CHUNK_THRESHOLD_BYTES } from './constants.js'
 import { compressToTemp, cleanupTemp } from './compress.js'
 
 export async function backup(storeDir, sessionName, opts = {}) {
@@ -17,6 +17,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
   if (!session) throw new Error('ERR_SESSION_NOT_FOUND')
 
   const compressionType = session.compressionType ?? null
+  const strategy        = session.strategy        ?? null
   const sources  = session.sources ?? []
   const excPaths = session.excludes?.paths    ?? []
   const excPats  = session.excludes?.patterns ?? []
@@ -61,10 +62,12 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
   const prevDurationSec = run.duration_sec ?? 0
 
-  let filesNew   = run.files_new   ?? 0
-  let filesDedup = run.files_dedup ?? 0
-  let bytesTotal = run.bytes_total ?? 0
-  let bytesNew   = run.bytes_new   ?? 0
+  let filesNew    = run.files_new    ?? 0
+  let filesDedup  = run.files_dedup  ?? 0
+  let bytesTotal  = run.bytes_total  ?? 0
+  let bytesNew    = run.bytes_new    ?? 0
+  let chunksNew   = run.chunks_new   ?? 0
+  let chunksDedup = run.chunks_dedup ?? 0
   const errors   = [...(run.errors ?? []), ...scanErrors]
   let current    = alreadyDone.size
 
@@ -79,7 +82,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
     const filePath = allFiles[i]
     const source = sources.find(s => filePath === s || filePath.startsWith(s + '\\') || filePath.startsWith(s + '/'))
     if (!source) { errors.push({ path: filePath, error: 'Sorgente non trovata per il file', phase: 'scan' }); continue }
-    const relPath  = filePath === source ? basename(filePath) : relative(source, filePath).replace(/\\/g, '/')
+    const relPath  = filePath.replace(/\\/g, '/')
 
     if (alreadyDone.has(relPath)) continue
 
@@ -96,24 +99,9 @@ export async function backup(storeDir, sessionName, opts = {}) {
     let hashVorn
     const dbRecord = dbGetFile(filePath)
     if (dbRecord && dbRecord.mtime === mtime && dbRecord.size === bytes) {
-      // File invariato — verifica che il .vorn esista ancora nello store.
-      // Controlla prima la chiave compressa della sessione corrente, poi quella non compressa.
-      const storeKey   = toStoreKey(dbRecord.hash, compressionType)
-      const vornExists = safeExistsSync(join(storeDir, storeKey + '.vorn'))
-      if (vornExists) {
-        // Dedup completo: nessun hashing, nessuna lettura del file
-        filesDedup++
-        bytesTotal += bytes
-        run.files[relPath] = storeKey
-        onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew })
-        if (current - lastSaveCount >= SAVE_INTERVAL_FILES || Date.now() - lastSaveTime >= SAVE_INTERVAL_MS) {
-          run.files_new = filesNew; run.files_dedup = filesDedup; run.bytes_total = bytesTotal; run.bytes_new = bytesNew; run.errors = errors
-          saveRun(storeDir, sessionName, run)
-          lastSaveCount = current; lastSaveTime = Date.now()
-        }
-        continue
-      }
-      // .vorn mancante: usiamo l'hash già noto, saltiamo solo l'hashing
+      // Hash già noto: salta l'hashing del file.
+      // Non fare continue anche se il .vorn esiste: storeBlob deve aggiornare i record
+      // nel caso in cui relPath non sia ancora registrata (es. stesso contenuto in più sorgenti).
       hashVorn = dbRecord.hash
     }
 
@@ -128,10 +116,11 @@ export async function backup(storeDir, sessionName, opts = {}) {
       if (hashVorn === null) break // cancellato durante l'hashing
     }
 
-    // Compressione nel worker (prima del store-request) per non bloccare il Main Process
+    // Compressione nel worker (prima del store-request) per non bloccare il Main Process.
+    // Per i chunked la compressione avviene per-chunk dentro storeChunked.
     let compTmpPath    = null
     let compressedHash = null
-    if (compressionType) {
+    if (compressionType && strategy !== 'chunks') {
       const storeKey   = toStoreKey(hashVorn, compressionType)
       const vornExists = safeExistsSync(join(storeDir, storeKey + '.vorn'))
       if (!vornExists) {
@@ -158,12 +147,12 @@ export async function backup(storeDir, sessionName, opts = {}) {
     bytesTotal += bytes
 
     try {
-      const { outcome, storeKey } = await _storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath, compressionType, compTmpPath, compressedHash)
+      const { outcome, storeKey, chunks_new: cn, chunks_dedup: cd } = await _storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath, compressionType, compTmpPath, compressedHash, null, strategy)
       run.files[relPath] = storeKey
       pendingUpserts.push({ path: filePath, mtime, size: bytes, hash: hashVorn })
       if (isCancelled?.()) { cleanupTemp(compTmpPath); break }
-      if (outcome === 'new') { filesNew++; bytesNew += bytes }
-      else                   { filesDedup++ }
+      if (outcome === 'new') { filesNew++; bytesNew += bytes } else { filesDedup++ }
+      if (cn != null) { chunksNew += cn; chunksDedup += cd }
     } catch (e) {
       cleanupTemp(compTmpPath)
       if (e.code === 'ENOSPC') {
@@ -184,13 +173,15 @@ export async function backup(storeDir, sessionName, opts = {}) {
     onProgress?.({
       current,
       total,
-      files_new:   filesNew,
-      files_dedup: filesDedup,
-      errors:      errors.length,
-      last_error:  lastError,
-      file:        filePath,
-      bytes_total: bytesTotal,
-      bytes_new:   bytesNew,
+      files_new:    filesNew,
+      files_dedup:  filesDedup,
+      chunks_new:   chunksNew,
+      chunks_dedup: chunksDedup,
+      errors:       errors.length,
+      last_error:   lastError,
+      file:         filePath,
+      bytes_total:  bytesTotal,
+      bytes_new:    bytesNew,
     })
 
     // Salvataggio intermedio periodico
@@ -199,6 +190,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
       pendingUpserts = []
       run.files_new    = filesNew
       run.files_dedup  = filesDedup
+      run.chunks_new   = chunksNew
+      run.chunks_dedup = chunksDedup
       run.bytes_total  = bytesTotal
       run.bytes_new    = bytesNew
       run.errors       = errors
@@ -215,6 +208,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
   run.files_total  = total
   run.files_new    = filesNew
   run.files_dedup  = filesDedup
+  run.chunks_new   = chunksNew || undefined
+  run.chunks_dedup = chunksDedup || undefined
   run.bytes_total  = bytesTotal
   run.bytes_new    = bytesNew
   run.errors       = errors

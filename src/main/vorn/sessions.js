@@ -115,17 +115,20 @@ export function listRuns(storeDir, sessionName) {
 }
 
 function _summarizeRun(run) {
-  return {
-    ts:          run.ts,
-    status:      run.status ?? 'done',
-    files_total: run.files_total ?? Object.keys(run.files ?? {}).length,
-    files_new:   run.files_new   ?? null,
-    files_dedup: run.files_dedup ?? null,
-    bytes_total: run.bytes_total ?? null,
-    bytes_new:   run.bytes_new   ?? null,
+  const s = {
+    ts:           run.ts,
+    status:       run.status ?? 'done',
+    files_total:  run.files_total ?? Object.keys(run.files ?? {}).length,
+    files_new:    run.files_new   ?? null,
+    files_dedup:  run.files_dedup ?? null,
+    bytes_total:  run.bytes_total ?? null,
+    bytes_new:    run.bytes_new   ?? null,
     duration_sec: run.duration_sec ?? null,
     errors_count: run.errors?.length ?? null,
   }
+  if (run.chunks_new  != null) s.chunks_new  = run.chunks_new
+  if (run.chunks_dedup != null) s.chunks_dedup = run.chunks_dedup
+  return s
 }
 
 export function loadRun(storeDir, sessionName, ts) {

@@ -30,6 +30,10 @@ function _validateSession(session) {
     if (session.compressionType !== 'gzip')
       throw new Error('ERR_INVALID_COMPRESSION_TYPE')
   }
+  if (session.strategy != null) {
+    if (session.strategy !== 'chunks' && session.strategy !== 'bytes')
+      throw new Error('ERR_INVALID_STRATEGY')
+  }
 }
 
 // Cache in-memory dell'ultima run letta — evita di rileggere il JSON per ogni chunk di file
@@ -64,6 +68,11 @@ export function registerSessionHandlers() {
       if (patch.compressionType != null && patch.compressionType !== 'gzip')
         throw new Error('ERR_INVALID_COMPRESSION_TYPE')
       allowed.compressionType = patch.compressionType
+    }
+    if (patch.strategy !== undefined) {
+      if (patch.strategy != null && patch.strategy !== 'chunks' && patch.strategy !== 'bytes')
+        throw new Error('ERR_INVALID_STRATEGY')
+      allowed.strategy = patch.strategy
     }
     if (patch.excludes !== undefined) {
       if (typeof patch.excludes !== 'object' || patch.excludes === null)

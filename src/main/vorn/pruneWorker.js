@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'fs'
 import { unlink, stat } from 'fs/promises'
 import { join } from 'path'
 import { PRUNE_BATCH } from './constants.js'
+import { readVornMeta } from './format.js'
 
 const { storeDir, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
@@ -55,8 +56,25 @@ async function run() {
 
     parentPort.postMessage({ type: 'progress', progress: { phase: 'computing', scanned: totalSessions, totalSessions } })
 
-    const allStoreFiles = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
-    orphans = allStoreFiles.map(f => f.slice(0, -5)).filter(h => !referenced.has(h))
+    // Raccoglie i .vornc referenziati leggendo i manifest
+    const referencedChunks = new Set()
+    for (const storeKey of referenced) {
+      try {
+        const { meta } = readVornMeta(join(storeDir, storeKey + '.vorn'))
+        if (meta?.strategy === 'chunks' && Array.isArray(meta.chunks)) {
+          for (const chunkKey of meta.chunks) referencedChunks.add(chunkKey)
+        }
+      } catch { /* non-manifest o corrotto, ignorato */ }
+    }
+
+    const allStoreFiles  = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+    const allChunkFiles  = readdirSync(storeDir).filter(f => f.endsWith('.vornc'))
+    const orphanVorn     = allStoreFiles.map(f => f.slice(0, -5)).filter(h => !referenced.has(h))
+    const orphanChunks   = allChunkFiles.map(f => f.slice(0, -6)).filter(h => !referencedChunks.has(h))
+    orphans = [
+      ...orphanVorn.map(h => ({ key: h, ext: '.vorn' })),
+      ...orphanChunks.map(h => ({ key: h, ext: '.vornc' })),
+    ]
   }
 
   if (Atomics.load(cancelFlag, 0) !== 0) {
@@ -93,8 +111,9 @@ async function run() {
   async function deleteWorker() {
     let i
     while (Atomics.load(cancelFlag, 0) === 0 && !disconnected && (i = localIdx++) < toDelete.length) {
+      const { key, ext } = toDelete[i]
       try {
-        await unlink(join(storeDir, toDelete[i] + '.vorn'))
+        await unlink(join(storeDir, key + ext))
         deleted++
       } catch (e) {
         if (e.code === 'ENOENT') {

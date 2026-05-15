@@ -1,4 +1,6 @@
 export const HASH_CHUNK_BYTES         = 4 * 1024 * 1024   // 4 MB — buffer di lettura per l'hashing
+export const CHUNK_THRESHOLD_BYTES    = 10 * 1024 * 1024  // 10 MB — soglia minima per attivare il chunking
+export const CHUNK_SIZE_BYTES         =  4 * 1024 * 1024  //  4 MB — dimensione di ogni .vornc
 export const SAVE_INTERVAL_FILES      = 500                // salvataggio intermedio ogni N file
 export const SAVE_INTERVAL_MS         = 60_000             // salvataggio intermedio ogni N ms
 export const EXTRACT_MAX_BYTES        = 500 * 1024 * 1024  // 500 MB — limite estrazione diretta

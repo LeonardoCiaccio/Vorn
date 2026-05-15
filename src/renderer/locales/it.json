@@ -361,6 +361,8 @@
     "progress": {
       "new": "+{n} nuovi",
       "dedup": "{n} dedup",
+      "chunks_new": "+{n} chunk nuovi",
+      "chunks_dedup": "{n} chunk dedup",
       "errors": "{n} errori",
       "written": "{n} scritti",
       "restored": "{n} ripristinati"
@@ -371,6 +373,13 @@
     "label": "Compressione",
     "gzip": "Gzip",
     "help": "Applicata ai nuovi file. I file già presenti nello store non vengono ricompressi."
+  },
+
+  "strategy": {
+    "label": "Strategia",
+    "standard": "Standard",
+    "chunks": "Chunking (file > 10 MB)",
+    "help": "Con il chunking i file grandi vengono spezzati in blocchi da 4 MB. Solo i blocchi modificati vengono ri-caricati."
   },
 
   "newSession": {
@@ -422,6 +431,7 @@
     "selective": "Ripristino selettivo:",
     "files": "{n} file",
     "originalPath": "Percorso Originale",
+    "originalLocations": "I file verranno ripristinati nei percorsi originali.",
     "customDest": "Destinazione Personalizzata",
     "customPlaceholder": "C:\\Percorso\\Destinazione",
     "note": "Nota: La struttura delle sottocartelle verrà ricreata qui.",

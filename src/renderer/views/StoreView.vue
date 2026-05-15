@@ -390,8 +390,9 @@
                     v-for="(path, pi) in record.paths"
                     :key="pi"
                     class="font-mono text-[10px] text-gray-500 break-all leading-snug"
+                    :class="pi > 0 ? 'mt-1.5' : ''"
                   >
-                    {{ path }}
+                    {{ _fullPath(record.session, path) }}
                   </li>
                 </ul>
               </div>
@@ -894,18 +895,61 @@ let   _extractTimer     = null
 
 const extractOriginalInfo = computed(() => {
   if (!restoreRecord.value || !selectedEntry.value) return null
+  const relPath  = restoreRecord.value.paths[0] ?? ''
+
+  // Nuovo formato: path assoluta
+  if (/^[A-Za-z]:\//.test(relPath) || relPath.startsWith('/')) {
+    const winSep     = /^[A-Za-z]:\//.test(relPath) ? '\\' : '/'
+    const normalized = relPath.replace(/\//g, winSep)
+    const parts      = normalized.split(winSep)
+    const filename   = parts.at(-1) ?? selectedEntry.value.hash_vorn
+    const destDir    = parts.slice(0, -1).join(winSep) || winSep
+    return { destDir, filename, displayPath: normalized }
+  }
+
+  // Vecchio formato relativo (backward compat)
   const session = state.sessions.find(s => s.name === restoreRecord.value.session)
   if (!session?.sources?.length) return null
-  const relPath = restoreRecord.value.paths[0] ?? ''
-  const parts   = relPath.replace(/\\/g, '/').split('/').filter(Boolean)
+  const parts    = relPath.replace(/\\/g, '/').split('/').filter(Boolean)
   const filename = parts.at(-1) ?? selectedEntry.value.hash_vorn
   const relDir   = parts.slice(0, -1)
-  const sep      = session.sources[0].includes('\\') ? '\\' : '/'
-  const destDir  = relDir.length
-    ? session.sources[0] + sep + relDir.join(sep)
-    : session.sources[0]
-  return { destDir, filename, displayPath: session.sources[0] + sep + relPath.replace(/\//g, sep) }
+  const src      = session.sources[0].replace(/[\\/]+$/, '')
+  const sep      = src.includes('\\') ? '\\' : '/'
+  const srcBase  = src.split(/[\\/]/).at(-1) ?? ''
+  const isFileSrc = srcBase.lastIndexOf('.') > 0
+  const hasSlash  = relPath.includes('/') || relPath.includes('\\')
+  const srcSegs   = src.split(/[\\/]/)
+  const root = isFileSrc
+    ? (hasSlash ? srcSegs.slice(0, -2) : srcSegs.slice(0, -1)).join(sep) || sep
+    : src
+  const destDir     = relDir.length ? root + sep + relDir.join(sep) : root
+  const displayPath = root + sep + relPath.replace(/\//g, sep)
+  return { destDir, filename, displayPath }
 })
+
+function _fullPath(sessionName, relPath) {
+  // Nuovo formato: path assoluta — restituisci direttamente con sep nativo
+  if (/^[A-Za-z]:\//.test(relPath) || relPath.startsWith('/')) {
+    const winSep = /^[A-Za-z]:\//.test(relPath) ? '\\' : '/'
+    return relPath.replace(/\//g, winSep)
+  }
+  // Vecchio formato relativo: costruisci da source (backward compat)
+  const session = state.sessions.find(s => s.name === sessionName)
+  if (!session?.sources?.length) return relPath
+  const src     = session.sources[0].replace(/[\\/]+$/, '')
+  const sep     = src.includes('\\') ? '\\' : '/'
+  const segs    = src.split(/[\\/]/)
+  const srcBase = segs.at(-1) ?? ''
+  const dotIdx  = srcBase.lastIndexOf('.')
+  if (dotIdx > 0) {
+    const hasSlash = relPath.includes('/') || relPath.includes('\\')
+    const root = hasSlash
+      ? segs.slice(0, -2).join(sep) || sep
+      : segs.slice(0, -1).join(sep) || sep
+    return root + sep + relPath.replace(/\//g, sep)
+  }
+  return src + sep + relPath.replace(/\//g, sep)
+}
 
 function openExtractModal(record) {
   restoreRecord.value     = record

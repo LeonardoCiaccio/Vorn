@@ -361,6 +361,8 @@
     "progress": {
       "new": "+{n} new",
       "dedup": "{n} dedup",
+      "chunks_new": "+{n} new chunks",
+      "chunks_dedup": "{n} dedup chunks",
       "errors": "{n} errors",
       "written": "{n} written",
       "restored": "{n} restored"
@@ -371,6 +373,13 @@
     "label": "Compression",
     "gzip": "Gzip",
     "help": "Applied to new files. Files already in the store are not re-compressed."
+  },
+
+  "strategy": {
+    "label": "Strategy",
+    "standard": "Standard",
+    "chunks": "Chunking (files > 10 MB)",
+    "help": "With chunking, large files are split into 4 MB blocks. Only modified blocks are re-uploaded."
   },
 
   "newSession": {
@@ -422,6 +431,7 @@
     "selective": "Selective restore:",
     "files": "{n} files",
     "originalPath": "Original Path",
+    "originalLocations": "Files will be restored to their original locations.",
     "customDest": "Custom Destination",
     "customPlaceholder": "C:\\Path\\Destination",
     "note": "Note: The subfolder structure will be recreated here.",
