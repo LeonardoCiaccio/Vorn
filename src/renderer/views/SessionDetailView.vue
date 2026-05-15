@@ -11,10 +11,16 @@
           <div class="w-9 h-9 rounded-md bg-linear-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center">
             <FolderOpenIcon class="w-4.5 h-4.5 text-indigo-400" />
           </div>
-          <span
-            v-if="session.compressionType"
-            class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none"
-          >{{ session.compressionType }}</span>
+          <div class="flex items-center gap-0.5">
+            <span
+              v-if="session.compressionType"
+              class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none"
+            >{{ session.compressionType }}</span>
+            <span
+              v-if="session.strategy === 'chunks'"
+              class="text-[9px] font-bold uppercase tracking-wide text-violet-400 leading-none"
+            >chunks</span>
+          </div>
         </div>
         <div>
           <h1 class="text-lg font-bold text-white">{{ session.name }}</h1>
@@ -408,7 +414,10 @@
                 <div class="w-7 h-7 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
                   <FolderOpenIcon class="w-3.5 h-3.5 text-indigo-400" />
                 </div>
-                <span v-if="session.compressionType" class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none">{{ session.compressionType }}</span>
+                <div class="flex items-center gap-0.5">
+                  <span v-if="session.compressionType" class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none">{{ session.compressionType }}</span>
+                  <span v-if="session.strategy === 'chunks'" class="text-[9px] font-bold uppercase tracking-wide text-violet-400 leading-none">chunks</span>
+                </div>
               </div>
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-bold text-white truncate">{{ session.name }}</p>
@@ -427,9 +436,26 @@
               <span class="text-[10px] text-gray-600 uppercase tracking-wider font-semibold w-8 shrink-0">{{ $t('sessionDetail.id') }}</span>
               <span class="text-[10px] font-mono text-gray-500 truncate">{{ session.id }}</span>
             </div>
-            <div class="px-4 py-2.5 flex items-center gap-2">
+            <div class="px-4 py-2.5 border-b border-gray-800/60 flex items-center gap-2">
               <span class="text-[10px] text-gray-600 uppercase tracking-wider font-semibold shrink-0">{{ $t('sessionDetail.runs') }}</span>
               <span class="text-[10px] font-mono text-gray-400 ml-auto">{{ session.runs.length }}</span>
+            </div>
+            <div class="px-4 py-2.5 flex items-center gap-2">
+              <span class="text-[10px] text-gray-600 uppercase tracking-wider font-semibold shrink-0">{{ $t('sessionDetail.config') }}</span>
+              <div class="ml-auto flex items-center gap-1">
+                <span
+                  v-if="session.compressionType"
+                  class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                >{{ session.compressionType }}</span>
+                <span
+                  v-if="session.strategy === 'chunks'"
+                  class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400"
+                >chunks</span>
+                <span
+                  v-if="!session.compressionType && session.strategy !== 'chunks'"
+                  class="text-[9px] font-mono text-gray-600"
+                >blob</span>
+              </div>
             </div>
           </div>
 

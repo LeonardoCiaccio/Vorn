@@ -218,6 +218,7 @@ async function storeChunked(storeDir, hashVorn, bytes, sourcePath, sessionId, se
     }
     writeVornManifest(manifestP, meta)
     _listCache = null
+    _metaCache?.entries.delete(hashVorn + '.vorn')
     return { outcome: 'new', storeKey: hashVorn, chunks_new: chunksNew, chunks_dedup: chunksDedup }
   })
 }
@@ -311,6 +312,7 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
           else meta.records.push({ id: sessionId, session: sessionName, paths: [relPath] })
           await writeVornFromSource(p, meta, sourcePath, metaComprType, null, null, signal)
           _listCache = null
+          _metaCache?.entries.delete(existingKey + '.vorn')
           return { outcome: 'dedup', storeKey: existingKey }
         }
       }
@@ -346,6 +348,7 @@ async function _createNew(storeDir, hashVorn, bytes, sourcePath, sessionId, sess
     }
     await writeVornFromSource(p, meta, sourcePath, compressionType, compTmpPath, compressedHash, signal)
     _listCache = null
+    _metaCache?.entries.delete(key + '.vorn')
     return { outcome: 'new', storeKey: key }
   })
 }

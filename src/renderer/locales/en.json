@@ -337,6 +337,7 @@
     "timeline": "Timeline",
     "id": "ID",
     "runs": "Runs",
+    "config": "Config",
     "sources": "Sources",
     "excludedPaths": "Excluded paths",
     "excludePatterns": "Exclusion patterns",

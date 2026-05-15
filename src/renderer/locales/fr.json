@@ -337,6 +337,7 @@
     "timeline": "Chronologie",
     "id": "ID",
     "runs": "Exécutions",
+    "config": "Config",
     "sources": "Sources",
     "excludedPaths": "Chemins exclus",
     "excludePatterns": "Modèles d'exclusion",

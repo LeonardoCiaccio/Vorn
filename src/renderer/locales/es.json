@@ -337,6 +337,7 @@
     "timeline": "Línea de tiempo",
     "id": "ID",
     "runs": "Ejecuciones",
+    "config": "Config",
     "sources": "Orígenes",
     "excludedPaths": "Rutas excluidas",
     "excludePatterns": "Patrones de exclusión",

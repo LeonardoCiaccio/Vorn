@@ -337,6 +337,7 @@
     "timeline": "Zeitachse",
     "id": "ID",
     "runs": "Läufe",
+    "config": "Config",
     "sources": "Quellen",
     "excludedPaths": "Ausgeschlossene Pfade",
     "excludePatterns": "Ausschlussmuster",
