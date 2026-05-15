@@ -251,6 +251,12 @@
                     {{ entry.content_hash ?? entry.hash_vorn }}
                   </span>
                   <span
+                    v-if="entry.strategy === 'chunks'"
+                    class="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400"
+                  >
+                    CHUNKS
+                  </span>
+                  <span
                     v-if="entry.compressedType"
                     class="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
                   >
@@ -342,6 +348,13 @@
             <div class="space-y-1">
               <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.detail.size') }}</p>
               <p class="text-sm font-mono text-gray-300">{{ formatBytes(selectedEntry.bytes_file) }}</p>
+            </div>
+
+            <!-- Strategia -->
+            <div class="space-y-1">
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.detail.strategy') }}</p>
+              <p v-if="selectedEntry.strategy === 'chunks'" class="text-sm font-mono text-violet-400">chunks</p>
+              <p v-else class="text-sm font-mono text-gray-500">blob</p>
             </div>
 
             <!-- Compressione -->

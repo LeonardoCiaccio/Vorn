@@ -176,6 +176,7 @@
       "modified": "Modificado em",
       "sessions": "Sessões ({n})",
       "noSessions": "Sem sessões",
+      "strategy": "Estratégia",
       "compression": "Compressão",
       "compressionNone": "nenhuma",
       "copyHash": "Copiar hash",

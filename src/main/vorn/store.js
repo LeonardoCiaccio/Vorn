@@ -67,16 +67,17 @@ function _getCachedMeta(storeDir, filename) {
   if (_metaCache.entries.has(filename)) return _metaCache.entries.get(filename)
   const p = join(storeDir, filename)
   const st = statSync(p)
-  let records = [], compressedType = null, content_hash = null
+  let records = [], compressedType = null, content_hash = null, strategy = null
   try {
     const meta    = readVornMeta(p).meta
     records        = meta?.records        ?? []
     compressedType = meta?.compressedType ?? null
     content_hash   = meta?.hash_vorn      ?? null
+    strategy       = meta?.strategy       ?? null
   } catch { /* skip unreadable */ }
   const info = {
     hash_vorn: basename(filename, '.vorn'),
-    content_hash, compressedType,
+    content_hash, compressedType, strategy,
     bytes_file: st.size,
     ctime:      st.birthtimeMs,
     mtime:      st.mtimeMs,
