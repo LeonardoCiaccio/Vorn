@@ -117,10 +117,13 @@ export async function backup(storeDir, sessionName, opts = {}) {
     }
 
     // Compressione nel worker (prima del store-request) per non bloccare il Main Process.
-    // Per i chunked la compressione avviene per-chunk dentro storeChunked.
+    // Per i chunked la compressione avviene per-chunk dentro storeChunked, MA solo se il file
+    // supera la soglia. File piccoli con strategy='chunks' cadono nel path blob in _createNew:
+    // comprimiamo in anticipo se compressionType è impostato E il file è sotto soglia.
     let compTmpPath    = null
     let compressedHash = null
-    if (compressionType && strategy !== 'chunks') {
+    const willBeChunked = strategy === 'chunks' && bytes >= CHUNK_THRESHOLD_BYTES
+    if (compressionType && !willBeChunked) {
       const storeKey   = toStoreKey(hashVorn, compressionType)
       // Salta la compressione se esiste già qualsiasi .vorn per questo hash
       // (sia hash_gzip.vorn che hash.vorn — manifest chunked o plain)
