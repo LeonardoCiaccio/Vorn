@@ -210,6 +210,30 @@ html.light .bg-amber-950\/30 {
 html.light .border-amber-900\/40 {
   border-color: rgba(217, 119, 6, 0.35) !important;
 }
+html.light .text-amber-200\/70 {
+  color: rgba(120, 53, 15, 0.85) !important; /* amber-900 su sfondo giallo chiaro */
+}
+html.light .text-amber-500\/80 {
+  color: rgba(180, 83, 9, 0.9) !important;   /* amber-700 */
+}
+html.light .text-amber-400\/80 {
+  color: rgba(217, 119, 6, 0.9) !important;  /* amber-600 */
+}
+html.light .text-amber-400\/70 {
+  color: rgba(217, 119, 6, 0.8) !important;
+}
+html.light .text-amber-400\/50 {
+  color: rgba(180, 83, 9, 0.65) !important;
+}
+html.light .text-amber-400\/30 {
+  color: rgba(146, 64, 14, 0.5) !important;
+}
+html.light .text-sky-400\/70 {
+  color: rgba(2, 132, 199, 0.85) !important; /* sky-600 */
+}
+html.light .text-sky-400\/30 {
+  color: rgba(2, 132, 199, 0.5) !important;
+}
 html.light .bg-red-950\/20 {
   background-color: rgba(254, 226, 226, 0.8) !important;
 }
@@ -294,6 +318,9 @@ html.light textarea {
   background-color: #f9fafb !important;
   border-color: #d1d5db !important;
   color: #111827 !important;
+}
+html.light .placeholder-gray-600::placeholder {
+  color: #9ca3af !important; /* gray-400 — visibile su sfondo chiaro */
 }
 
 /* ── Scrollbar light ── */
