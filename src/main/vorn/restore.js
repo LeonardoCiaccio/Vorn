@@ -21,10 +21,22 @@ function _isAbsPath(relPath) {
 }
 
 // UNC path (Windows network share): \\server\share\... oppure //server/share/...
-// Bloccato nel restore "originale": uno store ostile potrebbe puntare a una
-// share controllata dall'attaccante per esfiltrare contenuti.
+// Esclude esplicitamente i namespace prefix Win32 (`\\?\`, `\\.\`) che hanno
+// semantica diversa e sono gestiti da `_isWin32NamespacePath`.
 function _isUNCPath(p) {
-  return /^\\\\[^\\?]/.test(p) || /^\/\/[^/]/.test(p)
+  return /^(?:\\\\|\/\/)[^\\?./]/.test(p)
+}
+
+// Win32 namespace prefix: `\\?\` (extended-length), `\\.\` (device), `\??\` (NT object).
+// Sotto questi prefix il filesystem driver risolve trasparentemente verso path
+// di sistema bypassando i nostri controlli `_isSystemPath`: `\\?\C:\Windows\...`
+// scriverebbe in System32 perché:
+//   - `_isUNCPath` con regex `^\\\\[^\\?]` esclude `?` → non lo riconosce come UNC
+//   - `_isSystemPath` su `//?/c:/windows/...` non matcha alcun prefisso in blocklist
+// Threat: store ostile inietta in `run.files` un path con namespace prefix →
+// privilege escalation al primo restore-originale. Va bloccato PRIMA di `resolve()`.
+function _isWin32NamespacePath(p) {
+  return /^(?:\\\\|\/\/)[?.]\//.test(p.replace(/\\/g, '/')) || /^\\\?\?\\/.test(p)
 }
 
 // Directory di sistema il cui contenuto NON deve essere sovrascritto da un restore.
@@ -41,6 +53,19 @@ function _isSystemPath(absPath) {
   if (!absPath) return false
   const norm = absPath.replace(/\\/g, '/').toLowerCase()
   return _SYSTEM_PREFIXES_LC.some(s => norm === s || norm.startsWith(s + '/'))
+}
+
+// Sanitize per componenti di folder name che provengono da `meta.records` di un
+// .vorn (`session`, `id`). Lo store è untrusted (threat model dichiarato):
+// `rec.session = '../../evil'` farebbe fuoriuscire `base` da `destDir` PRIMA
+// che `_safeJoin` validi lo `stripped` finale (`_safeJoin` valida solo l'ultimo
+// segmento contro `base`, non `base` stesso). Rifiutiamo aggressivamente.
+function _sanitizeFolderSegment(s) {
+  if (typeof s !== 'string' || s.length === 0) return '_'
+  // Sequenze pericolose: separators, .., null, drive letters (Win), control chars.
+  if (/[\\/\x00]/.test(s) || s.includes('..') || /^[A-Za-z]:/.test(s)) return '_'
+  // Caratteri vietati su NTFS + control chars + cap di lunghezza.
+  return s.replace(/[<>:"|?*\x00-\x1f]/g, '_').slice(0, 100) || '_'
 }
 
 export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) {
@@ -70,10 +95,10 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
       let outPath
       if (_isAbsPath(relPath)) {
         if (destDir === null) {
-          // Ripristino originale: blocca UNC e directory di sistema PRIMA di
-          // toccare il filesystem. Vedi commento su _SYSTEM_PREFIXES_LC.
-          if (_isUNCPath(relPath)) {
-            errors.push({ path: relPath, storeKey, error: 'unc_path_blocked' })
+          // Ripristino originale: blocca UNC, namespace Win32 (\\?\, \\.\) e
+          // directory di sistema PRIMA di toccare il filesystem.
+          if (_isUNCPath(relPath) || _isWin32NamespacePath(relPath)) {
+            errors.push({ path: relPath, storeKey, error: 'unsafe_path_blocked' })
             onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
             continue
           }
@@ -154,11 +179,25 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
       : meta.records
 
     for (const rec of recsToExtract) {
+      // Sanitize folder-segment: `rec.session` e `rec.id` arrivano da meta che
+      // può essere UNTRUSTED (store ostile). Senza sanitizzazione, un nome tipo
+      // '../../evil' fa fuoriuscire `base` da `destDir` PRIMA che `_safeJoin`
+      // validi lo `stripped`. validateSessionName è applicata solo lato write,
+      // mai sul read dello store → la difesa va qui.
+      const safeSession = _sanitizeFolderSegment(rec.session)
+      const safeId      = _sanitizeFolderSegment(rec.id)
+      const folderName  = `${safeSession}-${safeId}`
+      const base        = join(destDir, folderName)
+      // Defense-in-depth: anche dopo la sanitize, verifichiamo che il base
+      // risolto NON sia uscito da destDir (catch combinazioni esotiche).
+      const resolvedBase = resolve(base)
+      if (resolvedBase !== destDir && !resolvedBase.startsWith(destDir + sep)) {
+        errors.push({ hash: hashOnly, session: rec.session, error: 'unsafe_session_segment' })
+        continue
+      }
       for (const relPath of rec.paths) {
         if (isCancelled?.()) break
         try {
-          const folderName = `${rec.session}-${rec.id}`
-          const base       = join(destDir, folderName)
           // Path assolute: rimuovi drive root prima di join a destDir/folderName
           const stripped   = _isAbsPath(relPath)
             ? relPath.replace(/^[A-Za-z]:\//, '').replace(/^\//, '')
