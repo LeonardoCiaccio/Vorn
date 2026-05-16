@@ -224,6 +224,13 @@ Lette PRIMA di flaggare nuovi finding. Aree già discusse o intenzionalmente non
 - **Cross-strategy dedup** per `.vorn` (`_findExistingVornKey`) E per `.vornc` (`_findExistingVorncKey`): l'ordine di priorità in `KNOWN_COMPRESSION_TYPES` è **API stabile** (commentato in `store.js`). Per aggiungere un tipo (zstd) **appenderlo in fondo**, non in testa. Non flaggare "ordine fragile".
 - **Task mutex centralizzato**: `_assertNoMutatingTask()` in `taskHandlers.js` gate-keepa `backup` / `restore` / `clear` / `extract-store` / `prune` / `extract-hash`. Non flaggare race tra questi task — è gestita.
 - **Cache invalidation `_listCache` / `_metaCache`**: invalidate in TUTTI i write path di `.vorn` (creazione blob, manifest, repair, dedup-record-upsert, delete) e in `close-store`. Stesso pattern esteso defense-in-depth a `.vornc` (R3-6). Non riproporre "stale cache after X".
+- **`.mtmp` cleanup è esclusiva di `readVornMeta`** (R4-1): l'open-store NON deve mai eliminarli, sono il WAL di `_updateMeta`. Solo `readVornMeta` su una meta tail leggibile può dichiarare un WAL "provatamente orfano" e cancellarlo. Non riproporre "cleanup all WAL on store open".
+- **Restore-originale blocca tutti i namespace prefix Win32** (R4-2): `\\?\`, `\\.\`, `\??\` rifiutati prima di `resolve()`. Combinato con `_SYSTEM_PREFIXES_LC` e `_isUNCPath`. Non riproporre "bypass system path via prefix".
+- **`extractFromStore` sanitizza folder-segment da store ostile** (R4-3): `rec.session` / `rec.id` passano da `_sanitizeFolderSegment` (rifiuta `..`, separators, drive letters, control chars; cap 100) + check `resolvedBase ∈ destDir`. Non riproporre "path traversal via meta.records".
+- **`extractByHash` size cap valido anche su chunked** (R4-4): usa `meta.bytes` (effective size) per i manifest chunked, `contentLen` (on-disk) per i blob plain. Non riproporre "EXTRACT_MAX_BYTES bypassed".
+- **`vornHash` rileva truncate mid-hash** (R4-5): `n === 0` → `ERR_SOURCE_TRUNCATED_DURING_HASH`. Il caller `backup.js` lo gestisce come errore per-file (`continue`), distinto da `null` (cancel, `break`). Non riproporre "infinite loop on live file".
+- **Notification sanitize chirurgico** (R4-6): `_sanitizeForNotification` in `taskHandlers.js` strippa control chars + `<>&` solo nel layer notifica. `validateSessionName` resta invariata per retrocompatibilità con sessioni esistenti. Non riproporre "Pango markup injection".
+- **Dedup post-scan case-insensitive** (R4-7): `backup.js` dedup `allFiles` con case-folding su Win32. Sources doppi per case non producono più double-hash. Non riproporre "duplicate scan on NTFS".
 
 ### Skippato volutamente — non re-flaggare
 
@@ -234,24 +241,36 @@ Lette PRIMA di flaggare nuovi finding. Aree già discusse o intenzionalmente non
 - **CQ2 — precompressione duplica `writeVornFromSource`**: **WONTFIX**. È uno split intenzionale: il worker pre-comprime per calcolare l'hash compresso PRIMA di interrogare la dedup-check. Centralizzare significherebbe spostare la dedup-check dentro `writeVornFromSource` (peggior architettura).
 - **CQ5 — silent catch `{ /* non-critico */ }`**: **DEFERRED**. Convertirli tutti a `logger.debug` richiede importare logger in 6+ moduli, valore marginale. La maggior parte sono cleanup di temp e non meritano log.
 - **CQ6 — workerManager progress shape eterogenea**: **DEFERRED**. La shape è diversa per design tra backup / integrity / prune / restore. Normalizzare richiede ridisegno dei worker, basso valore.
+- **R4-8 — version byte nell'header `.vorn`**: **DEFERRED a prossima major**. Header attuale `MAGIC(4) + contentLen(8)` non ha campo version. Soluzione proposta: byte dopo MAGIC che vale `0x00` per v0 (compat con file esistenti) e `0x01+` per future versioni — distinguibile perché in v0 quel byte è l'high-byte di un `BigUInt64BE < 72 PB` (sempre `0x00`). Non urgente, riproporlo solo quando serve un cambio binary-incompatibile reale.
 
-### Aree dove sì cercare
+### Aree dove sì cercare (Round 5 →)
 
-Il prossimo revisore può investire energie utili su:
+Il prossimo revisore può investire energie utili su queste aree NON toccate finora:
 
-1. **Robustezza streaming**: error propagation nelle pipeline (`pipeline()` chain) quando una sorgente errora — sono tutte cleanup-safe? Specie con `signal: AbortSignal`.
-2. **Comportamento su filesystem case-insensitive**: i path scanner generano relPath con case originale; cosa succede se due sorgenti differiscono solo in case su FS case-insensitive?
-3. **Cancel atomicity**: cosa lascia indietro un cancel a metà di `storeChunked` (manifest non scritto, ma alcuni `.vornc` sì)? Sono orfani gestiti dal prune.
-4. **Upgrade path tra versioni `.vorn` format**: oggi non c'è versionamento esplicito nell'header. Una futura modifica binary-incompatibile come si propaga?
-5. **Renderer XSS via metadata**: i `meta.records[].paths` e `meta.records[].session` provengono dallo store e finiscono nella UI. Sono sempre `v-text` (safe) o c'è qualche `v-html`?
-6. **i18n / locale injection**: le stringhe da `meta` finiscono nei template di notifica (`backupDoneTitle/Body`)? Sono interpolate safe?
-7. **Permission edge cases**: cosa succede se il file di run viene reso read-only mentre un backup è in corso? `saveRun` lancia? È catturato?
+1. **Pipeline + AbortSignal in `restore.js` / `extractFromStore`**: i `pipeline()` non ricevono signal, quindi un cancel mid-extract attende il flush del chunk corrente. Edge case di responsiveness.
+2. **`pruneWorker` schema misto su `run.files`**: legge `Object.values(...)` accettando sia stringhe che `{hash_vorn}`. Verificare se il fallback `fileInfo?.hash_vorn` è morto o storico.
+3. **`safeFs.js` deep dive**: gestisce path da user / store, è una superficie ampia. `toLongPath`, `safeReadSync`, edge case su symlink/junction.
+4. **Notification icon path**: `getAppIcon()` ha cache? Chiamato a ogni notifica?
+5. **Cancel atomicity di `storeChunked`**: cancel a metà → manifest non scritto MA alcuni `.vornc` sì. Sono raccolti dal prune come orfani?
+6. **Permission edge cases**: file di run reso read-only mid-backup → `saveRun` lancia? Catturato?
+7. **Renderer XSS via metadata**: `meta.records[].paths` e `meta.records[].session` finiscono nella UI. Solo `v-text` o ci sono `v-html`?
+8. **Race start-backup ↔ delete-session**: `_assertNoMutatingTask` copre i task mutanti, ma `delete-session` (handler IPC sync) può essere chiamato mentre un backup è running? `hasRunningTask` lo blocca ma è before-task-creation.
+9. **Worker error recovery**: se `_storeBlob` rejecta dentro storeBlob, il worker continua con il file successivo. È giusto o vorremmo abortire l'intera run su certi errori (es. ENOSPC sul `.vorn` di destinazione, non solo sul `.vornc`)?
 
 ---
 
 ## Round 4 — Follow-up findings (post Round 3)
 
-Adversarial pass concentrato sulle aree dichiarate aperte nel capitolo "Note di contesto". Sette finding nuovi, tutti citano codice attualmente in `master`/`feature/vornc-chunking`. Severità motivata dal threat model dichiarato (store ostile, USB rimovibile, attaccante controlla nomi/file).
+Adversarial pass concentrato sulle aree dichiarate aperte nel capitolo "Note di contesto". Sette finding nuovi, tutti reali, tutti citano codice esistente. Severità motivata dal threat model dichiarato (store ostile, USB rimovibile, attaccante controlla nomi/file).
+
+- [x] **R4-1** [HIGH] — `_cleanupResidualTemps` distruggeva i `.mtmp` all'open-store, eliminando il WAL prima che `readVornMeta` potesse usarlo per la recovery. Data loss permanente per ogni `_upsertRecord` interrotto da crash. Fix: rimossi `.mtmp` dal cleanup; aggiunto pattern `\.repair\.\d+\.\d+$` per gli orfani della recovery atomica (R3-1).
+- [x] **R4-2** [HIGH] — Bypass `_isSystemPath` via namespace prefix Win32 (`\\?\`, `\\.\`, `\??\`). Privilege escalation reale su Windows: store ostile con `\\?\C:\Windows\System32\evil.exe` scriveva in System32 al restore-originale. Fix: `_isWin32NamespacePath` con check PRIMA di `resolve()`; regex `_isUNCPath` aggiornata per chiarezza; codice errore unificato in `unsafe_path_blocked`.
+- [x] **R4-3** [HIGH] — Path traversal in `extractFromStore` via `rec.session` / `rec.id` ostili: `folderName = '../../evil'` fa fuoriuscire `base` da `destDir` PRIMA che `_safeJoin` validi lo `stripped`. Fix: `_sanitizeFolderSegment` (rifiuta separators / `..` / drive letters / control chars; cap a 100) + defense-in-depth check `resolvedBase ∈ destDir`.
+- [x] **R4-4** [MED] — `extractByHash` bypassava `EXTRACT_MAX_BYTES` sui chunked manifest (`contentLen=0n`). Fix: usa `meta.bytes` come `effectiveSize` per i chunked.
+- [x] **R4-5** [MED] — `vornHash` loop infinito se `safeReadSync` torna `0` (file truncated mid-hash). Fix: throw `ERR_SOURCE_TRUNCATED_DURING_HASH`; il caller in `backup.js` già gestisce errori per-file via try/catch.
+- [x] **R4-6** [MED] — `_notifyRunDone` non sanitizza `task.sessionName`: su Linux DE il notification daemon può interpretare markup Pango. Fix: `_sanitizeForNotification` chirurgico nel layer notifica (no modifica a `validateSessionName` per non rompere sessioni esistenti).
+- [x] **R4-7** [LOW] — Walker case-insensitive: due sources che differiscono solo per case su NTFS producevano double-scan, double-hash e silent merge su restore. Fix: dedup post-scan in `backup.js` con case-folding solo su Win32.
+- [ ] **R4-8** [LOW] — Manca version byte nell'header `.vorn`: **DEFERRED a prossima major**. È una raccomandazione di housekeeping, non un bug. Costo zero ORA, crescente in futuro.
 
 ---
 
