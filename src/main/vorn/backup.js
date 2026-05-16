@@ -74,7 +74,19 @@ export async function backup(storeDir, sessionName, opts = {}) {
   let bytesNew    = run.bytes_new    ?? 0
   let chunksNew   = run.chunks_new   ?? 0
   let chunksDedup = run.chunks_dedup ?? 0
-  const errors   = [...(run.errors ?? []), ...scanErrors]
+  // Dedup degli scan-error sul resume: una sorgente unreadable produce lo stesso
+  // errore a ogni tentativo. Senza dedup, run.errors cresce indefinitamente e
+  // appesantisce sia il JSON che la UI. La chiave (path|error|phase) preserva
+  // errori distinti per la stessa sorgente (es. EACCES vs ENOENT).
+  const _errors = [...(run.errors ?? []), ...scanErrors]
+  const _seenErr = new Set()
+  const errors = []
+  for (const e of _errors) {
+    const key = `${e.path ?? ''}|${e.error ?? ''}|${e.phase ?? ''}`
+    if (_seenErr.has(key)) continue
+    _seenErr.add(key)
+    errors.push(e)
+  }
   let current    = alreadyDone.size
 
   let lastSaveCount  = current

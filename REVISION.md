@@ -197,3 +197,53 @@ Issue emerse dopo la prima tornata di fix (commits `f657793`, `7c0b27a`). Tutte 
 - [x] **R2-5** [MED] — `readSync` parziale nel check separatore: aggiunto `if (sepN < SEPARATOR.length) throw ERR_FILE_TRUNCATED` (distinto da `ERR_SEPARATOR_NOT_FOUND`)
 - [x] **R2-6** [LOW] — Lock detection su NAS/SMB: `checkLock` rifiuta se `lock.machine !== hostname()`, previene il furto di lock cross-machine → store corruption
 
+---
+
+## Round 3 — Follow-up findings (post Round 2)
+
+Quattro fix applicati. Restano due item marcati come **non-bug** e **non-applicabile-in-pratica**: vedere le note nel prossimo capitolo per evitare di re-flaggarli a futuri review.
+
+- [x] **R3-1** [HIGH] — Race in `readVornMeta` recovery: la recovery in-place (`truncateSync` + `openSync 'a'` + `writeSync`) è stata sostituita da una recovery ATOMICA con tmp+rename. Ogni invocazione costruisce un `<filePath>.repair.<pid>.<timestamp>` univoco, fa fsync, poi `renameSync` atomico. Due recovery concorrenti producono file tmp distinti, l'ultimo rename vince ma il contenuto è identico → idempotente. Niente più interleaved writes su Linux/macOS né EBUSY su Win.
+- [x] **R3-2** [HIGH] — Missing `fsync` in `writeVornFromSource`: aggiunto `openSync(tmpPath, 'r+')` + `fsyncSync(fd)` PRIMA del `renameSync`. Allineato al pattern già usato da `writeVornManifest`. Senza fsync, power failure / USB unplug post-rename poteva lasciare file zero-byte "pubblicato" come backup completato.
+- [x] **R3-3** [MED] — Duplicate error accumulation su resume: dedup degli errori `[...run.errors, ...scanErrors]` con chiave `path|error|phase` prima del save. Errori distinti per la stessa sorgente (es. EACCES vs ENOENT) restano separati.
+- [x] **R3-4** [MED] — `vorn:extract-hash` senza mutex: aggiunto `_assertNoMutatingTask()` come per gli altri task. Race con prune/clear (file cancellato mid-read) ora bloccata a monte.
+- [x] **R3-6** [LOW] — Cache invalidation per `.vornc` (defense-in-depth): aggiunte `_metaCache.entries.delete(key + '.vornc')` in `_writeNewVornc` e `_storeVornc`. Attualmente moot perché `listStoreFiles` filtra `.vornc`, ma chiude il rischio in caso di future UI changes.
+
+---
+
+## ⚠️ Note di contesto per i prossimi revisori
+
+Lette PRIMA di flaggare nuovi finding. Aree già discusse o intenzionalmente non protette. Evitare di sollevarle di nuovo come "bug": sono decisioni esplicite con razionale documentato.
+
+### Decisioni architetturali consolidate
+
+- **DB single-writer nel main process via IPC**: `dbGetFile` / `dbUpsertFileMany` / `dbPruneOrphans` sono invocate dai worker tramite `db-request` / `db-result` (pattern speculare a `store-request`). Una sola connessione `better-sqlite3` viva, serializzata sull'event loop del main. Non flaggare "worker DB connections multiple" — è stato chiuso in `7c0b27a`.
+- **Store writes single-writer**: tutte le scritture `.vorn` / `.vornc` passano per `storeBlob` nel main via `store-request`. I worker non aprono mai il file di store direttamente per write. Non flaggare "concurrent writers on `.vorn`" — il pattern lo previene by design.
+- **`withFileLock` per-path**: usato in `storeBlob`, `storeChunked`, `_storeVornc`, `_writeNewVornc`. La chiave è normalizzata via `resolve()` + `toLowerCase()` su Win32. Lock per-path, niente deadlock possibile.
+- **WAL `_updateMeta` con fingerprint `contentLen`**: il `.mtmp` lega la sua applicabilità al contentLen corrente del `.vorn`. Recovery rifiuta un WAL orfano se il fingerprint non corrisponde. Cleanup degli orfani all'avvio store e ogni volta che `readVornMeta` riesce. Non riproporre "WAL può resuscitare records non committati" — è coperto.
+- **Recovery di `readVornMeta` ATOMICA via tmp+rename** (R3-1): la vecchia in-place `truncate`+`append` non c'è più. Non flaggare "race in recovery".
+- **Cross-strategy dedup** per `.vorn` (`_findExistingVornKey`) E per `.vornc` (`_findExistingVorncKey`): l'ordine di priorità in `KNOWN_COMPRESSION_TYPES` è **API stabile** (commentato in `store.js`). Per aggiungere un tipo (zstd) **appenderlo in fondo**, non in testa. Non flaggare "ordine fragile".
+- **Task mutex centralizzato**: `_assertNoMutatingTask()` in `taskHandlers.js` gate-keepa `backup` / `restore` / `clear` / `extract-store` / `prune` / `extract-hash`. Non flaggare race tra questi task — è gestita.
+- **Cache invalidation `_listCache` / `_metaCache`**: invalidate in TUTTI i write path di `.vorn` (creazione blob, manifest, repair, dedup-record-upsert, delete) e in `close-store`. Stesso pattern esteso defense-in-depth a `.vornc` (R3-6). Non riproporre "stale cache after X".
+
+### Skippato volutamente — non re-flaggare
+
+- **BigInt → Number su offset > 2^53 (~9 PB)** (Round 3 #5): la conversione `Number(contentLen)` perde precisione solo per file singoli oltre 9 petabyte. Scenario non realistico per backup desktop. **WONTFIX**. Riproporlo richiede un caso d'uso concreto in cui un singolo `.vorn` superi quel limite.
+- **TOCTOU in `_findExistingVorncKey`** (Round 3 #7): l'unico caller (`_storeVornc`) re-checka sotto `withFileLock`. L'eventuale race non produce corruzione, solo un fallthrough alla creazione. **NOT-A-BUG**, è defensive-programming-note. Non riproporlo come finding.
+- **Confirmation flow UI per restore-originale su path di sistema**: lato worker il path è già bloccato (blocklist `_SYSTEM_PREFIXES_LC` + UNC reject in `restore.js`). La modal di conferma in renderer è **deferred UX**, non security gap. Riproporla come "missing user prompt" è valido solo come feature request, non come HIGH.
+- **`vorn:list-dir` whitelist completa di root**: input null-byte è bloccato; restringere alla home dell'utente romperebbe l'uso legittimo (selezione sorgenti backup ovunque sul FS). Il vettore reale (XSS in renderer + abuso di list-dir) richiede prima un'altra vuln. Marcato **defense-in-depth done a livello pratico**.
+- **CQ2 — precompressione duplica `writeVornFromSource`**: **WONTFIX**. È uno split intenzionale: il worker pre-comprime per calcolare l'hash compresso PRIMA di interrogare la dedup-check. Centralizzare significherebbe spostare la dedup-check dentro `writeVornFromSource` (peggior architettura).
+- **CQ5 — silent catch `{ /* non-critico */ }`**: **DEFERRED**. Convertirli tutti a `logger.debug` richiede importare logger in 6+ moduli, valore marginale. La maggior parte sono cleanup di temp e non meritano log.
+- **CQ6 — workerManager progress shape eterogenea**: **DEFERRED**. La shape è diversa per design tra backup / integrity / prune / restore. Normalizzare richiede ridisegno dei worker, basso valore.
+
+### Aree dove sì cercare
+
+Il prossimo revisore può investire energie utili su:
+
+1. **Robustezza streaming**: error propagation nelle pipeline (`pipeline()` chain) quando una sorgente errora — sono tutte cleanup-safe? Specie con `signal: AbortSignal`.
+2. **Comportamento su filesystem case-insensitive**: i path scanner generano relPath con case originale; cosa succede se due sorgenti differiscono solo in case su FS case-insensitive?
+3. **Cancel atomicity**: cosa lascia indietro un cancel a metà di `storeChunked` (manifest non scritto, ma alcuni `.vornc` sì)? Sono orfani gestiti dal prune.
+4. **Upgrade path tra versioni `.vorn` format**: oggi non c'è versionamento esplicito nell'header. Una futura modifica binary-incompatibile come si propaga?
+5. **Renderer XSS via metadata**: i `meta.records[].paths` e `meta.records[].session` provengono dallo store e finiscono nella UI. Sono sempre `v-text` (safe) o c'è qualche `v-html`?
+6. **i18n / locale injection**: le stringhe da `meta` finiscono nei template di notifica (`backupDoneTitle/Body`)? Sono interpolate safe?
+7. **Permission edge cases**: cosa succede se il file di run viene reso read-only mentre un backup è in corso? `saveRun` lancia? È catturato?

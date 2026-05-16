@@ -167,11 +167,16 @@ async function _writeNewVornc(storeDir, chunkHash, chunkBytes, sourcePath, compr
       if (!meta.references.includes(manifestHash)) {
         meta.references.push(manifestHash)
         await _updateMeta(p, meta, contentLen)
+        _metaCache?.entries.delete(key + '.vornc')
       }
       return { key, isNew: false }
     }
     const meta = { hash_vorn: chunkHash, bytes: chunkBytes, compressedType: compressionType ?? null, references: [manifestHash] }
     await writeVornFromSource(p, meta, sourcePath, compressionType)
+    // Defense-in-depth: oggi `_listCache`/`_metaCache` contengono SOLO `.vorn`
+    // perché `listStoreFiles` filtra `.vornc`. Se in futuro la UI mostra chunks
+    // o cambia il filtro, queste invalidazioni evitano regressioni stale-cache.
+    _metaCache?.entries.delete(key + '.vornc')
     return { key, isNew: true }
   })
 }
@@ -191,6 +196,7 @@ async function _storeVornc(storeDir, chunkHash, chunkBytes, sourcePath, compress
       if (!meta.references.includes(manifestHash)) {
         meta.references.push(manifestHash)
         await _updateMeta(pExist, meta, contentLen)
+        _metaCache?.entries.delete(existingKey + '.vornc') // defense-in-depth (vedi _writeNewVornc)
       }
       return { key: existingKey, isNew: false }
     })

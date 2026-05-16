@@ -1,4 +1,4 @@
-import { openSync, readSync, writeSync, fsyncSync, closeSync, truncateSync, createReadStream, createWriteStream, statSync, existsSync, readFileSync, unlinkSync, renameSync } from 'fs'
+import { openSync, readSync, writeSync, fsyncSync, closeSync, createReadStream, createWriteStream, statSync, existsSync, readFileSync, unlinkSync, renameSync } from 'fs'
 import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
 import { createHash } from 'crypto'
@@ -96,11 +96,42 @@ export function readVornMeta(filePath) {
         throw new Error('ERR_WAL_INVALID', { cause: e })
       }
       closeSync(fd); fd = null
-      const truncateAt = HEADER_SIZE + Number(contentLen) + SEPARATOR.length
-      truncateSync(filePath, truncateAt)
-      const recBuf = Buffer.from(JSON.stringify(recovered), 'utf8')
-      const fdw = openSync(filePath, 'a')
-      try { writeSync(fdw, recBuf); fsyncSync(fdw) } finally { closeSync(fdw) }
+
+      // Recovery ATOMICA via tmp+rename. La versione precedente faceva truncate
+      // + append in-place: due thread/process concorrenti che leggevano lo stesso
+      // file corrotto potevano entrambi eseguire la recovery → su Linux/macOS
+      // append interleaved producevano meta JSON duplicata, su Windows EBUSY/EPERM.
+      // Con tmp+rename ogni recovery costruisce il proprio file `.repair.<pid>.<ts>`
+      // (path univoco per coesistere con altre recovery), poi rename atomico sostituisce
+      // il .vorn. L'ultimo rename vince — il contenuto è identico, quindi idempotente.
+      const keepBytes  = HEADER_SIZE + Number(contentLen) + SEPARATOR.length
+      const repairTmp  = filePath + '.repair.' + process.pid + '.' + Date.now()
+      const recBuf     = Buffer.from(JSON.stringify(recovered), 'utf8')
+      let srcFd = null, dstFd = null
+      try {
+        srcFd = openSync(filePath, 'r')
+        dstFd = openSync(repairTmp, 'w')
+        const buf = Buffer.alloc(64 * 1024)
+        let copied = 0
+        while (copied < keepBytes) {
+          const n = readSync(srcFd, buf, 0, Math.min(buf.length, keepBytes - copied), copied)
+          if (n === 0) break
+          writeSync(dstFd, buf, 0, n)
+          copied += n
+        }
+        if (copied !== keepBytes) throw new Error('ERR_FILE_TRUNCATED')
+        writeSync(dstFd, recBuf)
+        fsyncSync(dstFd)
+        closeSync(dstFd); dstFd = null
+        closeSync(srcFd); srcFd = null
+        renameSync(repairTmp, filePath)
+      } catch (e) {
+        try { unlinkSync(repairTmp) } catch { /* non-critico */ }
+        throw e
+      } finally {
+        if (dstFd !== null) try { closeSync(dstFd) } catch { /* ignore */ }
+        if (srcFd !== null) try { closeSync(srcFd) } catch { /* ignore */ }
+      }
       try { unlinkSync(tmpPath) } catch { /* non-critico */ }
       return readVornMeta(filePath)
     }
@@ -210,6 +241,14 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
     if (bytesRead !== contentLen) {
       throw new Error('ERR_SOURCE_SIZE_MISMATCH')
     }
+    // fsync esplicito PRIMA del rename: `createWriteStream` non garantisce
+    // che i dati siano flushed su disco al close, e `renameSync` aggiorna
+    // solo la directory entry. Senza fsync, un power-failure o USB-unplug
+    // subito dopo il rename "riuscito" può lasciare il file zero-byte o
+    // troncato su disco — backup "completato" che alla riapertura non si legge.
+    // Allineato al pattern già usato da writeVornManifest.
+    const fdFsync = openSync(tmpPath, 'r+')
+    try { fsyncSync(fdFsync) } finally { closeSync(fdFsync) }
     renameSync(tmpPath, destPath)
   } catch (e) {
     if (existsSync(tmpPath)) unlinkSync(tmpPath)

@@ -224,6 +224,9 @@ export function registerTaskHandlers(mainWindow) {
       if (typeof filename !== 'string' || filename.length === 0 || filename.length > 255 || filename.includes('\x00'))
         throw new Error('ERR_INVALID_FILENAME')
     }
+    // Stesso gate degli altri task mutanti: prune/clear in corso possono
+    // cancellare il file (come orfano) mentre extractByHash lo sta leggendo.
+    _assertNoMutatingTask()
     return extractByHash(ctx.activeStore, hashVorn, resolvedDest, filename)
   })
 }
