@@ -183,8 +183,15 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
 export async function extractByHash(storeDir, storeKey, destDir, filename) {
   destDir = resolve(destDir)
   const vornFilePath = join(storeDir, storeKey + '.vorn')
-  const { contentLen } = readVornMeta(vornFilePath)
-  if (Number(contentLen) > EXTRACT_MAX_BYTES) {
+  const { meta, contentLen } = readVornMeta(vornFilePath)
+  // Chunked manifest: `contentLen` è 0n perché il payload reale vive nei .vornc.
+  // Senza questo ramo, EXTRACT_MAX_BYTES verrebbe bypassato silenziosamente
+  // (0 > MAX è sempre false) e file da N GB ricostruirebbero lo stream sul
+  // disco. Per i blob plain `contentLen` resta la size on-disk autorevole.
+  const effectiveSize = meta?.strategy === 'chunks'
+    ? Number(meta.bytes ?? 0)
+    : Number(contentLen)
+  if (effectiveSize > EXTRACT_MAX_BYTES) {
     throw new Error('ERR_FILE_TOO_LARGE_EXTRACT')
   }
   const outPath = join(destDir, basename(filename || storeKey))

@@ -17,6 +17,16 @@ function _send(mainWindow, payload) {
   if (!mainWindow.isDestroyed()) mainWindow.webContents.send('vorn:task-done', payload)
 }
 
+// Sanitize chirurgico per il title delle notifiche OS. validateSessionName blocca
+// già path separators / null / .. ma NON control chars o markup. Su Linux DE il
+// notification daemon può interpretare markup Pango (<a href>, <b>, <i>): un nome
+// tipo `<a href="...">click</a>` apparirebbe come link cliccabile. Sanitizziamo
+// solo all'output, senza modificare validateSessionName (romperebbe sessioni esistenti).
+function _sanitizeForNotification(s) {
+  if (typeof s !== 'string') return ''
+  return s.replace(/[\x00-\x1f\x7f<>&]/g, '_').slice(0, 80)
+}
+
 function _notifyRunDone(task, result, mainWindow) {
   if (!loadSettings().notifications) return
   if (!Notification.isSupported()) return
@@ -24,7 +34,7 @@ function _notifyRunDone(task, result, mainWindow) {
   const errors = result.errors?.length ?? 0
   const t      = getMainT()
   const body   = t.backupDoneBody(result.files_total, errors)
-  const notif  = new Notification({ title: t.backupDoneTitle(task.sessionName), body, icon: getAppIcon() })
+  const notif  = new Notification({ title: t.backupDoneTitle(_sanitizeForNotification(task.sessionName)), body, icon: getAppIcon() })
   notif.on('click', () => {
     if (mainWindow.isDestroyed()) return
     if (mainWindow.isMinimized()) mainWindow.restore()

@@ -15,6 +15,12 @@ export function vornHash(filePath, isCancelled, onChunk = null) {
     while (offset < size) {
       if (isCancelled?.()) return null
       const n = safeReadSync(fd, buf, 0, Math.min(CHUNK, size - offset), offset)
+      // EOF prematuro: il file è stato TRONCATO sotto di noi durante l'hashing
+      // (log rotato, atomic replace, USB cache flush). Senza questo guard,
+      // `offset += 0` produrrebbe un loop infinito finché il cancel timer
+      // (8s) non force-terminate il worker. Errore tipato → il caller lo
+      // tratta come errore per-file e continua col prossimo (≠ null cancel).
+      if (n === 0) throw new Error('ERR_SOURCE_TRUNCATED_DURING_HASH')
       h.update(buf.subarray(0, n))
       offset += n
       onChunk?.(offset, size)

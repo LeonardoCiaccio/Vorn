@@ -161,7 +161,6 @@ The SQLite database (`~/.vorn/vorn.db`, table `Files`) caches `path → { mtime,
 - Silent `catch {}` blocks that swallow errors that should be surfaced
 
 ---
-
 ## Output Format
 
 Provide a prioritized list of findings, from most to least critical. **Be specific** — cite file paths, function names, and line numbers wherever possible. Speculative findings are welcome but must be marked as such.
@@ -247,3 +246,25 @@ Il prossimo revisore può investire energie utili su:
 5. **Renderer XSS via metadata**: i `meta.records[].paths` e `meta.records[].session` provengono dallo store e finiscono nella UI. Sono sempre `v-text` (safe) o c'è qualche `v-html`?
 6. **i18n / locale injection**: le stringhe da `meta` finiscono nei template di notifica (`backupDoneTitle/Body`)? Sono interpolate safe?
 7. **Permission edge cases**: cosa succede se il file di run viene reso read-only mentre un backup è in corso? `saveRun` lancia? È catturato?
+
+---
+
+## Round 4 — Follow-up findings (post Round 3)
+
+Adversarial pass concentrato sulle aree dichiarate aperte nel capitolo "Note di contesto". Sette finding nuovi, tutti citano codice attualmente in `master`/`feature/vornc-chunking`. Severità motivata dal threat model dichiarato (store ostile, USB rimovibile, attaccante controlla nomi/file).
+
+---
+
+
+## Note ai prossimi revisori (round 4 → round 5)
+
+Aree ancora aperte non investigate in questo round:
+1. **Pipeline error propagation in restore.js / extractFromStore con AbortSignal**: i `pipeline` non passano un signal, quindi un cancel mid-extract attende il flush del chunk corrente. Edge case di responsiveness.
+2. **`pruneWorker` legge `run.files` come `Object.values(...)` accettando sia stringhe che `{hash_vorn}`**: c'è uno schema misto storico? Verificare se il fallback `fileInfo?.hash_vorn` è morto o serve davvero.
+3. **`safeFs.js`**: non letto in questo round, è una superficie di attacco se gestisce path da utente / store.
+4. **Notification icon path**: `getAppIcon()` viene chiamato senza cache? Va profilato se è chiamato a ogni notifica.
+
+### Finding di Round 4 marcati come "by design, non flaggare di nuovo"
+- **`_logWin executeJavaScript` con content del log**: il content è passato via `JSON.stringify`, l'inserzione nel DOM è via `.textContent`. No XSS. Anche un log con sequenze `</script>` resta innocuo (executeJavaScript non passa per parser HTML).
+- **`vorn:open-external` allowlist GitHub**: `parsed.pathname === '/LeonardoCiaccio/Vorn'` o `startsWith('/LeonardoCiaccio/Vorn/')`. `/LeonardoCiaccio/Vorn-evil` viene rifiutato (no trailing slash). OK.
+- **`v-html` solo su `$t(...)` bundled**: i locale JSON sono in `src/renderer/locales/*.json`, bundled at build time, non user-controlled. No XSS.

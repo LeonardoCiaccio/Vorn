@@ -42,6 +42,28 @@ export async function backup(storeDir, sessionName, opts = {}) {
     } catch (e) { scanErrors.push({ path: src, error: e.code ?? e.message, phase: 'scan' }) }
   }
 
+  // Dedup post-scan: due sources che differiscono solo per case su NTFS (es.
+  // `C:\Users\Foo\Docs` e `C:\Users\Foo\docs`) producono il MEDESIMO file nel
+  // walk → doppio hashing + due relPath che puntano allo stesso storeKey + su
+  // restore-originale i due dirname collassano sul FS case-insensitive e
+  // il secondo write sovrascrive il primo (silent merge). Normalizziamo qui
+  // con case-folding su Win, identità altrove.
+  const _normPath = process.platform === 'win32'
+    ? (p) => p.toLowerCase().replace(/\\/g, '/')
+    : (p) => p
+  {
+    const seen = new Set()
+    const deduped = []
+    for (const f of allFiles) {
+      const k = _normPath(f)
+      if (seen.has(k)) continue
+      seen.add(k)
+      deduped.push(f)
+    }
+    allFiles.length = 0
+    for (const f of deduped) allFiles.push(f)
+  }
+
   const total     = allFiles.length
   const startTime = Date.now()
 
