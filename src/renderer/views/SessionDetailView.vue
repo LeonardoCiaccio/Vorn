@@ -11,15 +11,24 @@
           <div class="w-9 h-9 rounded-md bg-linear-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center">
             <FolderOpenIcon class="w-4.5 h-4.5 text-indigo-400" />
           </div>
+          <!-- Badge config sotto-icona: se entrambi attivi mostriamo solo le iniziali
+               coi rispettivi colori (i nomi pieni eccedono la larghezza dell'icona);
+               se uno solo è attivo c'è spazio per il nome esteso. -->
           <div class="flex items-center gap-0.5">
-            <span
-              v-if="session.compressionType"
-              class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none"
-            >{{ session.compressionType }}</span>
-            <span
-              v-if="session.strategy === 'chunks'"
-              class="text-[9px] font-bold uppercase tracking-wide text-violet-400 leading-none"
-            >chunks</span>
+            <template v-if="session.compressionType && session.strategy === 'chunks'">
+              <span class="text-[10px] font-bold uppercase text-emerald-400 leading-none">{{ session.compressionType[0] }}</span>
+              <span class="text-[10px] font-bold uppercase text-violet-400 leading-none">C</span>
+            </template>
+            <template v-else>
+              <span
+                v-if="session.compressionType"
+                class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none"
+              >{{ session.compressionType }}</span>
+              <span
+                v-if="session.strategy === 'chunks'"
+                class="text-[9px] font-bold uppercase tracking-wide text-violet-400 leading-none"
+              >chunks</span>
+            </template>
           </div>
         </div>
         <div>
@@ -414,9 +423,16 @@
                 <div class="w-7 h-7 rounded-md bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
                   <FolderOpenIcon class="w-3.5 h-3.5 text-indigo-400" />
                 </div>
+                <!-- Stesso pattern del header: iniziali se entrambi, nome esteso se solo uno. -->
                 <div class="flex items-center gap-0.5">
-                  <span v-if="session.compressionType" class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none">{{ session.compressionType }}</span>
-                  <span v-if="session.strategy === 'chunks'" class="text-[9px] font-bold uppercase tracking-wide text-violet-400 leading-none">chunks</span>
+                  <template v-if="session.compressionType && session.strategy === 'chunks'">
+                    <span class="text-[10px] font-bold uppercase text-emerald-400 leading-none">{{ session.compressionType[0] }}</span>
+                    <span class="text-[10px] font-bold uppercase text-violet-400 leading-none">C</span>
+                  </template>
+                  <template v-else>
+                    <span v-if="session.compressionType" class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none">{{ session.compressionType }}</span>
+                    <span v-if="session.strategy === 'chunks'" class="text-[9px] font-bold uppercase tracking-wide text-violet-400 leading-none">chunks</span>
+                  </template>
                 </div>
               </div>
               <div class="min-w-0 flex-1">
