@@ -1,14 +1,29 @@
 import { join } from 'path'
 import { safeReaddirSync } from './safeFs.js'
 
+// Normalizza il path per il confronto delle esclusioni: su Win32 NTFS è
+// case-insensitive e l'utente può salvare `C:\Data` in settings mentre il
+// walker scopre `c:\data`. Senza normalize la `startsWith` fallisce e i file
+// "esclusi" vengono backuppati comunque. Anche separator mixed (`/` vs `\`)
+// va normalizzato (`safeJoin` produce sempre `\` su Win ma settings legacy
+// può contenere `/`).
+const _isWin32 = process.platform === 'win32'
+function _normForCompare(p) {
+  if (typeof p !== 'string') return ''
+  const slashed = _isWin32 ? p.replace(/\//g, '\\') : p
+  return _isWin32 ? slashed.toLowerCase() : slashed
+}
+
 export function walk(dir, excludePaths = [], excludePatterns = [], _results = []) {
+  const normExcludes = excludePaths.map(_normForCompare)
   const queue = [dir]
   while (queue.length) {
     const current = queue.pop()
     try {
       for (const entry of safeReaddirSync(current, { withFileTypes: true })) {
-        const full = join(current, entry.name)
-        if (excludePaths.some(p => full === p || full.startsWith(p + '\\') || full.startsWith(p + '/'))) continue
+        const full     = join(current, entry.name)
+        const fullNorm = _normForCompare(full)
+        if (normExcludes.some(p => fullNorm === p || fullNorm.startsWith(p + (_isWin32 ? '\\' : '/')))) continue
         const relFromRoot = full.slice(dir.length + 1).replace(/\\/g, '/')
         if (excludePatterns.some(pat => matchPattern(relFromRoot, pat) || matchPattern(entry.name, pat))) continue
         

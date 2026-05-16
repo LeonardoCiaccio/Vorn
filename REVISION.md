@@ -458,6 +458,23 @@ Less meticulous review than previous rounds: surfaced 3 real problems across the
 - [ ] **R5-5** [LOW] `safeFs.toLongPath` on relative paths — **WONTFIX** (CWD-dependent semantics, callers always pass absolute).
 - [ ] **R5-6** [LOW] Atomics consistency — **NOT-A-BUG** (all workers already use `Atomics.load`, the reviewer themselves admitted "mostly okay").
 
+## Round 6 — Follow-up review (post Round 5, 4 findings)
+
+Clean review, no false positives, all snippets pastable. The most interesting catch is R6-1: an oversight of R4-5 (same `n === 0` bug in `hashFromFd` that R4-5 only patched in `vornHash`).
+
+- [x] **R6-1** [HIGH→MED] `hashFromFd` infinite loop on truncated `.vorn`: added `n === 0 → ERR_SOURCE_TRUNCATED_DURING_HASH` + `isCancelled` callback. `integrityWorker` now passes `() => Atomics.load(cancelFlag, 0) !== 0` and breaks the loop on `null` (cancelled). Severity reclassified MED (availability/DoS, not data loss).
+- [x] **R6-2** [MED] O(N*M) bottleneck in `restore()` with large `selectedFiles`: converted `Array.includes` to `Set.has`. 50k-out-of-100k restore drops from 5G comparisons to 50k.
+- [x] **R6-3** [MED] OOM in `readVornMeta` with malformed `.vorn`: added `MAX_META_SIZE = 128 MB` cap. Hostile file with declared `contentLen=0` and physical size 4GB no longer crashes the main process.
+- [x] **R6-4** [LOW] Fragile path comparison in `walk` exclusion: introduced `_normForCompare` (lowercase + backslash on Win32). `C:\Data` and `c:\data` now match the same exclusion entry.
+
+### New UX state: chunking phase
+
+Following R6 fixes, added a `chunking` progress state distinct from `storing`:
+- `backup.js` emits `{ chunking: true, storing: false }` when `strategy === 'chunks' && bytes >= CHUNK_THRESHOLD_BYTES`, otherwise `{ storing: true, chunking: false }`.
+- 6 locales updated with the `common.chunking` key (IT/EN/DE "Chunking", FR "Découpage", ES/PT "Fragmentando").
+- `SessionsView.vue` and `SessionDetailView.vue` render the chunking label in violet (matching the CHUNKS badge color).
+- "Slow store" detection treats `chunking` as a write phase: the slow-store warning triggers in both `storing` and `chunking`.
+
 ---
 
 ## Operational notes for the Round 6 reviewer

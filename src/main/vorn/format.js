@@ -16,6 +16,14 @@ const MAGIC = Buffer.from('VORN')
 const SEPARATOR = Buffer.from([0xFF, 0x00, 0xFF, 0x00])
 const HEADER_SIZE = 12 // 4 (VORN) + 8 (Length uint64)
 
+// Cap difensivo per la JSON metadata letta dalla coda del .vorn. Threat model:
+// store ostile inietta un file con `contentLen` molto piccolo (es. 0) ma file
+// fisico grande GB → `metaSize = fileSize - metaOffset - SEPARATOR.length` ≈ GB
+// → `Buffer.alloc(metaSize)` lancia (`ERR_INVALID_ARG_VALUE: Length too large`)
+// o causa OOM nel main process. Bastava aprire una folder con il file dentro
+// per crashare l'app. 128 MB è ben sopra qualunque manifest legittimo.
+const MAX_META_SIZE = 128 * 1024 * 1024
+
 export const VORN_HEADER_SIZE   = HEADER_SIZE
 export const VORN_SEPARATOR_LEN = SEPARATOR.length
 
@@ -58,6 +66,10 @@ export function readVornMeta(filePath) {
 
     const fileSize = statSync(filePath).size
     const metaSize = fileSize - Number(metaOffset) - SEPARATOR.length
+
+    // Vedi MAX_META_SIZE in cima al file: rifiuta header malformato/ostile prima
+    // di tentare un Buffer.alloc che farebbe crashare il main process.
+    if (metaSize > MAX_META_SIZE) throw new Error('ERR_METADATA_TOO_LARGE')
 
     let meta = null
     if (metaSize > 0) {

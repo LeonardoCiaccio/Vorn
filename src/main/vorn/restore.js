@@ -90,8 +90,11 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
   const errors = []
   let restored = 0
 
-  const fileEntries = selectedFiles?.length
-    ? Object.entries(run.files).filter(([k]) => selectedFiles.includes(k))
+  // `Array.includes` su 50k elementi dentro un filter su 100k è O(N*M) → 5 mld
+  // comparazioni, worker bloccato, UI in lag. Set lookup O(1) → O(M).
+  const selectedSet = selectedFiles?.length ? new Set(selectedFiles) : null
+  const fileEntries = selectedSet
+    ? Object.entries(run.files).filter(([k]) => selectedSet.has(k))
     : Object.entries(run.files)
   const total = fileEntries.length
 

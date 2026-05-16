@@ -84,6 +84,7 @@
     "storing": "Archivando",
     "compressing": "Comprimiendo",
     "hashing": "Hashing",
+    "chunking": "Fragmentando",
     "errStoreTimeout": "Tiempo de espera agotado — posible bloqueo antivirus"
   },
 

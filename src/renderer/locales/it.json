@@ -84,6 +84,7 @@
     "storing": "Archiviazione",
     "compressing": "Compressione",
     "hashing": "Hashing",
+    "chunking": "Chunking",
     "errStoreTimeout": "Timeout store — possibile blocco antivirus"
   },
 

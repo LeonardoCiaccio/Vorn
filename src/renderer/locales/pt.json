@@ -84,6 +84,7 @@
     "storing": "Arquivando",
     "compressing": "Comprimindo",
     "hashing": "Hash",
+    "chunking": "Fragmentando",
     "errStoreTimeout": "Tempo limite excedido — possível bloqueio do antivírus"
   },
 

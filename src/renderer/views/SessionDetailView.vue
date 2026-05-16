@@ -79,7 +79,9 @@
             <span class="shrink-0"><span v-if="isStoreSlow" class="text-red-400 font-semibold">{{
               $t('common.storeLento') }}</span>{{ (isStoreSlow ? ' ' : '') + backupProgress.file.split(/[\\/]/).at(-1)
                 }}</span>
-            <span v-if="backupProgress.storing" class="text-indigo-400 font-mono shrink-0">{{ $t('common.storing')
+            <span v-if="backupProgress.chunking" class="text-violet-400 font-mono shrink-0">{{ $t('common.chunking')
+            }}</span>
+            <span v-else-if="backupProgress.storing" class="text-indigo-400 font-mono shrink-0">{{ $t('common.storing')
             }}</span>
             <span v-else-if="backupProgress.compressing" class="text-emerald-400 font-mono shrink-0">{{
               $t('common.compressing') }}</span>
@@ -786,7 +788,8 @@ let _storeSlowFile = null
 
 watch(backupProgress, p => {
   const file = p?.file ?? null
-  const storing = p?.storing ?? false
+  // Trigger del "store lento" attivo anche durante chunking: anch'esso è scrittura sullo store.
+  const storing = (p?.storing || p?.chunking) ?? false
 
   if (file !== _storeSlowFile) {
     clearTimeout(_storeSlowTimer)

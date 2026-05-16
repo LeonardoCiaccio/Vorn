@@ -309,7 +309,10 @@
                     </span>
                     <div v-if="activeTask(session.name).progress?.file" class="ml-auto flex items-center gap-1.5 min-w-0">
                       <span class="text-gray-600 font-mono truncate max-w-72"><span v-if="isStoreSlow(session.name)" class="text-red-400 font-semibold not-mono">{{ $t('common.storeLento') }}</span>{{ (isStoreSlow(session.name) ? ' ' : '') + activeTask(session.name).progress.file.split(/[\\/]/).at(-1) }}</span>
-                      <span v-if="activeTask(session.name).progress?.storing" class="text-indigo-400 font-mono shrink-0">
+                      <span v-if="activeTask(session.name).progress?.chunking" class="text-violet-400 font-mono shrink-0">
+                        {{ $t('common.chunking') }}
+                      </span>
+                      <span v-else-if="activeTask(session.name).progress?.storing" class="text-indigo-400 font-mono shrink-0">
                         {{ $t('common.storing') }}
                       </span>
                       <span v-else-if="activeTask(session.name).progress?.compressing" class="text-emerald-400 font-mono shrink-0">
@@ -405,7 +408,9 @@ const _activeStates = computed(() => {
   const out = {}
   for (const s of state.sessions ?? []) {
     const p = getActiveTask(s.name)?.progress
-    out[s.name] = { file: p?.file ?? null, storing: p?.storing ?? false }
+    // `storing` come trigger del "store lento": vale per blob plain (storing)
+     // e anche per chunked (chunking) — entrambi sono fasi di scrittura sullo store.
+    out[s.name] = { file: p?.file ?? null, storing: (p?.storing || p?.chunking) ?? false }
   }
   return out
 })

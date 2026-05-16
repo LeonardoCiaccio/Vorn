@@ -190,7 +190,10 @@ export async function backup(storeDir, sessionName, opts = {}) {
       }
     }
 
-    onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew, storing: true })
+    // Distingue la fase per la UI: i file chunked passano per `storeChunked`
+    // (split + hash per-chunk + scrittura `.vornc` + manifest), i blob plain
+    // per `_createNew`. L'utente vede etichette diverse a colpo d'occhio.
+    onProgress?.({ current, total, files_new: filesNew, files_dedup: filesDedup, errors: errors.length, last_error: lastError, file: filePath, bytes_total: bytesTotal, bytes_new: bytesNew, chunking: willBeChunked, storing: !willBeChunked })
 
     bytesTotal += bytes
 

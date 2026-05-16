@@ -84,7 +84,7 @@ let ok = 0
       if (isCompressed && meta?.compressed_hash) {
         const fd = openSync(filePath, 'r')
         try {
-          computedHash = hashFromFd(fd, HEADER_SIZE, contentLen)
+          computedHash = hashFromFd(fd, HEADER_SIZE, contentLen, () => Atomics.load(cancelFlag, 0) !== 0)
         } finally {
           closeSync(fd)
         }
@@ -95,12 +95,16 @@ let ok = 0
       } else {
         const fd = openSync(filePath, 'r')
         try {
-          computedHash = hashFromFd(fd, HEADER_SIZE, contentLen)
+          computedHash = hashFromFd(fd, HEADER_SIZE, contentLen, () => Atomics.load(cancelFlag, 0) !== 0)
         } finally {
           closeSync(fd)
         }
         refHash = meta?.hash_vorn ?? expectedHash
       }
+
+      // hashFromFd ritorna null se cancelled mid-loop su file molto grande.
+      // Esci dal main loop, evitando di propagare un false positive ERR_HASH_CORRUPT.
+      if (computedHash === null) break
 
       if (computedHash !== refHash) {
         issues.push({ code: 'ERR_HASH_CORRUPT', params: { expected: refHash.slice(0, 12), computed: computedHash.slice(0, 12) } })
