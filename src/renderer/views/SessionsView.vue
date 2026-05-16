@@ -173,10 +173,18 @@
                       <FolderIcon v-if="!activeTask(session.name)" class="w-4 h-4 text-gray-500 group-hover:text-indigo-400 transition-colors" />
                       <ArrowPathIcon v-else class="w-4 h-4 text-indigo-400 animate-spin" />
                     </div>
-                    <span
-                      v-if="session.compressionType"
-                      class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none"
-                    >{{ session.compressionType }}</span>
+                    <!-- Stesso pattern del header / sidebar in SessionDetailView:
+                         iniziali se entrambi attivi, nome esteso se uno solo. -->
+                    <div class="flex items-center gap-0.5">
+                      <template v-if="session.compressionType && session.strategy === 'chunks'">
+                        <span class="text-[9px] font-bold uppercase text-emerald-400 leading-none">{{ session.compressionType[0] }}</span>
+                        <span class="text-[9px] font-bold uppercase text-violet-400 leading-none">C</span>
+                      </template>
+                      <template v-else>
+                        <span v-if="session.compressionType" class="text-[8px] font-bold uppercase tracking-wide text-emerald-400 leading-none">{{ session.compressionType }}</span>
+                        <span v-if="session.strategy === 'chunks'" class="text-[8px] font-bold uppercase tracking-wide text-violet-400 leading-none">chunks</span>
+                      </template>
+                    </div>
                   </div>
                   <div>
                     <p class="font-semibold text-gray-100">{{ session.name }}</p>
