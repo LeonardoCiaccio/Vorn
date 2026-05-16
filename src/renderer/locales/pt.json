@@ -81,8 +81,9 @@
     "operationWait": "Operação em curso — por favor aguarde",
     "cannotUndo": "Esta operação não pode ser desfeita.",
     "storeLento": "Store lento",
-    "storing": "Arquivando…",
-    "compressing": "Comprimindo…",
+    "storing": "Arquivando",
+    "compressing": "Comprimindo",
+    "hashing": "Hash",
     "errStoreTimeout": "Tempo limite excedido — possível bloqueio do antivírus"
   },
 

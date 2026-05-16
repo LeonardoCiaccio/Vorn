@@ -8,6 +8,8 @@ You are performing a **critical, adversarial code review** of **Vorn** (Vault Of
 
 **Scope:** only the `src/` directory. Ignore `proto/`, root config files, and build artifacts.
 
+> 📝 **Mandatory output: write the review in `RESPONSE.md`** (overwrite any existing content). Use the format described in the "Output Format" section. Every finding MUST include a **code snippet suggestion** — plain prose is not enough. The snippet must be copy-pastable or near-pastable: name the function/file, include enough context to apply the fix without ambiguity.
+
 > ⚠️ **Prima di iniziare, leggi obbligatoriamente la sezione "Note di contesto per i prossimi revisori"** più sotto. Documenta decisioni architetturali consolidate, skip list, e aree fertili: 4 round di review sono già stati completati (30+ finding chiusi). Re-flaggare cose già discusse genera rumore.
 
 ---
@@ -175,6 +177,10 @@ The `.mtmp` WAL of `_updateMeta` is the **only** source of truth for metadata up
 
 ## Output Format
 
+**Destination**: write the review into `RESPONSE.md` (overwrite any existing content). Do NOT respond inline — the user will read the file.
+
+**Mandatory code snippets**: every finding must include a copy-pastable (or near-pastable) snippet in the `Suggested fix` field. Prose-only suggestions are not acceptable. The snippet must be self-sufficient: function name, file path, and any relevant imports / call-site context.
+
 Provide a prioritized list of findings, from most to least critical. **Be specific** — cite file paths, function names, and line numbers wherever possible. Speculative findings are welcome but must be marked as such.
 
 ```
@@ -197,7 +203,7 @@ End with a **general assessment** paragraph (3–5 lines) covering:
 
 # ⚠️ Note di contesto per i prossimi revisori — MUST READ
 
-Lette PRIMA di flaggare nuovi finding. Aree già discusse, decisioni architetturali consolidate, voci esplicitamente skippate, aree fertili non ancora investigate. Re-flaggare voci coperte qui genera rumore: sono decisioni esplicite con razionale documentato attraverso 4 round di review.
+Lette PRIMA di flaggare nuovi finding. Aree già discusse, decisioni architetturali consolidate, voci esplicitamente skippate, aree fertili non ancora investigate. Re-flaggare voci coperte qui genera rumore: sono decisioni esplicite con razionale documentato attraverso 5 round di review.
 
 ## Decisioni architetturali consolidate
 
@@ -242,6 +248,9 @@ Non riproporre i seguenti pattern come "bug" — sono il design corrente, con ra
 ### Cosmetica / UX
 
 - **Dedup post-scan case-insensitive** (R4-7): `backup.js` dedup `allFiles` con case-folding su Win32. Sources doppi per case non producono più double-hash. Non riproporre "duplicate scan on NTFS".
+- **Pipeline cancellabili in restore** (R5-1): `restore()` e `extractFromStore()` usano un transform-stream `_cancellable(isCancelled)` che lancia `ERR_ABORTED` su ogni chunk se il cancel è attivo. Il caller catcha `ERR_ABORTED` e fa `break`. Non riproporre "pipeline non passa AbortSignal".
+- **Task guard su delete-session e delete-run** (R5-2 defensive, R5-3): `delete-session` chiama `assertNoMutatingTask()` (qualunque task mutante globale), `delete-run` chiama `hasRunningTask(sessionName)` (task della stessa sessione). Senza `delete-run` un backup mid-resume avrebbe ricreato la run cancellata con dati parziali. Non riproporre "delete-X race".
+- **`pruneWorker` schema unico** (R5-4): `run.files` è una mappa `relPath → storeKey` (string). Il branch legacy `fileInfo?.hash_vorn` è stato rimosso. `referenced` contiene storeKey completi (con suffisso `_gzip` ecc.) e il match con i nomi file dello store è diretto — NON splittare per hash o tutti i `.vorn` compressi diventano falsi orfani.
 - **Notification sanitize chirurgico** (R4-6): `_sanitizeForNotification` in `taskHandlers.js` strippa control chars + `<>&` solo nel layer notifica. `validateSessionName` resta invariata per retrocompatibilità con sessioni esistenti. Non riproporre "Pango markup injection".
 - **`_runCache` invalidata su backup-done / delete-run / close-store** (R2-2): non riproporre "stale run data".
 - **Dedup errori su resume** (R3-3): chiave `path|error|phase` evita accumulo unbounded. Non riproporre "errors[] grows on every resume".
@@ -258,25 +267,27 @@ Le seguenti voci sono **decisioni esplicite di non fare**. Riproporle come findi
 - **CQ5 — silent catch `{ /* non-critico */ }`**: **DEFERRED**. Convertirli tutti a `logger.debug` richiede importare logger in 6+ moduli, valore marginale. La maggior parte sono cleanup di temp e non meritano log.
 - **CQ6 — workerManager progress shape eterogenea**: **DEFERRED**. La shape è diversa per design tra backup / integrity / prune / restore. Normalizzare richiede ridisegno dei worker, basso valore.
 - **R4-8 — version byte nell'header `.vorn`**: **DEFERRED a prossima major**. Header attuale `MAGIC(4) + contentLen(8)` non ha campo version. Soluzione proposta: byte dopo MAGIC che vale `0x00` per v0 (compat con file esistenti) e `0x01+` per future versioni. Non urgente, riproporlo solo quando serve un cambio binary-incompatibile reale.
+- **R5-1 propagation in `_writeChunkTemp` / `extractByHash`**: pipeline AbortSignal NON propagato in `store.js _writeChunkTemp` (chunk 4 MB, cancel-lag trascurabile) né in `extractByHash` (chiamato dal main process IPC, non da worker, nessun isCancelled disponibile). Non riproporre come gap di copertura.
+- **R5-5 — `safeFs.toLongPath` su relative paths**: **WONTFIX**. `resolve()` su path relativo cambia semantica (CWD-dependent). I caller passano sempre path assoluti (validati a monte da `_validateSession`, `assertHash`, ecc.). Non riproporre senza un caller concreto che passi relative path.
+- **R5-6 — Atomics consistency**: **NOT-A-BUG**. Tutti i worker già usano `Atomics.load(cancelFlag, 0)` (verificato in `pruneWorker`, `integrityWorker`, `backupWorker`, `restoreWorker`). Il reviewer stesso ha ammesso "current code is mostly okay". Non riproporre senza un punto specifico con accesso non-atomic.
+- **R5-2 race fra `_assertNoMutatingTask` e `createTask`**: **NOT-A-RACE**. JS main-process è single-threaded event-loop, l'handler `start-backup` esegue le due chiamate sync nello stesso tick → atomico per costruzione. Il fix difensivo è stato applicato comunque, ma NON è la chiusura di una vera race condition. Non riproporre come HIGH.
 - **`_logWin executeJavaScript` con content del log** (Round 4 by-design): content passato via `JSON.stringify`, inserzione nel DOM via `.textContent`. No XSS. Sequenze `</script>` innocue (executeJavaScript non passa per parser HTML).
 - **`v-html` solo su `$t(...)` bundled** (Round 4 by-design): i locale JSON sono in `src/renderer/locales/*.json`, bundled at build time, non user-controlled. No XSS.
 
-## Aree dove sì cercare (Round 5+)
+## Aree dove sì cercare (Round 6+)
 
-Il prossimo revisore può investire energie utili su queste aree NON toccate finora:
+Il prossimo revisore può investire energie utili su queste aree NON toccate finora (le voci chiuse in R5-1/3/4 sono state rimosse):
 
-1. **Pipeline + AbortSignal in `restore.js` / `extractFromStore`**: i `pipeline()` non ricevono signal, quindi un cancel mid-extract attende il flush del chunk corrente. Edge case di responsiveness.
-2. **`pruneWorker` schema misto su `run.files`**: legge `Object.values(...)` accettando sia stringhe che `{hash_vorn}`. Verificare se il fallback `fileInfo?.hash_vorn` è morto o storico — è schema-drift?
-3. **`safeFs.js` deep dive**: gestisce path da user / store, è una superficie ampia. `toLongPath`, `safeReadSync`, edge case su symlink/junction multipli/loop indiretti.
-4. **Notification icon path**: `getAppIcon()` ha cache? Chiamato a ogni notifica?
-5. **Cancel atomicity di `storeChunked`**: cancel a metà → manifest non scritto MA alcuni `.vornc` con `references` puntante a un hashVorn che non esiste come `.vorn`. Sono raccolti dal prune come orfani correttamente?
-6. **Permission edge cases**: file di run reso read-only mid-backup → `saveRun` lancia? Catturato? Lo stato del run viene perso?
-7. **Renderer XSS via metadata**: `meta.records[].paths` e `meta.records[].session` finiscono nella UI. Solo `v-text` o ci sono `v-html`? Audit specifico di ogni template che renderizza dati da `.vorn`.
-8. **Race start-backup ↔ delete-session**: `_assertNoMutatingTask` copre i task mutanti, ma `delete-session` (handler IPC sync) può essere chiamato mentre un backup è running? `hasRunningTask` lo blocca ma è before-task-creation — c'è una finestra?
-9. **Worker error recovery selettiva**: se `_storeBlob` rejecta dentro `storeBlob`, il worker continua col file successivo. Su certi errori (ENOSPC sul `.vorn` di destinazione, non solo sul `.vornc`) vorremmo abortire l'intera run invece?
-10. **Format upgrade path**: oggi non c'è version byte (R4-8 deferred). Quando si aggiungerà, come si propagheranno i `.vorn` legacy? Migrazione automatica all'apertura store, o leggi-vecchio-scrivi-nuovo on-touch?
-11. **Memory pressure su `readVorn`**: il cap `READ_VORN_MAX_BYTES = 128MB` è hardcoded. Su workstation con poca RAM può comunque saturare se concorrenti. Vale un check di `os.freemem`?
-12. **`KNOWN_COMPRESSION_TYPES` estensione**: oggi solo `['gzip']`. Quando si aggiungerà zstd, audit completo dei punti che assumono `'gzip'` come unico valore — sono tutti catturati dalla derived `STORE_KEY_RE` o ci sono check hardcoded?
+1. **`safeFs.js` deep dive**: gestisce path da user / store, è una superficie ampia. `toLongPath`, `safeReadSync`, edge case su symlink/junction multipli/loop indiretti.
+2. **Notification icon path**: `getAppIcon()` ha cache? Chiamato a ogni notifica?
+3. **Cancel atomicity di `storeChunked`**: cancel a metà → manifest non scritto MA alcuni `.vornc` con `references` puntante a un hashVorn che non esiste come `.vorn`. Sono raccolti dal prune come orfani correttamente?
+4. **Permission edge cases**: file di run reso read-only mid-backup → `saveRun` lancia? Catturato? Lo stato del run viene perso?
+5. **Renderer XSS via metadata**: `meta.records[].paths` e `meta.records[].session` finiscono nella UI. Solo `v-text` o ci sono `v-html`? Audit specifico di ogni template che renderizza dati da `.vorn`.
+6. **Worker error recovery selettiva**: se `_storeBlob` rejecta dentro `storeBlob`, il worker continua col file successivo. Su certi errori (ENOSPC sul `.vorn` di destinazione, non solo sul `.vornc`) vorremmo abortire l'intera run invece?
+7. **Format upgrade path**: oggi non c'è version byte (R4-8 deferred). Quando si aggiungerà, come si propagheranno i `.vorn` legacy? Migrazione automatica all'apertura store, o leggi-vecchio-scrivi-nuovo on-touch?
+8. **Memory pressure su `readVorn`**: il cap `READ_VORN_MAX_BYTES = 128MB` è hardcoded. Su workstation con poca RAM può comunque saturare se concorrenti. Vale un check di `os.freemem`?
+9. **`KNOWN_COMPRESSION_TYPES` estensione**: oggi solo `['gzip']`. Quando si aggiungerà zstd, audit completo dei punti che assumono `'gzip'` come unico valore — sono tutti catturati dalla derived `STORE_KEY_RE` o ci sono check hardcoded?
+10. **Pipeline AbortSignal estensione**: oggi `_cancellable(isCancelled)` è solo in `restore.js`. La stessa logica può servire in altri pipeline lunghi (es. extractStoreWorker se esiste). Audit i pipeline residui.
 
 ---
 
@@ -362,9 +373,20 @@ Commit: `303effd` (R4-4..R4-7), `a788f15` (R4-2, R4-3), `b929885` (R4-1), `c3c4b
 - [x] **R4-7** [LOW] Walker case-insensitive: dedup post-scan in `backup.js`
 - [ ] **R4-8** [LOW] Version byte nell'header — **DEFERRED a prossima major**
 
+## Round 5 — Follow-up review (post Round 4, 6 finding di cui 3 declinati)
+
+Review meno meticolosa dei round precedenti: ha pescato 3 problemi reali sulle 12 aree fertili dichiarate, di cui 1 con fix proposto sbagliato (avrebbe introdotto data loss massivo se applicato come scritto). Il review è stato accolto selettivamente.
+
+- [x] **R5-1** [MED, era HIGH] Pipeline senza AbortSignal in `restore()` / `extractFromStore` → helper `_cancellable(isCancelled)` come transform stream inline. `_writeChunkTemp` (4 MB) e `extractByHash` (no isCancelled) **skippati** con razionale.
+- [x] **R5-2** [LOW defensive, era HIGH] `delete-session` ora chiama `assertNoMutatingTask()`. La "race" segnalata come HIGH **non esisteva** (JS single-threaded), il fix è stato applicato come defense-in-depth (delete-session mid-prune/clear di altre sessioni).
+- [x] **R5-3** [MED] `delete-run` ora controlla `hasRunningTask(sessionName)`. Bug reale: backup mid-resume avrebbe ricreato la run cancellata con dati parziali.
+- [x] **R5-4** [LOW cleanup] Rimosso branch dead-code `fileInfo?.hash_vorn` in `pruneWorker`. ⚠️ **Il fix originale proposto era SBAGLIATO**: avrebbe fatto `referenced.add(storeKey.split('_')[0])`, ma `referenced` viene matchato con i nomi file CON suffisso → tutti i `.vorn` compressi diventavano falsi orfani → data loss massivo al prune. Applicata solo la rimozione del dead-code, non la riscrittura.
+- [ ] **R5-5** [LOW] `safeFs.toLongPath` su relative path — **WONTFIX** (semantica CWD-dependent, i caller passano sempre absolute).
+- [ ] **R5-6** [LOW] Atomics consistency — **NOT-A-BUG** (tutti i worker già usano `Atomics.load`, il reviewer stesso ha ammesso "mostly okay").
+
 ---
 
-## Note operative per il revisore Round 5
+## Note operative per il revisore Round 6
 
 - **Branch corrente**: `feature/vornc-chunking`. Master è lo stato prima del refactor chunking.
 - **Threat model**: store ostile (USB altrui, `.vorn` manipolato), USB rimovibile a runtime, attaccante controlla file content / file names / `meta.records`. Stessa baseline dei round precedenti.

@@ -81,8 +81,9 @@
     "operationWait": "Operazione in corso — attendere il completamento",
     "cannotUndo": "Questa operazione non può essere annullata.",
     "storeLento": "Store lento",
-    "storing": "Archiviazione…",
-    "compressing": "Compressione…",
+    "storing": "Archiviazione",
+    "compressing": "Compressione",
+    "hashing": "Hashing",
     "errStoreTimeout": "Timeout store — possibile blocco antivirus"
   },
 

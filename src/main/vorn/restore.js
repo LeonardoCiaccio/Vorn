@@ -60,6 +60,20 @@ function _isSystemPath(absPath) {
 // `rec.session = '../../evil'` farebbe fuoriuscire `base` da `destDir` PRIMA
 // che `_safeJoin` validi lo `stripped` finale (`_safeJoin` valida solo l'ultimo
 // segmento contro `base`, non `base` stesso). Rifiutiamo aggressivamente.
+// Transform-stream cancellabile: interrompe la pipeline su ogni chunk se
+// `isCancelled()` torna true. Senza questo wrapper, una `pipeline()` su file
+// grandi (fino a 128 MB per blob plain, anche più sui chunked) ignora il cancel
+// finché non finisce di leggere/scrivere il chunk corrente — UX laggosa quando
+// l'utente preme Stop. Stesso pattern usato in `compressToTemp` (compress.js).
+function _cancellable(isCancelled) {
+  return async function* (source) {
+    for await (const chunk of source) {
+      if (isCancelled?.()) throw new Error('ERR_ABORTED')
+      yield chunk
+    }
+  }
+}
+
 function _sanitizeFolderSegment(s) {
   if (typeof s !== 'string' || s.length === 0) return '_'
   // Sequenze pericolose: separators, .., null, drive letters (Win), control chars.
@@ -134,9 +148,10 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
       }
 
       mkdirSync(dirname(outPath), { recursive: true })
-      await pipeline(extractContent(storeDir, storeKey), safeCreateWriteStream(outPath))
+      await pipeline(extractContent(storeDir, storeKey), _cancellable(isCancelled), safeCreateWriteStream(outPath))
       restored++
     } catch (e) {
+      if (e.message === 'ERR_ABORTED') break
       errors.push({ path: relPath, storeKey, error: e.code ?? e.message })
     }
 
@@ -205,9 +220,10 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
           const outPath    = _safeJoin(base, stripped)
           if (!outPath) { errors.push({ hash: hashOnly, session: rec.session, path: relPath, error: 'path_traversal' }); continue }
           mkdirSync(dirname(outPath), { recursive: true })
-          await pipeline(extractContent(storeDir, storeKey), safeCreateWriteStream(outPath))
+          await pipeline(extractContent(storeDir, storeKey), _cancellable(isCancelled), safeCreateWriteStream(outPath))
           extracted++
         } catch (e) {
+          if (e.message === 'ERR_ABORTED') break
           errors.push({ hash: hashOnly, session: rec.session, path: relPath, error: e.message })
         }
       }

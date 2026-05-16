@@ -81,8 +81,9 @@
     "operationWait": "Operation in progress — please wait",
     "cannotUndo": "This operation cannot be undone.",
     "storeLento": "Slow store",
-    "storing": "Storing…",
-    "compressing": "Compressing…",
+    "storing": "Storing",
+    "compressing": "Compressing",
+    "hashing": "Hashing",
     "errStoreTimeout": "Store timeout — possible antivirus interference"
   },
 

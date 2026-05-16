@@ -41,9 +41,12 @@ async function run() {
         }
         try {
           const run = JSON.parse(readFileSync(join(runsPath, runFile), 'utf8'))
-          for (const fileInfo of Object.values(run.files ?? {})) {
-            if (typeof fileInfo === 'string') referenced.add(fileInfo)
-            else if (fileInfo?.hash_vorn) referenced.add(fileInfo.hash_vorn)
+          // `run.files` è una mappa `relPath → storeKey` (string). I storeKey
+          // includono il suffisso di compressione (es. `<hash>_gzip`); così
+          // come sono finiscono in `referenced` e fanno match diretto con i
+          // filename `.vorn` dello store (no split).
+          for (const storeKey of Object.values(run.files ?? {})) {
+            if (typeof storeKey === 'string') referenced.add(storeKey)
           }
         } catch { /* run corrotto, ignorato */ }
       }

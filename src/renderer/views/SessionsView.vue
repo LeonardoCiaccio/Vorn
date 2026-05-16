@@ -318,8 +318,8 @@
                       <span v-else-if="activeTask(session.name).progress?.bytes_compressing_total > 0" class="text-emerald-500 font-mono shrink-0">
                         {{ $t('common.compressing') }} {{ formatBytes(activeTask(session.name).progress.bytes_compressing ?? 0) }}/{{ formatBytes(activeTask(session.name).progress.bytes_compressing_total) }}
                       </span>
-                      <span v-else-if="activeTask(session.name).progress?.bytes_hashing_total > 0" class="text-gray-500 font-mono shrink-0">
-                        {{ formatBytes(activeTask(session.name).progress.bytes_hashing ?? 0) }}/{{ formatBytes(activeTask(session.name).progress.bytes_hashing_total) }}
+                      <span v-else-if="activeTask(session.name).progress?.bytes_hashing_total > 0" class="text-sky-400 font-mono shrink-0">
+                        {{ $t('common.hashing') }} {{ formatBytes(activeTask(session.name).progress.bytes_hashing ?? 0) }}/{{ formatBytes(activeTask(session.name).progress.bytes_hashing_total) }}
                       </span>
                     </div>
                   </div>

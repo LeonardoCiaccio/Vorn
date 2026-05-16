@@ -103,10 +103,13 @@ function _onDone(task, mainWindow) {
 // Senza questo gate, un backup partito durante un prune può vedersi cancellati i suoi nuovi
 // .vorn dal prune che ha già fatto lo scan delle reference → data loss reale.
 const _MUTATING_TASK_TYPES = new Set(['backup', 'prune', 'clear', 'extract-store', 'restore'])
-function _assertNoMutatingTask() {
+// Exported per session-level guards (delete-session, ecc.) che devono bloccare
+// qualunque operazione di store-mutation in corso, non solo backup della stessa sessione.
+export function assertNoMutatingTask() {
   if (listTasks().some(t => t.status === 'running' && _MUTATING_TASK_TYPES.has(t.type)))
     throw new Error('ERR_OPERATION_IN_PROGRESS')
 }
+const _assertNoMutatingTask = assertNoMutatingTask
 
 export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:task-cancel', (_, taskId) => cancelTask(taskId))

@@ -81,8 +81,9 @@
     "operationWait": "Vorgang läuft — bitte warten",
     "cannotUndo": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
     "storeLento": "Langsamer Store",
-    "storing": "Archivierung…",
-    "compressing": "Komprimierung…",
+    "storing": "Archivierung",
+    "compressing": "Komprimierung",
+    "hashing": "Hashing",
     "errStoreTimeout": "Store-Timeout — mögliche Antivirensperrung"
   },
 

@@ -2,6 +2,7 @@ import { ipcMain }                                                          from
 import { listSessions, getSession, createSession, updateSession, deleteSession,
          listRuns, loadRun, deleteRun, validateSessionName, validateRunTs } from '../vorn/sessions.js'
 import { hasRunningTask }                                                   from '../vorn/taskManager.js'
+import { assertNoMutatingTask }                                             from './taskHandlers.js'
 import { ctx }                                                              from '../workerManager.js'
 import { isAbsolute }                                                       from 'path'
 
@@ -99,6 +100,10 @@ export function registerSessionHandlers() {
 
   ipcMain.handle('vorn:delete-session', (_, name) => {
     _validateName(name)
+    // Defense-in-depth: bloccare anche se un task mutante di un'ALTRA sessione
+    // sta girando (es. prune/clear che traversano l'intero store potrebbero
+    // crashare se la cartella session viene rimossa mid-operazione).
+    assertNoMutatingTask()
     if (hasRunningTask(name)) throw new Error('ERR_OPERATION_IN_PROGRESS')
     deleteSession(ctx.activeStore, name)
   })
@@ -131,6 +136,11 @@ export function registerSessionHandlers() {
 
   ipcMain.handle('vorn:delete-run', (_, { sessionName, runTs }) => {
     _validateName(sessionName); validateRunTs(runTs)
+    // Se un backup è in corso sulla stessa sessione potrebbe stare riscrivendo
+    // QUESTO run (resume) o un altro nella stessa cartella runs: deleteRun
+    // rimuove il file, ma il saveRun periodico del worker poi lo ricrea con
+    // dati parziali → zombie run nella UI.
+    if (hasRunningTask(sessionName)) throw new Error('ERR_OPERATION_IN_PROGRESS')
     invalidateRunCache(sessionName, runTs)
     return deleteRun(ctx.activeStore, sessionName, runTs)
   })

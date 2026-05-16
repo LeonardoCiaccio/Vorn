@@ -81,8 +81,9 @@
     "operationWait": "Operación en curso — por favor espere",
     "cannotUndo": "Esta operación no se puede deshacer.",
     "storeLento": "Store lento",
-    "storing": "Archivando…",
-    "compressing": "Comprimiendo…",
+    "storing": "Archivando",
+    "compressing": "Comprimiendo",
+    "hashing": "Hashing",
     "errStoreTimeout": "Tiempo de espera agotado — posible bloqueo antivirus"
   },
 
