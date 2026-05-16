@@ -58,7 +58,19 @@ async function _cleanCrashedRuns(storeDir) {
 function _cleanupResidualTemps(storeDir) {
   try {
     for (const f of readdirSync(storeDir)) {
-      if (f.endsWith('.ctmp') || f.endsWith('.tmp') || f.endsWith('.mtmp')) {
+      // ⚠️ NB: `.mtmp` NON va toccato qui. È il WAL di `_updateMeta` e serve a
+      // `readVornMeta` per recuperare i records DOPO un crash mid-update. Il
+      // cleanup degli orfani avviene già dentro `readVornMeta` quando la meta
+      // tail del .vorn è leggibile (= WAL provatamente orfano). Eliminarli
+      // qui, prima della prima readVornMeta, = data loss permanente per ogni
+      // _upsertRecord interrotto da un crash/USB-unplug.
+      //
+      // Cleanup eseguito qui solo per: file tmp di scrittura non finalizzati
+      // (.tmp, .ctmp) e file di recovery atomica orfani (.repair.<pid>.<ts>)
+      // lasciati indietro se la recovery in readVornMeta è fallita a metà.
+      const isWritTmp     = f.endsWith('.ctmp') || f.endsWith('.tmp')
+      const isRepairTmp   = /\.repair\.\d+\.\d+$/.test(f)
+      if (isWritTmp || isRepairTmp) {
         try { unlinkSync(join(storeDir, f)) } catch { }
       }
     }
