@@ -10,8 +10,14 @@ import { SAVE_INTERVAL_FILES, SAVE_INTERVAL_MS, CHUNK_THRESHOLD_BYTES } from './
 import { compressToTemp, cleanupTemp } from './compress.js'
 
 export async function backup(storeDir, sessionName, opts = {}) {
-  const { onProgress, isCancelled, resumeTs, runTs, storeFn } = opts
-  const _storeBlob = storeFn ?? storeBlob
+  const { onProgress, isCancelled, resumeTs, runTs, storeFn, dbGetFileFn, dbUpsertManyFn, dbPruneOrphansFn } = opts
+  const _storeBlob        = storeFn          ?? storeBlob
+  // Le funzioni DB possono essere iniettate dal worker (via IPC al main) o usate
+  // direttamente come fallback in chiamate dirette dal main process. `await` su
+  // valore sync è no-op, quindi entrambi gli stili convivono nello stesso loop.
+  const _dbGetFile        = dbGetFileFn      ?? dbGetFile
+  const _dbUpsertMany     = dbUpsertManyFn   ?? dbUpsertFileMany
+  const _dbPruneOrphans   = dbPruneOrphansFn ?? dbPruneOrphans
 
   const session = getSession(storeDir, sessionName)
   if (!session) throw new Error('ERR_SESSION_NOT_FOUND')
@@ -97,7 +103,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
     // Controllo DB: se mtime e size coincidono, conosciamo già l'hash
     let hashVorn
-    const dbRecord = dbGetFile(filePath)
+    const dbRecord = await _dbGetFile(filePath)
     if (dbRecord && dbRecord.mtime === mtime && dbRecord.size === bytes) {
       // Hash già noto: salta l'hashing del file.
       // Non fare continue anche se il .vorn esiste: storeBlob deve aggiornare i record
@@ -153,7 +159,20 @@ export async function backup(storeDir, sessionName, opts = {}) {
     bytesTotal += bytes
 
     try {
-      const { outcome, storeKey, chunks_new: cn, chunks_dedup: cd } = await _storeBlob(storeDir, hashVorn, bytes, filePath, session.id, session.name, relPath, compressionType, compTmpPath, compressedHash, null, strategy)
+      const { outcome, storeKey, chunks_new: cn, chunks_dedup: cd } = await _storeBlob({
+        storeDir,
+        hashVorn,
+        bytes,
+        sourcePath:    filePath,
+        sessionId:     session.id,
+        sessionName:   session.name,
+        relPath,
+        compressionType,
+        compTmpPath,
+        compressedHash,
+        signal:        null,
+        strategy,
+      })
       run.files[relPath] = storeKey
       pendingUpserts.push({ path: filePath, mtime, size: bytes, hash: hashVorn })
       if (isCancelled?.()) { cleanupTemp(compTmpPath); break }
@@ -192,7 +211,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
     // Salvataggio intermedio periodico
     if (current - lastSaveCount >= SAVE_INTERVAL_FILES || Date.now() - lastSaveTime >= SAVE_INTERVAL_MS) {
-      dbUpsertFileMany(pendingUpserts)
+      await _dbUpsertMany(pendingUpserts)
       pendingUpserts = []
       run.files_new    = filesNew
       run.files_dedup  = filesDedup
@@ -207,7 +226,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
     }
   }
 
-  dbUpsertFileMany(pendingUpserts)
+  await _dbUpsertMany(pendingUpserts)
 
   run.status       = isCancelled?.() ? 'paused' : 'done'
   run.duration_sec = prevDurationSec + Math.round((Date.now() - startTime) / 1000)
@@ -221,7 +240,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
   run.errors       = errors
   saveRun(storeDir, sessionName, run)
 
-  if (run.status === 'done') dbPruneOrphans()
+  if (run.status === 'done') await _dbPruneOrphans()
 
   return { status: run.status, ts: run.ts, files_total: total, filesNew, filesDedup, errors }
 }

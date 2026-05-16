@@ -240,20 +240,20 @@ File toccati: `format.js`, eventualmente `store.js`
 
 ### Fase 10 — Architettura DB (grosso refactor) · _stima: 3-4 ore_
 File toccati: `db.js`, `backup.js`, `ipc.js`, nuovo handler IPC
-- [ ] **#7** [HIGH] — Spostare accessi DB nel main via IPC (analogo `store-request`)
-- [ ] **#11** — `dbPruneOrphans`: cursor persistito o "Full DB prune" su comando
+- [x] **#7** [HIGH] — Tutte le ops DB nel main via IPC `db-request` (worker invia messaggio, main risponde con `db-result`)
+- [x] **#11** — `dbPruneOrphans`: cursor sliding `_pruneCursor` invece di random sampling
 
 ### Fase 11 — Perf (nice-to-have) · _stima: 30 min_
 File toccati: `compress.js`
 - [x] **#21** — `cancelPoll`: rimosso `setInterval`, check inline su ogni chunk con `ac.abort()`
 
 ### Fase 12 — Code quality (parallelo, da fare quando si tocca il file) · _stima: variabile_
-- [ ] **CQ1** — `storeBlob:263`: trasformare 12 parametri posizionali in object args _(fare durante Fase 6)_
-- [ ] **CQ2** — `backup.js:108-148`: centralizzare precompression in `writeVornFromSource` _(fare durante Fase 9)_
+- [x] **CQ1** — `storeBlob`, `_createNew`, `storeChunked`: object args; aggiornati caller in `workerManager.js`, `backupWorker.js`, `backup.js`
+- [ ] **CQ2** — `backup.js:108-148`: precompression duplica `writeVornFromSource` — **WONTFIX** _(split intenzionale: il worker pre-comprime per calcolare l'hash compresso PRIMA di interrogare la dedup; centralizzare significherebbe spostare la dedup-check dentro `writeVornFromSource`, peggior architettura)_
 - [x] **CQ3** — `sessionHandlers.js`: estratti `_validateCompression`/`_validateStrategy`/`_validateExcludes` riusati da create + update
 - [x] **CQ4** — `format.js:69-89`: marcare WAL legacy come deprecated (commento DEPRECATED nel ramo `else`)
-- [ ] **CQ5** — Silent catch ricorrenti: passare a `logger.debug`
-- [ ] **CQ6** — `workerManager.js:69-73`: tipizzare/normalizzare shape progress
+- [ ] **CQ5** — Silent catch ricorrenti: passare a `logger.debug` — **DEFERRED** _(richiede import di `logger` in 6+ moduli, valore marginale rispetto al rumore; affrontare in PR dedicata)_
+- [ ] **CQ6** — `workerManager.js:69-73`: tipizzare/normalizzare shape progress — **DEFERRED** _(progress shape è eterogenea per design tra backup/integrity/prune; normalizzare richiede rebuild dei worker, basso valore)_
 
 ---
 

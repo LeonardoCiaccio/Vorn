@@ -11,12 +11,12 @@ let _reqId = 0
 const _pending = new Map()
 
 parentPort.on('message', (msg) => {
-  if (msg?.type === 'store-result') {
+  if (msg?.type === 'store-result' || msg?.type === 'db-result') {
     const p = _pending.get(msg.id)
     if (p) {
       _pending.delete(msg.id)
       if (msg.error) p.reject(Object.assign(new Error(msg.error), { code: msg.code }))
-      else           p.resolve(msg.outcome)
+      else           p.resolve(msg.type === 'db-result' ? msg.result : msg.outcome)
     }
   } else if (msg?.type === 'store-disconnected') {
     for (const p of _pending.values()) p.reject(new Error('ERR_STORE_UNREACHABLE'))
@@ -24,7 +24,11 @@ parentPort.on('message', (msg) => {
   }
 })
 
-function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath = null, compressedHash = null, signal = null, strategy = null) {
+// Accetta opts (stessa shape di storeBlob): la traduzione a campo `filePath`
+// nel messaggio IPC è interna e nasconde la legacy naming dei caller.
+function storeFn(opts) {
+  const { hashVorn, bytes, sourcePath, sessionId, sessionName, relPath,
+          compressionType = null, compTmpPath = null, compressedHash = null, strategy = null } = opts
   return new Promise((resolve, reject) => {
     const id    = ++_reqId
     const timer = setTimeout(() => {
@@ -36,9 +40,30 @@ function storeFn(storeDir, hashVorn, bytes, filePath, sessionId, sessionName, re
       resolve: (outcome) => { clearTimeout(timer); resolve(outcome) },
       reject:  (err)     => { clearTimeout(timer); reject(err) },
     })
-    parentPort.postMessage({ type: 'store-request', id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, strategy })
+    parentPort.postMessage({ type: 'store-request', id, hashVorn, bytes, filePath: sourcePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, strategy })
   })
 }
+
+// Tutte le query DB passano per il main. Single-writer su better-sqlite3,
+// closeDb() del main copre la connessione unica, niente accumulo di N connessioni
+// né rischio SQLITE_BUSY tra worker concorrenti.
+function _dbRequest(op, args) {
+  return new Promise((resolve, reject) => {
+    const id    = ++_reqId
+    const timer = setTimeout(() => {
+      _pending.delete(id)
+      reject(new Error('ERR_DB_TIMEOUT'))
+    }, STORE_REQUEST_TIMEOUT_MS)
+    _pending.set(id, {
+      resolve: (r) => { clearTimeout(timer); resolve(r) },
+      reject:  (e) => { clearTimeout(timer); reject(e) },
+    })
+    parentPort.postMessage({ type: 'db-request', id, op, args })
+  })
+}
+const dbGetFileFn      = (path)    => _dbRequest('get',          { path })
+const dbUpsertManyFn   = (records) => _dbRequest('upsertMany',   { records })
+const dbPruneOrphansFn = ()        => _dbRequest('pruneOrphans', {})
 
 let _lastProgressTs = 0
 function _sendProgress(progress) {
@@ -56,6 +81,9 @@ backup(storeDir, sessionName, {
   resumeTs,
   runTs,
   storeFn,
+  dbGetFileFn,
+  dbUpsertManyFn,
+  dbPruneOrphansFn,
 })
   .then(result => parentPort.postMessage({ type: 'done', result }))
   .catch(err   => parentPort.postMessage({ type: 'error', error: err.message }))

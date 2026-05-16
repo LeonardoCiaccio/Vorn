@@ -5,6 +5,7 @@ import { storeBlob }                                         from './vorn/store.
 import { releaseLock }                                       from './vorn/lockFile.js'
 import { setTaskCancelFn, updateTaskProgress }               from './vorn/taskManager.js'
 import { logger }                                            from './vorn/logger.js'
+import { dbGetFile, dbUpsertFileMany, dbPruneOrphans }       from './vorn/db.js'
 
 export const ctx = {
   activeWorkers: new Map(), // taskId → { worker, cancelFlag }
@@ -82,10 +83,39 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
       }
       const ac = new AbortController()
       _storeAc = ac
-      storeBlob(ctx.activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, ac.signal, strategy)
+      storeBlob({
+        storeDir:       ctx.activeStore,
+        hashVorn,
+        bytes,
+        sourcePath:     filePath,
+        sessionId,
+        sessionName,
+        relPath,
+        compressionType,
+        compTmpPath,
+        compressedHash,
+        signal:         ac.signal,
+        strategy,
+      })
         .then(outcome => worker.postMessage({ type: 'store-result', id, outcome }))
         .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message, code: err.code }))
         .finally(() => { if (_storeAc === ac) _storeAc = null })
+    } else if (type === 'db-request') {
+      // Tutte le op DB transitano qui: una sola connessione better-sqlite3 viva,
+      // serializzata sull'event-loop del main. Elimina il "known concern" su
+      // workers che aprivano ciascuno la propria connessione (rischio SQLITE_BUSY
+      // e upsert persi al force-terminate).
+      const { id, op, args } = msg
+      try {
+        let result
+        if      (op === 'get')          result = dbGetFile(args.path)
+        else if (op === 'upsertMany')   result = (dbUpsertFileMany(args.records), null)
+        else if (op === 'pruneOrphans') result = dbPruneOrphans()
+        else                            throw new Error('ERR_UNKNOWN_DB_OP')
+        worker.postMessage({ type: 'db-result', id, result })
+      } catch (err) {
+        worker.postMessage({ type: 'db-result', id, error: err.message, code: err.code })
+      }
     } else if (type === 'progress') {
       _lastProgress = msg.progress
       updateTaskProgress(taskId, msg.progress)

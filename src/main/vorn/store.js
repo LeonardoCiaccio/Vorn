@@ -230,7 +230,8 @@ function _chunksStream(storeDir, chunkKeys) {
   return Readable.from(gen())
 }
 
-async function storeChunked(storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath, compressionType, signal) {
+async function storeChunked(opts) {
+  const { storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath, compressionType, signal } = opts
   const manifestP = vornPath(storeDir, hashVorn)
 
   return withFileLock(manifestP, async () => {
@@ -326,7 +327,13 @@ async function _upsertRecord(p, contentLen, meta, sessionId, sessionName, relPat
 // Ritorna 'new' se il file è stato creato, 'dedup' se già esisteva.
 // Qualsiasi altro chiamante che arriva sullo stesso hash aspetta in coda.
 
-export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath, compressionType = null, compTmpPath = null, compressedHash = null, signal = null, strategy = null) {
+// Firma a oggetto: i 12 parametri posizionali precedenti erano ingestibili e
+// fragili (riordino silenzioso = bug). L'opts object si auto-documenta in
+// chiamata e tollera l'aggiunta di nuovi campi senza rompere i caller esistenti.
+export async function storeBlob(opts) {
+  const { storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath,
+          compressionType = null, compTmpPath = null, compressedHash = null,
+          signal = null, strategy = null } = opts
   ensureStore(storeDir)
 
   // ── Cerca un .vorn esistente per questo hash, indipendentemente dalla strategia ──
@@ -339,7 +346,7 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
       // Ricontrolla dentro il lock (potrebbe essere stato eliminato nel frattempo)
       if (!await access(p).then(() => true).catch(() => false)) {
         // Scomparso: rilascia e ricrea dalla strategia corrente
-        return _createNew(storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, signal, strategy)
+        return _createNew(opts)
       }
 
       const { meta, contentLen } = readVornMeta(p)
@@ -378,12 +385,14 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
   }
 
   // ── Nessun .vorn esistente: crea da zero con la strategia corrente ─────────
-  return _createNew(storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, signal, strategy)
+  return _createNew(opts)
 }
 
-async function _createNew(storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, signal, strategy) {
+async function _createNew(opts) {
+  const { storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath,
+          compressionType, compTmpPath, compressedHash, signal, strategy } = opts
   if (strategy === 'chunks' && bytes >= CHUNK_THRESHOLD_BYTES)
-    return storeChunked(storeDir, hashVorn, bytes, sourcePath, sessionId, sessionName, relPath, compressionType, signal)
+    return storeChunked(opts)
 
   const key = toStoreKey(hashVorn, compressionType)
   const p   = vornPath(storeDir, key)
