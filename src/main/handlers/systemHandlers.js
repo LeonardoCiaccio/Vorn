@@ -149,9 +149,13 @@ export function registerSystemHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:open-external', (_, { url }) => {
-    const allowed = ['https://github.com/LeonardoCiaccio/Vorn']
-    if (typeof url !== 'string' || !allowed.some(base => url.startsWith(base))) return
-    shell.openExternal(url)
+    if (typeof url !== 'string') return
+    let parsed
+    try { parsed = new URL(url) } catch { return }
+    if (parsed.protocol !== 'https:') return
+    if (parsed.host !== 'github.com') return
+    if (parsed.pathname !== '/LeonardoCiaccio/Vorn' && !parsed.pathname.startsWith('/LeonardoCiaccio/Vorn/')) return
+    shell.openExternal(parsed.href)
   })
 
   ipcMain.handle('vorn:get-app-info', () => ({
@@ -171,6 +175,7 @@ export function registerSystemHandlers(mainWindow) {
 
   ipcMain.handle('vorn:list-dir', (_, { dirPath }) => {
     if (!dirPath || typeof dirPath !== 'string') return []
+    if (dirPath.includes('\x00')) return [] // null byte injection guard
     const safePath = normalize(resolve(dirPath))
     try {
       return readdirSync(safePath, { withFileTypes: true })

@@ -71,12 +71,25 @@ export function readVornMeta(filePath) {
         if (walData.checksum !== undefined) {
           const expected = createHash('sha256').update(JSON.stringify(walData.meta)).digest('hex').slice(0, 16)
           if (walData.checksum !== expected) throw new Error('ERR_WAL_INVALID')
+          // Fingerprint: il WAL può essere recovery valido solo se è stato scritto
+          // per QUESTO .vorn nello stato in cui si trova ora. Senza fingerprint,
+          // un WAL orfano (lasciato da un crash precedente, vedi cleanup sotto)
+          // potrebbe "resuscitare" records mai committati se in futuro la meta
+          // tail viene corrotta da un crash diverso. Con il contentLen verifichiamo
+          // che il WAL appartenga a un file con la stessa quantità di contenuto.
+          if (walData.contentLen !== undefined && walData.contentLen !== Number(contentLen)) {
+            throw new Error('ERR_WAL_FINGERPRINT_MISMATCH')
+          }
           recovered = walData.meta
         } else {
+          // ⚠️ DEPRECATED: WAL legacy senza checksum né fingerprint, accettato per
+          // retrocompatibilità con .vorn scritti da versioni precedenti. Pianificare
+          // la rimozione dopo un ciclo di release in cui tutti gli store sono stati
+          // riaperti almeno una volta (il cleanup orfani sotto svuota i WAL legacy).
           recovered = walData
         }
       } catch (e) {
-        throw new Error(e.message === 'ERR_WAL_INVALID' ? 'ERR_WAL_INVALID' : 'ERR_WAL_INVALID')
+        throw new Error('ERR_WAL_INVALID', { cause: e })
       }
       closeSync(fd); fd = null
       const truncateAt = HEADER_SIZE + Number(contentLen) + SEPARATOR.length
@@ -86,6 +99,16 @@ export function readVornMeta(filePath) {
       try { writeSync(fdw, recBuf); fsyncSync(fdw) } finally { closeSync(fdw) }
       try { unlinkSync(tmpPath) } catch { /* non-critico */ }
       return readVornMeta(filePath)
+    }
+
+    // Cleanup .mtmp orfano: la meta è leggibile, quindi il WAL è residuo di un
+    // _updateMeta interrotto PRIMA del truncate. Quel WAL non è mai stato applicato:
+    // lasciarlo significa che una corruzione futura della meta tail (USB scollegato
+    // al momento sbagliato) potrebbe "resuscitare" records mai committati.
+    // L'eliminazione è sicura: il dato originale (`meta`) è intatto.
+    const orphanWal = filePath + '.mtmp'
+    if (existsSync(orphanWal)) {
+      try { unlinkSync(orphanWal) } catch { /* non-critico */ }
     }
 
     return { meta, contentOffset: HEADER_SIZE, contentLen }
@@ -151,18 +174,38 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
 
   const metaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
 
+  // TOCTOU mitigation per il ramo blob plain non-compresso: leggere ESATTAMENTE
+  // i `contentLen` bytes promessi dall'header. Senza il limite `end`, un file
+  // "vivo" (log, DB, mailbox) può crescere durante la pipeline e nel .vorn
+  // finirebbero più bytes di quelli dichiarati → readVornMeta non troverebbe
+  // più il SEPARATOR all'offset corretto e il file diventerebbe irrecuperabile.
+  // Per il ramo compresso, contentSource è un .ctmp stabile (no TOCTOU).
+  const readOpts = (!compressionType && contentLen > 0n)
+    ? { end: Number(contentLen) - 1 }
+    : undefined
+
+  let bytesRead = 0n
   try {
     await pipeline(
-      safeCreateReadStream(contentSource),
+      safeCreateReadStream(contentSource, readOpts),
       async function* (source) {
         yield header
-        for await (const chunk of source) yield chunk
+        for await (const chunk of source) {
+          bytesRead += BigInt(chunk.length)
+          yield chunk
+        }
         yield SEPARATOR
         yield metaBuf
       },
       createWriteStream(tmpPath),
       ...(signal ? [{ signal }] : [])
     )
+    // Verifica complementare: se il file è stato TRONCATO durante la lettura
+    // (caso opposto rispetto a sopra), `bytesRead` è < `contentLen` e l'header
+    // mentirebbe nell'altra direzione. Abortire pulisce lo stato.
+    if (bytesRead !== contentLen) {
+      throw new Error('ERR_SOURCE_SIZE_MISMATCH')
+    }
     renameSync(tmpPath, destPath)
   } catch (e) {
     if (existsSync(tmpPath)) unlinkSync(tmpPath)

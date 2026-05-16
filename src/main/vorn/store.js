@@ -8,7 +8,11 @@ import { createHash } from 'crypto'
 import { readVornMeta, readVorn, writeVornFromSource, writeVornManifest, contentStream, VORN_HEADER_SIZE, VORN_SEPARATOR_LEN } from './format.js'
 import { withFileLock } from './fileLock.js'
 import { vornHash } from './hash.js'
-import { CHUNK_THRESHOLD_BYTES, CHUNK_SIZE_BYTES, KNOWN_COMPRESSION_TYPES } from './constants.js'
+import { CHUNK_THRESHOLD_BYTES, CHUNK_SIZE_BYTES, KNOWN_COMPRESSION_TYPES, STORE_KEY_RE } from './constants.js'
+
+function _assertSafeKey(storeKey) {
+  if (typeof storeKey !== 'string' || !STORE_KEY_RE.test(storeKey)) throw new Error('ERR_INVALID_HASH')
+}
 
 function _walChecksum(metaJson) {
   return createHash('sha256').update(metaJson).digest('hex').slice(0, 16)
@@ -19,7 +23,11 @@ async function _updateMeta(filePath, meta, contentLen) {
   const metaBuf  = Buffer.from(metaJson, 'utf8')
   const tmpPath  = filePath + '.mtmp'
 
-  await writeFile(tmpPath, JSON.stringify({ meta, checksum: _walChecksum(metaJson) }))
+  // `contentLen` come fingerprint: lega questo WAL allo stato corrente del .vorn.
+  // In caso di recovery futuro su un file la cui meta tail è stata corrotta da
+  // un crash diverso, readVornMeta verifica che il contentLen del file corrisponda
+  // a quello salvato nel WAL — altrimenti il WAL è orfano e va rifiutato.
+  await writeFile(tmpPath, JSON.stringify({ meta, contentLen: Number(contentLen), checksum: _walChecksum(metaJson) }))
 
   await truncate(filePath, VORN_HEADER_SIZE + Number(contentLen) + VORN_SEPARATOR_LEN)
 
@@ -129,21 +137,87 @@ async function _writeChunkTemp(sourcePath, destPath, offset, length) {
   )
 }
 
-async function _storeVornc(storeDir, chunkHash, chunkBytes, sourcePath, compressionType, manifestHash) {
+// Cerca un .vornc esistente con questo chunkHash sotto qualunque compressionType.
+// Stessa logica di _findExistingVornKey ma per i chunk: priorità al tipo della
+// sessione, poi al chunk uncompressed, poi agli altri tipi noti.
+function _findExistingVorncKey(storeDir, chunkHash, compressionType) {
+  if (compressionType) {
+    const k = toStoreKey(chunkHash, compressionType)
+    if (existsSync(vorncPath(storeDir, k))) return k
+  }
+  if (existsSync(vorncPath(storeDir, chunkHash))) return chunkHash
+  for (const ct of KNOWN_COMPRESSION_TYPES) {
+    if (ct === compressionType) continue
+    const k = toStoreKey(chunkHash, ct)
+    if (existsSync(vorncPath(storeDir, k))) return k
+  }
+  return null
+}
+
+// Path forzato: crea (o riusa, sotto lock) il .vornc ESATTAMENTE con la chiave
+// derivata da (chunkHash, compressionType). Usato dal repair, che deve
+// rispettare la chiave già presente in meta.chunks del manifest.
+async function _writeNewVornc(storeDir, chunkHash, chunkBytes, sourcePath, compressionType, manifestHash) {
   const key = toStoreKey(chunkHash, compressionType)
   const p   = vorncPath(storeDir, key)
-  if (!existsSync(p)) {
+  return withFileLock(p, async () => {
+    if (existsSync(p)) {
+      const { meta, contentLen } = readVornMeta(p)
+      if (!meta.references) meta.references = []
+      if (!meta.references.includes(manifestHash)) {
+        meta.references.push(manifestHash)
+        await _updateMeta(p, meta, contentLen)
+      }
+      return { key, isNew: false }
+    }
     const meta = { hash_vorn: chunkHash, bytes: chunkBytes, compressedType: compressionType ?? null, references: [manifestHash] }
     await writeVornFromSource(p, meta, sourcePath, compressionType)
     return { key, isNew: true }
+  })
+}
+
+// API pubblica usata in fase di creazione di nuovi chunk: applica cross-strategy
+// dedup (riusa qualunque .vornc esistente con lo stesso chunkHash a prescindere
+// dalla compressione). Lock per-path: due backup paralleli che producono lo
+// stesso chunk non possono più sovrascrivere a vicenda l'array references.
+async function _storeVornc(storeDir, chunkHash, chunkBytes, sourcePath, compressionType, manifestHash) {
+  const existingKey = _findExistingVorncKey(storeDir, chunkHash, compressionType)
+  if (existingKey !== null) {
+    const pExist = vorncPath(storeDir, existingKey)
+    const reused = await withFileLock(pExist, async () => {
+      if (!existsSync(pExist)) return null // scomparso tra check e lock → fallback a creazione
+      const { meta, contentLen } = readVornMeta(pExist)
+      if (!meta.references) meta.references = []
+      if (!meta.references.includes(manifestHash)) {
+        meta.references.push(manifestHash)
+        await _updateMeta(pExist, meta, contentLen)
+      }
+      return { key: existingKey, isNew: false }
+    })
+    if (reused !== null) return reused
   }
-  const { meta, contentLen } = readVornMeta(p)
-  if (!meta.references) meta.references = []
-  if (!meta.references.includes(manifestHash)) {
-    meta.references.push(manifestHash)
-    await _updateMeta(p, meta, contentLen)
+  return _writeNewVornc(storeDir, chunkHash, chunkBytes, sourcePath, compressionType, manifestHash)
+}
+
+// Ricostruisce un chunk mancante di un manifest esistente, verificandone l'hash.
+// Senza il check di hash, una sorgente modificata o corrotta verrebbe scritta
+// sotto l'identità del vecchio chunk → corruzione silenziosa scoperta tardi.
+async function _repairMissingChunk(storeDir, manifestHash, meta, ci, sourcePath, compressionType) {
+  const chunkKey      = meta.chunks[ci]
+  const expectedHash  = chunkKey.split('_')[0]
+  const offset        = ci * CHUNK_SIZE_BYTES
+  const thisChunkSize = Math.min(CHUNK_SIZE_BYTES, meta.bytes - offset)
+  const chunkTmp      = join(tmpdir(), `vorn_c_${manifestHash}_${offset}.tmp`)
+  try {
+    await _writeChunkTemp(sourcePath, chunkTmp, offset, thisChunkSize)
+    const actualHash = vornHash(chunkTmp)
+    if (actualHash !== expectedHash) throw new Error('ERR_CHUNK_REPAIR_HASH_MISMATCH')
+    // Forza la chiave esatta richiesta dal manifest: cross-strategy dedup
+    // non si applica al repair (manifest.chunks[ci] punta a quella chiave precisa).
+    await _writeNewVornc(storeDir, expectedHash, thisChunkSize, chunkTmp, compressionType, manifestHash)
+  } finally {
+    try { unlinkSync(chunkTmp) } catch { /* non-critico */ }
   }
-  return { key, isNew: false }
 }
 
 function _chunksStream(storeDir, chunkKeys) {
@@ -164,26 +238,13 @@ async function storeChunked(storeDir, hashVorn, bytes, sourcePath, sessionId, se
 
     if (exists) {
       const { meta, contentLen } = readVornMeta(manifestP)
-
-      // Verifica e ripara chunk mancanti (usa compressionType dal meta, non dalla sessione)
       const metaComprType = meta.compressedType ?? null
       const chunks = meta.chunks ?? []
       for (let ci = 0; ci < chunks.length; ci++) {
-        const chunkKey = chunks[ci]
-        if (!existsSync(vorncPath(storeDir, chunkKey))) {
-          const offset        = ci * CHUNK_SIZE_BYTES
-          const thisChunkSize = Math.min(CHUNK_SIZE_BYTES, meta.bytes - offset)
-          const chunkHash     = chunkKey.split('_')[0]
-          const chunkTmp      = join(tmpdir(), `vorn_c_${hashVorn}_${offset}.tmp`)
-          try {
-            await _writeChunkTemp(sourcePath, chunkTmp, offset, thisChunkSize)
-            await _storeVornc(storeDir, chunkHash, thisChunkSize, chunkTmp, metaComprType, hashVorn)
-          } finally {
-            try { unlinkSync(chunkTmp) } catch { /* non-critico */ }
-          }
+        if (!existsSync(vorncPath(storeDir, chunks[ci]))) {
+          await _repairMissingChunk(storeDir, hashVorn, meta, ci, sourcePath, metaComprType)
         }
       }
-
       await _upsertRecord(manifestP, contentLen, meta, sessionId, sessionName, relPath)
       return { outcome: 'dedup', storeKey: hashVorn }
     }
@@ -224,17 +285,22 @@ async function storeChunked(storeDir, hashVorn, bytes, sourcePath, sessionId, se
 }
 
 // ── Cerca qualsiasi .vorn esistente per questo hash (cross-strategy) ─────────
-// Priorità: 1) hash.vorn (manifest chunks o plain)  2) hash_CT.vorn della sessione
-//           3) tutti gli altri tipi noti (KNOWN_COMPRESSION_TYPES) — evita duplicati
+//
+// API STABILE: l'ordine di priorità sotto è parte del contratto pubblico della
+// dedup cross-strategy. Modificarlo cambia silenziosamente quale .vorn viene
+// riusato in presenza di duplicati. Per aggiungere un nuovo tipo (es. zstd),
+// appenderlo in fondo a KNOWN_COMPRESSION_TYPES — non in testa.
+//
+// Priorità:
+//   1) hash.vorn                          — manifest chunked o blob plain
+//   2) hash_<compressionType-sessione>    — match esatto sul tipo richiesto
+//   3) hash_<altri tipi noti>             — fallback nell'ordine di KNOWN_COMPRESSION_TYPES
 function _findExistingVornKey(storeDir, hashVorn, compressionType) {
-  // 1. Manifest chunked / plain — chiave base senza suffisso
   if (existsSync(vornPath(storeDir, hashVorn))) return hashVorn
-  // 2. Blob compresso con il tipo della sessione corrente (priorità)
   if (compressionType) {
     const k = toStoreKey(hashVorn, compressionType)
     if (existsSync(vornPath(storeDir, k))) return k
   }
-  // 3. Fallback: tutti gli altri tipi noti (cross-strategy dedup)
   for (const ct of KNOWN_COMPRESSION_TYPES) {
     if (ct === compressionType) continue
     const k = toStoreKey(hashVorn, ct)
@@ -279,22 +345,11 @@ export async function storeBlob(storeDir, hashVorn, bytes, sourcePath, sessionId
       const { meta, contentLen } = readVornMeta(p)
 
       if (meta?.strategy === 'chunks') {
-        // ── Verifica e ripara chunk mancanti ──
         const chunks = meta.chunks ?? []
         const metaComprType = meta.compressedType ?? null
         for (let ci = 0; ci < chunks.length; ci++) {
-          const chunkKey = chunks[ci]
-          if (!existsSync(vorncPath(storeDir, chunkKey))) {
-            const offset        = ci * CHUNK_SIZE_BYTES
-            const thisChunkSize = Math.min(CHUNK_SIZE_BYTES, meta.bytes - offset)
-            const chunkHash     = chunkKey.split('_')[0]
-            const chunkTmp      = join(tmpdir(), `vorn_c_${hashVorn}_${offset}.tmp`)
-            try {
-              await _writeChunkTemp(sourcePath, chunkTmp, offset, thisChunkSize)
-              await _storeVornc(storeDir, chunkHash, thisChunkSize, chunkTmp, metaComprType, hashVorn)
-            } finally {
-              try { unlinkSync(chunkTmp) } catch { /* non-critico */ }
-            }
+          if (!existsSync(vorncPath(storeDir, chunks[ci]))) {
+            await _repairMissingChunk(storeDir, hashVorn, meta, ci, sourcePath, metaComprType)
           }
         }
       } else {
@@ -364,12 +419,14 @@ export function deleteStoreEntry(storeDir, hashVorn) {
 // ── Read-only (nessun lock necessario) ───────────────────────────────────────
 
 export function getEntry(storeDir, hashVorn) {
+  _assertSafeKey(hashVorn)
   const p = vornPath(storeDir, hashVorn)
   if (!existsSync(p)) return null
   return readVornMeta(p).meta
 }
 
 export function extractContent(storeDir, storeKey) {
+  _assertSafeKey(storeKey)
   const p = vornPath(storeDir, storeKey)
   const { meta } = readVornMeta(p)
   if (meta?.strategy === 'chunks') return _chunksStream(storeDir, meta.chunks)
@@ -377,5 +434,6 @@ export function extractContent(storeDir, storeKey) {
 }
 
 export function readEntry(storeDir, hashVorn) {
+  _assertSafeKey(hashVorn)
   return readVorn(vornPath(storeDir, hashVorn))
 }

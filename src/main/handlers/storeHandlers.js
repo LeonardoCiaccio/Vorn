@@ -7,6 +7,8 @@ import { checkLock, acquireLock, releaseLock }        from '../vorn/lockFile.js'
 import { loadSettings, saveSettings, addRecentStore, removeRecentStore } from '../vorn/settings.js'
 import { ctx, startStoreWatch, stopStoreWatch }       from '../workerManager.js'
 import { listSessions, listRuns, loadRun, saveRun }   from '../vorn/sessions.js'
+import { invalidateListCache }                        from '../vorn/store.js'
+import { invalidateRunCache }                         from './sessionHandlers.js'
 import { logger }                                     from '../vorn/logger.js'
 
 const FAT32_FS_NAMES = new Set(['fat32', 'vfat', 'msdos'])
@@ -40,14 +42,15 @@ function _getFilesystem(dirPath) {
 async function _cleanCrashedRuns(storeDir) {
   for (const session of listSessions(storeDir)) {
     for (const run of listRuns(storeDir, session.name)) {
-      if (run.status !== 'running' && run.status !== 'paused') continue
-      const newStatus = run.status === 'running' ? 'crashed' : 'aborted'
-      try {
-        const full = loadRun(storeDir, session.name, run.ts)
-        full.status = newStatus
-        saveRun(storeDir, session.name, full)
-      } catch (e) { logger.warn(`Run corrotto ignorato [${session.name}/${run.ts}]: ${e.message}`) }
-      await new Promise(r => setImmediate(r)) // cede il controllo tra sessioni per non bloccare il main process
+      if (run.status === 'running' || run.status === 'paused') {
+        const newStatus = run.status === 'running' ? 'crashed' : 'aborted'
+        try {
+          const full = loadRun(storeDir, session.name, run.ts)
+          full.status = newStatus
+          saveRun(storeDir, session.name, full)
+        } catch (e) { logger.warn(`Run corrotto ignorato [${session.name}/${run.ts}]: ${e.message}`) }
+      }
+      await new Promise(r => setImmediate(r)) // cede il controllo tra ogni run per non bloccare il main process
     }
   }
 }
@@ -87,6 +90,10 @@ export function registerStoreHandlers(mainWindow) {
       releaseLock(ctx.activeStore)
       ctx.activeStore = null
     }
+    // Pulizia di tutte le cache in-memory: store list/meta + run cache.
+    // Senza questo, riaprendo un diverso store si vedrebbero dati del precedente.
+    invalidateListCache()
+    invalidateRunCache()
   })
 
   ipcMain.handle('vorn:get-settings',         ()              => loadSettings())

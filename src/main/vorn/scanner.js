@@ -12,14 +12,17 @@ export function walk(dir, excludePaths = [], excludePatterns = [], _results = []
         const relFromRoot = full.slice(dir.length + 1).replace(/\\/g, '/')
         if (excludePatterns.some(pat => matchPattern(relFromRoot, pat) || matchPattern(entry.name, pat))) continue
         
-        if (entry.isDirectory()) {
+        // CONTROLLARE PRIMA il symlink: su Windows una junction (NTFS reparse
+        // point) viene riportata da Dirent come isDirectory()===true E
+        // isSymbolicLink()===true. Se controlliamo isDirectory() per primo
+        // ricorriamo dentro `C:\Users\<user>\AppData\Local\Application Data`
+        // (junction storica) e si crea un loop di crescita esponenziale.
+        if (entry.isSymbolicLink()) {
+          continue
+        } else if (entry.isDirectory()) {
           queue.push(full)
         } else if (entry.isFile()) {
           _results.push(full)
-        } else if (entry.isSymbolicLink()) {
-          // I link simbolici vengono ignorati per ora per evitare loop o backup inconsistenti.
-          // In futuro si potrebbe implementare il salvataggio del target del link.
-          continue
         }
       }
     } catch (_) { /* skip unreadable dirs */ }

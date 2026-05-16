@@ -23,12 +23,15 @@ export async function compressToTemp(sourcePath, tmpPath, type, onProgress = nul
   const total = statSync(sourcePath).size
   let bytesIn = 0
   const ac = new AbortController()
-  const cancelPoll = setInterval(() => { if (isCancelled?.()) ac.abort() }, 100)
   try {
     await pipeline(
       safeCreateReadStream(sourcePath),
       async function* (source) {
         for await (const chunk of source) {
+          // Check di cancel inline su ogni chunk: granularità tipica = qualche ms
+          // su file grandi, ben sotto il vecchio poll a 100ms e senza setInterval
+          // (su decine di migliaia di file piccoli era overhead non trascurabile).
+          if (isCancelled?.()) { ac.abort(); return }
           bytesIn += chunk.length
           onProgress?.(bytesIn, total)
           yield chunk
@@ -42,8 +45,6 @@ export async function compressToTemp(sourcePath, tmpPath, type, onProgress = nul
   } catch (e) {
     if (e.name === 'AbortError' || isCancelled?.()) return null
     throw e
-  } finally {
-    clearInterval(cancelPoll)
   }
 }
 

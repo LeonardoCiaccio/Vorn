@@ -11,10 +11,14 @@ try {
 } catch { /* not in Electron — regular fs is fine */ }
 
 // On Windows, paths longer than 260 chars require the \\?\ extended-length prefix.
+// Normalizza forward slash a backslash prima della valutazione; gestisce sia path
+// drive-letter (C:\foo) sia UNC (\\server\share\foo → \\?\UNC\server\share\foo).
 function toLongPath(p) {
   if (process.platform !== 'win32' || typeof p !== 'string') return p
   if (p.startsWith('\\\\?\\')) return p
-  if (/^[A-Za-z]:\\/.test(p)) return '\\\\?\\' + p
+  const n = p.replace(/\//g, '\\')
+  if (/^\\\\[^\\?][^\\]*\\/.test(n)) return '\\\\?\\UNC\\' + n.slice(2) // UNC: \\server\share\... → \\?\UNC\server\share\...
+  if (/^[A-Za-z]:\\/.test(n))         return '\\\\?\\' + n
   return p
 }
 

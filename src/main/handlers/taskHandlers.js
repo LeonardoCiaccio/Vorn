@@ -7,6 +7,7 @@ import { extractByHash }                                                   from 
 import { invalidateListCache }                                             from '../vorn/store.js'
 import { ctx, spawnWorker }                                                from '../workerManager.js'
 import { loadRun, saveRun, validateSessionName, validateRunTs }            from '../vorn/sessions.js'
+import { invalidateRunCache }                                              from './sessionHandlers.js'
 import { loadSettings }                                                    from '../vorn/settings.js'
 import { getMainT }                                                        from '../vorn/mainI18n.js'
 import { assertHash }                                                      from './_validation.js'
@@ -40,7 +41,7 @@ function _logTaskErrors(task, result) {
   logger.warn(`${prefix} completed with ${result.errors.length} file error(s)`)
   for (const e of result.errors) {
     if (Array.isArray(e.issues)) {
-      logger.warn(`  [integrity] ${e.hashVorn}: ${e.issues.join(' | ')}`)
+      logger.warn(`  [integrity] ${e.hashVorn}: ${e.issues.map(i => i.code).join(' | ')}`)
     } else {
       const where = e.path ?? e.hash ?? '?'
       const phase = e.phase ? ` [${e.phase}]` : ''
@@ -60,6 +61,9 @@ function _backupOnDone(task, storeDir, runTs, mainWindow) {
         }
       } catch { /* run non trovato o store non raggiungibile */ }
     }
+    // Il backup ha aggiornato il run su disco (status, files, errors): qualunque
+    // cache mirata su (sessionName, runTs) è stale → invalidare.
+    invalidateRunCache(task.sessionName, runTs)
     _onDone(task, mainWindow)(result, error)
   }
 }

@@ -20,6 +20,29 @@ function _isAbsPath(relPath) {
   return /^[A-Za-z]:\//.test(relPath) || relPath.startsWith('/')
 }
 
+// UNC path (Windows network share): \\server\share\... oppure //server/share/...
+// Bloccato nel restore "originale": uno store ostile potrebbe puntare a una
+// share controllata dall'attaccante per esfiltrare contenuti.
+function _isUNCPath(p) {
+  return /^\\\\[^\\?]/.test(p) || /^\/\/[^/]/.test(p)
+}
+
+// Directory di sistema il cui contenuto NON deve essere sovrascritto da un restore.
+// Threat model: uno store ostile (USB altrui, .vorn manipolato) può iniettare
+// path come `C:/Windows/System32/...` o `/etc/...` nei run JSON. Senza questa
+// blocklist, restore "originale" piazza payload arbitrari in posizioni di esecuzione.
+const _SYSTEM_PREFIXES_LC = [
+  'c:/windows', 'c:/program files', 'c:/program files (x86)', 'c:/programdata',
+  '/etc',       '/usr',             '/bin',                    '/sbin',
+  '/proc',      '/sys',             '/boot',
+  '/system',    '/library/system',
+]
+function _isSystemPath(absPath) {
+  if (!absPath) return false
+  const norm = absPath.replace(/\\/g, '/').toLowerCase()
+  return _SYSTEM_PREFIXES_LC.some(s => norm === s || norm.startsWith(s + '/'))
+}
+
 export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) {
   if (destDir !== null && destDir !== undefined) destDir = resolve(destDir)
   else destDir = null
@@ -47,8 +70,19 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
       let outPath
       if (_isAbsPath(relPath)) {
         if (destDir === null) {
-          // Ripristino originale: usa il path assoluto direttamente
-          outPath = relPath.replace(/\//g, sep)
+          // Ripristino originale: blocca UNC e directory di sistema PRIMA di
+          // toccare il filesystem. Vedi commento su _SYSTEM_PREFIXES_LC.
+          if (_isUNCPath(relPath)) {
+            errors.push({ path: relPath, storeKey, error: 'unc_path_blocked' })
+            onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
+            continue
+          }
+          outPath = resolve(relPath.replace(/\//g, sep))
+          if (_isSystemPath(outPath)) {
+            errors.push({ path: relPath, storeKey, error: 'system_path_blocked' })
+            onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
+            continue
+          }
         } else {
           // Ripristino personalizzato: rimuovi drive root e join a destDir
           const stripped = relPath.replace(/^[A-Za-z]:\//, '').replace(/^\//, '')

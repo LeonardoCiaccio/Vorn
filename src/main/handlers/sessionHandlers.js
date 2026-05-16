@@ -7,6 +7,27 @@ import { isAbsolute }                                                       from
 
 const _validateName = validateSessionName
 
+// Helper centralizzati: stessi vincoli applicati da create-session e update-session.
+// Importante che siano IDENTICI per evitare drift (es. aggiungere zstd in un solo
+// posto lascerebbe l'altro a rifiutare il nuovo tipo).
+function _validateCompression(v) {
+  if (v != null && v !== 'gzip') throw new Error('ERR_INVALID_COMPRESSION_TYPE')
+}
+function _validateStrategy(v) {
+  if (v != null && v !== 'chunks' && v !== 'bytes') throw new Error('ERR_INVALID_STRATEGY')
+}
+function _validateExcludes(ex) {
+  if (typeof ex !== 'object' || ex === null) throw new Error('ERR_INVALID_EXCLUDES')
+  if (ex.paths != null) {
+    if (!Array.isArray(ex.paths)) throw new Error('ERR_EXCLUDES_PATHS_NOT_ARRAY')
+    if (ex.paths.length > 200) throw new Error('ERR_TOO_MANY_EXCLUDE_PATHS')
+  }
+  if (ex.patterns != null) {
+    if (!Array.isArray(ex.patterns)) throw new Error('ERR_EXCLUDES_PATTERNS_NOT_ARRAY')
+    if (ex.patterns.length > 200) throw new Error('ERR_TOO_MANY_EXCLUDE_PATTERNS')
+  }
+}
+
 function _validateSession(session) {
   if (!session || typeof session !== 'object') throw new Error('ERR_INVALID_SESSION')
   if (!Array.isArray(session.sources)) throw new Error('ERR_SOURCES_NOT_ARRAY')
@@ -15,25 +36,9 @@ function _validateSession(session) {
     if (typeof src !== 'string' || src.length > 4096) throw new Error('ERR_INVALID_SOURCE')
     if (!isAbsolute(src)) throw new Error('ERR_SOURCE_NOT_ABSOLUTE')
   }
-  if (session.excludes != null) {
-    if (typeof session.excludes !== 'object') throw new Error('ERR_INVALID_EXCLUDES')
-    if (session.excludes.paths != null) {
-      if (!Array.isArray(session.excludes.paths)) throw new Error('ERR_EXCLUDES_PATHS_NOT_ARRAY')
-      if (session.excludes.paths.length > 200) throw new Error('ERR_TOO_MANY_EXCLUDE_PATHS')
-    }
-    if (session.excludes.patterns != null) {
-      if (!Array.isArray(session.excludes.patterns)) throw new Error('ERR_EXCLUDES_PATTERNS_NOT_ARRAY')
-      if (session.excludes.patterns.length > 200) throw new Error('ERR_TOO_MANY_EXCLUDE_PATTERNS')
-    }
-  }
-  if (session.compressionType != null) {
-    if (session.compressionType !== 'gzip')
-      throw new Error('ERR_INVALID_COMPRESSION_TYPE')
-  }
-  if (session.strategy != null) {
-    if (session.strategy !== 'chunks' && session.strategy !== 'bytes')
-      throw new Error('ERR_INVALID_STRATEGY')
-  }
+  if (session.excludes != null) _validateExcludes(session.excludes)
+  _validateCompression(session.compressionType)
+  _validateStrategy(session.strategy)
 }
 
 // Cache in-memory dell'ultima run letta — evita di rileggere il JSON per ogni chunk di file
@@ -46,6 +51,16 @@ function _getCachedRun(storeDir, sessionName, runTs) {
   const data = loadRun(storeDir, sessionName, runTs)
   if (data.status !== 'running') _runCache = { storeDir, sessionName, runTs, data }
   return data
+}
+
+// Invalidazione mirata: chiamata dal taskHandler quando un backup termina, dal
+// delete-run, dalla chiusura dello store. Senza argomenti pulisce tutto.
+export function invalidateRunCache(sessionName, runTs) {
+  if (!_runCache) return
+  if (sessionName === undefined) { _runCache = null; return }
+  if (_runCache.sessionName !== sessionName) return
+  if (runTs !== undefined && _runCache.runTs !== runTs) return
+  _runCache = null
 }
 
 export function registerSessionHandlers() {
@@ -65,29 +80,18 @@ export function registerSessionHandlers() {
       allowed.sources = patch.sources
     }
     if (patch.compressionType !== undefined) {
-      if (patch.compressionType != null && patch.compressionType !== 'gzip')
-        throw new Error('ERR_INVALID_COMPRESSION_TYPE')
+      _validateCompression(patch.compressionType)
       allowed.compressionType = patch.compressionType
     }
     if (patch.strategy !== undefined) {
-      if (patch.strategy != null && patch.strategy !== 'chunks' && patch.strategy !== 'bytes')
-        throw new Error('ERR_INVALID_STRATEGY')
+      _validateStrategy(patch.strategy)
       allowed.strategy = patch.strategy
     }
     if (patch.excludes !== undefined) {
-      if (typeof patch.excludes !== 'object' || patch.excludes === null)
-        throw new Error('ERR_INVALID_EXCLUDES')
+      _validateExcludes(patch.excludes)
       const ex = {}
-      if (patch.excludes.paths !== undefined) {
-        if (!Array.isArray(patch.excludes.paths)) throw new Error('ERR_EXCLUDES_PATHS_NOT_ARRAY')
-        if (patch.excludes.paths.length > 200) throw new Error('ERR_TOO_MANY_EXCLUDE_PATHS')
-        ex.paths = patch.excludes.paths
-      }
-      if (patch.excludes.patterns !== undefined) {
-        if (!Array.isArray(patch.excludes.patterns)) throw new Error('ERR_EXCLUDES_PATTERNS_NOT_ARRAY')
-        if (patch.excludes.patterns.length > 200) throw new Error('ERR_TOO_MANY_EXCLUDE_PATTERNS')
-        ex.patterns = patch.excludes.patterns
-      }
+      if (patch.excludes.paths !== undefined)    ex.paths    = patch.excludes.paths
+      if (patch.excludes.patterns !== undefined) ex.patterns = patch.excludes.patterns
       allowed.excludes = ex
     }
     updateSession(ctx.activeStore, name, allowed)
@@ -125,5 +129,9 @@ export function registerSessionHandlers() {
     return { files: Object.fromEntries(slice), total }
   })
 
-  ipcMain.handle('vorn:delete-run', (_, { sessionName, runTs }) => { _validateName(sessionName); validateRunTs(runTs); return deleteRun(ctx.activeStore, sessionName, runTs) })
+  ipcMain.handle('vorn:delete-run', (_, { sessionName, runTs }) => {
+    _validateName(sessionName); validateRunTs(runTs)
+    invalidateRunCache(sessionName, runTs)
+    return deleteRun(ctx.activeStore, sessionName, runTs)
+  })
 }

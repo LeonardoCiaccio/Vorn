@@ -67,8 +67,9 @@ async function run() {
       } catch { /* non-manifest o corrotto, ignorato */ }
     }
 
-    const allStoreFiles  = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
-    const allChunkFiles  = readdirSync(storeDir).filter(f => f.endsWith('.vornc'))
+    const allFiles       = readdirSync(storeDir)
+    const allStoreFiles  = allFiles.filter(f => f.endsWith('.vorn'))
+    const allChunkFiles  = allFiles.filter(f => f.endsWith('.vornc'))
     const orphanVorn     = allStoreFiles.map(f => f.slice(0, -5)).filter(h => !referenced.has(h))
     const orphanChunks   = allChunkFiles.map(f => f.slice(0, -6)).filter(h => !referencedChunks.has(h))
     orphans = [
