@@ -89,6 +89,15 @@ function _onDone(task, mainWindow) {
   }
 }
 
+// Task che mutano lo store: solo uno alla volta (e nessuno altro che muti contemporaneamente).
+// Senza questo gate, un backup partito durante un prune può vedersi cancellati i suoi nuovi
+// .vorn dal prune che ha già fatto lo scan delle reference → data loss reale.
+const _MUTATING_TASK_TYPES = new Set(['backup', 'prune', 'clear', 'extract-store', 'restore'])
+function _assertNoMutatingTask() {
+  if (listTasks().some(t => t.status === 'running' && _MUTATING_TASK_TYPES.has(t.type)))
+    throw new Error('ERR_OPERATION_IN_PROGRESS')
+}
+
 export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:task-cancel', (_, taskId) => cancelTask(taskId))
   ipcMain.handle('vorn:task-list',   ()           => listTasks())
@@ -96,8 +105,7 @@ export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:start-backup', (_, { sessionName, resumeTs = null }) => {
     if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     validateSessionName(sessionName)
-    if (listTasks().some(t => t.type === 'backup' && t.status === 'running'))
-      throw new Error('ERR_BACKUP_IN_PROGRESS')
+    _assertNoMutatingTask()
     // Scrivi il run su disco prima di avviare il worker — il watcher potrebbe
     // fare refreshSession prima che il worker abbia avuto tempo di crearlo.
     let runTs
@@ -143,8 +151,7 @@ export function registerTaskHandlers(mainWindow) {
       for (const f of selectedFiles)
         if (typeof f !== 'string' || f.length === 0 || f.length > 4096 || f.includes('\x00')) throw new Error('ERR_INVALID_SELECTED_FILES')
     }
-    if (listTasks().some(t => t.sessionName === sessionName && t.status === 'running'))
-      throw new Error('ERR_OPERATION_IN_PROGRESS')
+    _assertNoMutatingTask()
     const task = createTask('restore', sessionName)
     logger.info(`Task restore started [${task.id}] session="${sessionName}" runTs=${runTs} dest="${resolvedDest ?? 'original'}"`)
     spawnWorker('restoreWorker.js', { storeDir: ctx.activeStore, sessionName, runTs, destDir: resolvedDest, selectedFiles }, task.id, mainWindow,
@@ -168,8 +175,7 @@ export function registerTaskHandlers(mainWindow) {
 
   ipcMain.handle('vorn:start-clear-store', () => {
     if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
-    if (listTasks().some(t => t.status === 'running'))
-      throw new Error('ERR_CANNOT_CLEAR')
+    _assertNoMutatingTask()
     const task = createTask('clear', null)
     logger.info(`Task clear-store started [${task.id}]`)
     spawnWorker('clearWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, (result, error) => {
@@ -192,8 +198,7 @@ export function registerTaskHandlers(mainWindow) {
     try { accessSync(resolvedDest, constants.W_OK) }
     catch { throw new Error('ERR_DEST_NOT_WRITABLE') }
     if (sessionFilter !== null && typeof sessionFilter !== 'string') throw new Error('ERR_INVALID_SESSION_FILTER')
-    if (listTasks().some(t => t.type === 'extract-store' && t.status === 'running'))
-      throw new Error('ERR_EXTRACTION_RUNNING')
+    _assertNoMutatingTask()
     const task = createTask('extract-store', null)
     logger.info(`Task extract-store started [${task.id}] dest="${resolvedDest}"`)
     spawnWorker('extractStoreWorker.js', { storeDir: ctx.activeStore, destDir: resolvedDest, sessionFilter }, task.id, mainWindow, _onDone(task, mainWindow))
@@ -202,8 +207,7 @@ export function registerTaskHandlers(mainWindow) {
 
   ipcMain.handle('vorn:start-prune', () => {
     if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
-    if (listTasks().some(t => t.status === 'running'))
-      throw new Error('ERR_CANNOT_PRUNE')
+    _assertNoMutatingTask()
     const task = createTask('prune', null)
     logger.info(`Task prune started [${task.id}]`)
     spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, _onDone(task, mainWindow))

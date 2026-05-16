@@ -49,7 +49,11 @@ export function readVornMeta(filePath) {
     const metaOffset = BigInt(HEADER_SIZE) + contentLen
 
     const sepBuf = Buffer.alloc(SEPARATOR.length)
-    readSync(fd, sepBuf, 0, SEPARATOR.length, metaOffset)
+    const sepN   = readSync(fd, sepBuf, 0, SEPARATOR.length, metaOffset)
+    // Distinguere "file troncato prima dei 4 byte del separatore" da "i 4 byte
+    // ci sono ma sono diversi": entrambi indicano corruzione ma con cause diverse,
+    // e l'errore generico ERR_SEPARATOR_NOT_FOUND maschera l'EOF prematuro.
+    if (sepN < SEPARATOR.length) throw new Error('ERR_FILE_TRUNCATED')
     if (!sepBuf.equals(SEPARATOR)) throw new Error('ERR_SEPARATOR_NOT_FOUND')
 
     const fileSize = statSync(filePath).size

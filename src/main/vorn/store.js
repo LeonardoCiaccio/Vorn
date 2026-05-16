@@ -296,6 +296,13 @@ async function storeChunked(opts) {
 //   1) hash.vorn                          — manifest chunked o blob plain
 //   2) hash_<compressionType-sessione>    — match esatto sul tipo richiesto
 //   3) hash_<altri tipi noti>             — fallback nell'ordine di KNOWN_COMPRESSION_TYPES
+//
+// Esportata anche per backup.js: serve a saltare la pre-compressione costosa
+// se un .vorn equivalente esiste già sotto un altro compressionType (es.
+// sessione zstd ma store già contiene `hash_gzip.vorn` → dedup, no recompress).
+export function findExistingVornKey(storeDir, hashVorn, compressionType) {
+  return _findExistingVornKey(storeDir, hashVorn, compressionType)
+}
 function _findExistingVornKey(storeDir, hashVorn, compressionType) {
   if (existsSync(vornPath(storeDir, hashVorn))) return hashVorn
   if (compressionType) {
@@ -380,6 +387,10 @@ export async function storeBlob(opts) {
       }
 
       await _upsertRecord(p, contentLen, meta, sessionId, sessionName, relPath)
+      // _upsertRecord chiama _updateMeta che riscrive il .vorn → records cambiati.
+      // Senza questa invalidazione lo StoreView mostrerebbe la lista records vecchia
+      // finché la cache non viene azzerata (stessa classe del bug `_metaCache` storico).
+      _metaCache?.entries.delete(existingKey + '.vorn')
       return { outcome: 'dedup', storeKey: existingKey }
     })
   }

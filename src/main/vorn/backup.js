@@ -1,7 +1,7 @@
 import { join, basename } from 'path'
 import { tmpdir } from 'os'
 import { vornHash } from './hash.js'
-import { storeBlob, toStoreKey } from './store.js'
+import { storeBlob, toStoreKey, findExistingVornKey } from './store.js'
 import { getSession, saveRun, loadRun } from './sessions.js'
 import { walk, matchPattern } from './scanner.js'
 import { dbGetFile, dbUpsertFileMany, dbPruneOrphans } from './db.js'
@@ -131,10 +131,12 @@ export async function backup(storeDir, sessionName, opts = {}) {
     const willBeChunked = strategy === 'chunks' && bytes >= CHUNK_THRESHOLD_BYTES
     if (compressionType && !willBeChunked) {
       const storeKey   = toStoreKey(hashVorn, compressionType)
-      // Salta la compressione se esiste già qualsiasi .vorn per questo hash
-      // (sia hash_gzip.vorn che hash.vorn — manifest chunked o plain)
-      const vornExists = safeExistsSync(join(storeDir, storeKey + '.vorn'))
-                      || safeExistsSync(join(storeDir, hashVorn + '.vorn'))
+      // Salta la pre-compressione se esiste GIÀ un .vorn equivalente per questo
+      // hashVorn sotto QUALSIASI compressionType conosciuto: storeBlob fa dedup
+      // cross-strategy e riuserebbe il file esistente comunque. Senza questo
+      // check, una sessione zstd su uno store già contenente hash_gzip.vorn
+      // sprecherebbe CPU comprimendo per niente, solo per poi scartare il .ctmp.
+      const vornExists = findExistingVornKey(storeDir, hashVorn, compressionType) !== null
       if (!vornExists) {
         compTmpPath = join(tmpdir(), 'vorn_' + storeKey + '.ctmp')
         try {

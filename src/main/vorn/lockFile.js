@@ -9,6 +9,11 @@ export function checkLock(storeDir) {
   if (!existsSync(lp)) return null
   try {
     const lock = JSON.parse(readFileSync(lp, 'utf8'))
+    // Su NAS/SMB lo store può essere bloccato da un'ALTRA macchina. process.kill
+    // verifica solo processi locali: senza il check di hostname, un Vorn locale
+    // ruberebbe il lock perché `process.kill(pidRemoto, 0)` falla con ESRCH.
+    // Esito: due writer concorrenti su file diverse → store corrotto.
+    if (lock.machine && lock.machine !== hostname()) return 'ERR_STORE_IN_USE'
     try   { process.kill(lock.pid, 0); return 'ERR_STORE_IN_USE' }
     catch (e) {
       if (e.code !== 'ESRCH') return 'ERR_STORE_IN_USE'

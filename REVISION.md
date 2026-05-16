@@ -186,79 +186,14 @@ End with a **general assessment** paragraph (3–5 lines) covering:
 
 ---
 
-## Action Plan — Fix Checklist
+## Round 2 — Follow-up findings (post-fixes)
 
-Fix raggruppati in fasi ordinate per **complessità crescente** e **affinità di file/area**, così tocchiamo ogni file una volta sola dove possibile. Ogni fase è un commit unico (o pochi commit logici). Depennare man mano.
+Issue emerse dopo la prima tornata di fix (commits `f657793`, `7c0b27a`). Tutte reali e citano codice esistente. Chiuse.
 
-### Fase 1 — Micro-fix banali (1 riga, no logica) · _stima: 15 min_
-File toccati: `format.js`, `taskHandlers.js`, `pruneWorker.js`, `storeHandlers.js`, `db.js`
-- [x] **#13** — `format.js:79`: ternario morto in WAL recovery → `throw new Error('ERR_WAL_INVALID', { cause: e })`
-- [x] **#18** — `taskHandlers.js:42`: `e.issues.map(i => i.code).join(' | ')` invece di `[object Object]`
-- [x] **#19** — `pruneWorker.js:70-71`: estrarre `const all = readdirSync(storeDir)` una volta sola
-- [x] **#22** — `storeHandlers.js:40-53`: `await new Promise(r => setImmediate(r))` anche tra runs
-- [x] **#23** — `db.js:67-72`: riposizionare `closeDb` fuori dal blocco di `dbPruneOrphans`
+- [x] **R2-1** [HIGH] — Race prune↔backup: `_assertNoMutatingTask()` centralizzato in `taskHandlers.js`, applicato a backup / restore / clear / extract-store / prune
+- [x] **R2-2** [HIGH] — `_metaCache` stale dopo `_upsertRecord` nel dedup path di `storeBlob`: invalidazione esplicita aggiunta (stessa classe del bug `_metaCache` storico)
+- [x] **R2-3** [MED] — Pre-compressione ridondante in `backup.js`: esportata `findExistingVornKey` da `store.js`, usata per dedup-check cross-strategy PRIMA di comprimere
+- [x] **R2-4** [MED] — Cleanup orfani `vorn_c_*.tmp` (chunk temps in `%TEMP%`): estesa la regex in `_cleanupVornTemps` (`ipc.js`)
+- [x] **R2-5** [MED] — `readSync` parziale nel check separatore: aggiunto `if (sepN < SEPARATOR.length) throw ERR_FILE_TRUNCATED` (distinto da `ERR_SEPARATOR_NOT_FOUND`)
+- [x] **R2-6** [LOW] — Lock detection su NAS/SMB: `checkLock` rifiuta se `lock.machine !== hostname()`, previene il furto di lock cross-machine → store corruption
 
-### Fase 2 — Defence-in-depth security (banali) · _stima: 15 min_
-File toccati: `systemHandlers.js`, `store.js`
-- [x] **#16** — `systemHandlers.js:151`: `open-external` con URL parsing (`pathname.startsWith('/LeonardoCiaccio/Vorn/')`)
-- [x] **#24** — `store.js:366-381`: `assertHash` interno in `getEntry`/`extractContent`/`readEntry`
-
-### Fase 3 — Estensibilità compression types · _stima: 20 min_
-File toccati: `_validation.js`, `store.js`, `constants.js`
-- [x] **#8** — `_validation.js:1`: `HASH_RE` derivata da `KNOWN_COMPRESSION_TYPES` (spostata in `constants.js` come `STORE_KEY_RE`)
-- [x] **#15** — `store.js:229-244`: documentare ordine fallback come API stabile (commento)
-
-### Fase 4 — Cache invalidation (stessa classe del bug `_metaCache` storico) · _stima: 20 min_
-File toccati: `sessionHandlers.js`, `taskHandlers.js`
-- [x] **#3** [HIGH] — Invalidare `_runCache` in `_backupOnDone`, `delete-run`, `close-store`
-
-### Fase 5 — Concorrenza su lock · _stima: 30 min_
-File toccati: `store.js`, `fileLock.js`
-- [x] **#5** [HIGH] — `_storeVornc`: avvolgere read/append/`_updateMeta` in `withFileLock`
-- [x] **#14** — `fileLock.js:1-20`: normalizzare key con `resolve()` + `toLowerCase()` su Win
-
-### Fase 6 — Chunk integrity & dedup · _stima: 40 min_
-File toccati: solo `store.js` (entrambi su `_storeVornc` e `storeChunked`)
-- [x] **#10** — Verifica `vornHash(chunkTmp) === chunkKey.split('_')[0]` dopo repair (helper `_repairMissingChunk`)
-- [x] **#9** — Cross-strategy dedup per chunk: helper `_findExistingVorncKey` + scelta `_storeVornc` vs `_writeNewVornc`
-
-### Fase 7 — Robustezza path Windows / UNC / junction · _stima: 45 min_
-File toccati: `safeFs.js`, `scanner.js`, `restore.js`
-- [x] **#12** — `safeFs.js:14-19`: normalizzare a backslash + gestire UNC
-- [x] **#20** — `scanner.js:15-22`: symlink-check prima di isDirectory per catturare junction Win
-- [x] **#17** — `restore.js`: rifiutato UNC nel restore originale (incorporato in #1)
-
-### Fase 8 — Sicurezza HIGH (richiede UX) · _stima: 60 min_
-File toccati: `restore.js`, `systemHandlers.js`, renderer (modal conferma)
-- [x] **#1** [HIGH] — Validazione path restore "originale": blocklist dir di sistema + UNC (worker-side hard block; conferma UI separata)
-- [x] **#2** [HIGH] — `vorn:list-dir`: null-byte guard input (whitelist root completa rimandata, vettore principale chiuso)
-
-### Fase 9 — Data loss strutturale (refactor `format.js`) · _stima: 90 min_
-File toccati: `format.js`, eventualmente `store.js`
-- [x] **#4** [HIGH] — TOCTOU blob plain: read-stream limitato a `contentLen` + verifica bytesRead == contentLen
-- [x] **#6** [HIGH] — WAL `contentLen` fingerprint nel `.mtmp` + cleanup orfani su read OK
-
-### Fase 10 — Architettura DB (grosso refactor) · _stima: 3-4 ore_
-File toccati: `db.js`, `backup.js`, `ipc.js`, nuovo handler IPC
-- [x] **#7** [HIGH] — Tutte le ops DB nel main via IPC `db-request` (worker invia messaggio, main risponde con `db-result`)
-- [x] **#11** — `dbPruneOrphans`: cursor sliding `_pruneCursor` invece di random sampling
-
-### Fase 11 — Perf (nice-to-have) · _stima: 30 min_
-File toccati: `compress.js`
-- [x] **#21** — `cancelPoll`: rimosso `setInterval`, check inline su ogni chunk con `ac.abort()`
-
-### Fase 12 — Code quality (parallelo, da fare quando si tocca il file) · _stima: variabile_
-- [x] **CQ1** — `storeBlob`, `_createNew`, `storeChunked`: object args; aggiornati caller in `workerManager.js`, `backupWorker.js`, `backup.js`
-- [ ] **CQ2** — `backup.js:108-148`: precompression duplica `writeVornFromSource` — **WONTFIX** _(split intenzionale: il worker pre-comprime per calcolare l'hash compresso PRIMA di interrogare la dedup; centralizzare significherebbe spostare la dedup-check dentro `writeVornFromSource`, peggior architettura)_
-- [x] **CQ3** — `sessionHandlers.js`: estratti `_validateCompression`/`_validateStrategy`/`_validateExcludes` riusati da create + update
-- [x] **CQ4** — `format.js:69-89`: marcare WAL legacy come deprecated (commento DEPRECATED nel ramo `else`)
-- [ ] **CQ5** — Silent catch ricorrenti: passare a `logger.debug` — **DEFERRED** _(richiede import di `logger` in 6+ moduli, valore marginale rispetto al rumore; affrontare in PR dedicata)_
-- [ ] **CQ6** — `workerManager.js:69-73`: tipizzare/normalizzare shape progress — **DEFERRED** _(progress shape è eterogenea per design tra backup/integrity/prune; normalizzare richiede rebuild dei worker, basso valore)_
-
----
-
-**Strategia anti-duplicazione**:
-1. Fasi 5+6 toccano entrambe `store.js` → fare in sequenza, commit unico se piccoli
-2. Fase 7 + Fase 8 entrambe toccano `restore.js` → #17 va incorporato in #1 se possibile
-3. Fasi 9 + CQ2 + CQ4 → tutto su `format.js`, refactor unico
-4. Fase 4 + Fase 3 → entrambe leggere, ottimo primo blocco "in voga" dopo Fase 1-2
