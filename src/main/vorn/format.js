@@ -1,4 +1,3 @@
-import { openSync, readSync, writeSync, fsyncSync, closeSync, createReadStream, createWriteStream, statSync, existsSync, readFileSync, unlinkSync, renameSync } from 'fs'
 import { Readable } from 'stream'
 import { pipeline } from 'stream/promises'
 import { createHash } from 'crypto'
@@ -6,7 +5,16 @@ import { tmpdir } from 'os'
 import { basename, join } from 'path'
 import { compressToTemp, decompressStream, cleanupTemp } from './compress.js'
 import { vornHash } from './hash.js'
-import { safeCreateReadStream } from './safeFs.js'
+// R7-3: Tutti gli accessi fs nello store passano per safeFs → applica il prefix
+// \\?\ su Win quando il path supera ~260 char. Senza questa coerenza la lettura
+// del sorgente funzionava ma la scrittura nello store (`safeCreateWriteStream(tmpPath)`)
+// falliva con ENOENT su store profondi (es. OneDrive aziendale + storeKey 75 char).
+import {
+  safeCreateReadStream, safeCreateWriteStream,
+  safeOpenSync, safeReadSync, safeWriteSync, safeFsyncSync, safeCloseSync,
+  safeStatSync, safeExistsSync, safeReadFileSync,
+  safeUnlinkSync, safeRenameSync,
+} from './safeFs.js'
 
 function _walChecksum(metaJson) {
   return createHash('sha256').update(metaJson).digest('hex').slice(0, 16)
@@ -28,16 +36,16 @@ export const VORN_HEADER_SIZE   = HEADER_SIZE
 export const VORN_SEPARATOR_LEN = SEPARATOR.length
 
 export function readVornContentLen(filePath) {
-  const fd = openSync(filePath, 'r')
+  const fd = safeOpenSync(filePath, 'r')
   try { return _getContentInfo(fd) }
-  finally { closeSync(fd) }
+  finally { safeCloseSync(fd) }
 }
 
 // ── Interno: legge le informazioni di contenuto dall'header a 12 byte ─────────
 
 function _getContentInfo(fd) {
   const headerBuf = Buffer.alloc(HEADER_SIZE)
-  const n = readSync(fd, headerBuf, 0, HEADER_SIZE, 0)
+  const n = safeReadSync(fd, headerBuf, 0, HEADER_SIZE, 0)
   if (n < HEADER_SIZE) throw new Error('ERR_FILE_TOO_SMALL')
 
   const magic = headerBuf.subarray(0, 4)
@@ -51,20 +59,20 @@ function _getContentInfo(fd) {
 // ── Lettura metadati (in coda al file) ────────────────────────────────────────
 
 export function readVornMeta(filePath) {
-  let fd = openSync(filePath, 'r')
+  let fd = safeOpenSync(filePath, 'r')
   try {
     const contentLen = _getContentInfo(fd)
     const metaOffset = BigInt(HEADER_SIZE) + contentLen
 
     const sepBuf = Buffer.alloc(SEPARATOR.length)
-    const sepN   = readSync(fd, sepBuf, 0, SEPARATOR.length, metaOffset)
+    const sepN   = safeReadSync(fd, sepBuf, 0, SEPARATOR.length, metaOffset)
     // Distinguere "file troncato prima dei 4 byte del separatore" da "i 4 byte
     // ci sono ma sono diversi": entrambi indicano corruzione ma con cause diverse,
     // e l'errore generico ERR_SEPARATOR_NOT_FOUND maschera l'EOF prematuro.
     if (sepN < SEPARATOR.length) throw new Error('ERR_FILE_TRUNCATED')
     if (!sepBuf.equals(SEPARATOR)) throw new Error('ERR_SEPARATOR_NOT_FOUND')
 
-    const fileSize = statSync(filePath).size
+    const fileSize = safeStatSync(filePath).size
     const metaSize = fileSize - Number(metaOffset) - SEPARATOR.length
 
     // Vedi MAX_META_SIZE in cima al file: rifiuta header malformato/ostile prima
@@ -74,16 +82,16 @@ export function readVornMeta(filePath) {
     let meta = null
     if (metaSize > 0) {
       const metaBuf = Buffer.alloc(metaSize)
-      readSync(fd, metaBuf, 0, metaSize, metaOffset + BigInt(SEPARATOR.length))
+      safeReadSync(fd, metaBuf, 0, metaSize, metaOffset + BigInt(SEPARATOR.length))
       try { meta = JSON.parse(metaBuf.toString('utf8')) } catch { /* WAL recovery below */ }
     }
 
     if (!meta) {
       const tmpPath = filePath + '.mtmp'
-      if (!existsSync(tmpPath)) throw new Error('ERR_METADATA_CORRUPT')
+      if (!safeExistsSync(tmpPath)) throw new Error('ERR_METADATA_CORRUPT')
       let recovered
       try {
-        const walData = JSON.parse(readFileSync(tmpPath, 'utf8'))
+        const walData = JSON.parse(safeReadFileSync(tmpPath, 'utf8'))
         if (walData.checksum !== undefined) {
           const expected = createHash('sha256').update(JSON.stringify(walData.meta)).digest('hex').slice(0, 16)
           if (walData.checksum !== expected) throw new Error('ERR_WAL_INVALID')
@@ -107,7 +115,7 @@ export function readVornMeta(filePath) {
       } catch (e) {
         throw new Error('ERR_WAL_INVALID', { cause: e })
       }
-      closeSync(fd); fd = null
+      safeCloseSync(fd); fd = null
 
       // Recovery ATOMICA via tmp+rename. La versione precedente faceva truncate
       // + append in-place: due thread/process concorrenti che leggevano lo stesso
@@ -121,30 +129,30 @@ export function readVornMeta(filePath) {
       const recBuf     = Buffer.from(JSON.stringify(recovered), 'utf8')
       let srcFd = null, dstFd = null
       try {
-        srcFd = openSync(filePath, 'r')
-        dstFd = openSync(repairTmp, 'w')
+        srcFd = safeOpenSync(filePath, 'r')
+        dstFd = safeOpenSync(repairTmp, 'w')
         const buf = Buffer.alloc(64 * 1024)
         let copied = 0
         while (copied < keepBytes) {
-          const n = readSync(srcFd, buf, 0, Math.min(buf.length, keepBytes - copied), copied)
+          const n = safeReadSync(srcFd, buf, 0, Math.min(buf.length, keepBytes - copied), copied)
           if (n === 0) break
-          writeSync(dstFd, buf, 0, n)
+          safeWriteSync(dstFd, buf, 0, n)
           copied += n
         }
         if (copied !== keepBytes) throw new Error('ERR_FILE_TRUNCATED')
-        writeSync(dstFd, recBuf)
-        fsyncSync(dstFd)
-        closeSync(dstFd); dstFd = null
-        closeSync(srcFd); srcFd = null
-        renameSync(repairTmp, filePath)
+        safeWriteSync(dstFd, recBuf)
+        safeFsyncSync(dstFd)
+        safeCloseSync(dstFd); dstFd = null
+        safeCloseSync(srcFd); srcFd = null
+        safeRenameSync(repairTmp, filePath)
       } catch (e) {
-        try { unlinkSync(repairTmp) } catch { /* non-critico */ }
+        try { safeUnlinkSync(repairTmp) } catch { /* non-critico */ }
         throw e
       } finally {
-        if (dstFd !== null) try { closeSync(dstFd) } catch { /* ignore */ }
-        if (srcFd !== null) try { closeSync(srcFd) } catch { /* ignore */ }
+        if (dstFd !== null) try { safeCloseSync(dstFd) } catch { /* ignore */ }
+        if (srcFd !== null) try { safeCloseSync(srcFd) } catch { /* ignore */ }
       }
-      try { unlinkSync(tmpPath) } catch { /* non-critico */ }
+      try { safeUnlinkSync(tmpPath) } catch { /* non-critico */ }
       return readVornMeta(filePath)
     }
 
@@ -154,13 +162,13 @@ export function readVornMeta(filePath) {
     // al momento sbagliato) potrebbe "resuscitare" records mai committati.
     // L'eliminazione è sicura: il dato originale (`meta`) è intatto.
     const orphanWal = filePath + '.mtmp'
-    if (existsSync(orphanWal)) {
-      try { unlinkSync(orphanWal) } catch { /* non-critico */ }
+    if (safeExistsSync(orphanWal)) {
+      try { safeUnlinkSync(orphanWal) } catch { /* non-critico */ }
     }
 
     return { meta, contentOffset: HEADER_SIZE, contentLen }
   } finally {
-    if (fd !== null) try { closeSync(fd) } catch { /* già chiuso nel recovery */ }
+    if (fd !== null) try { safeCloseSync(fd) } catch { /* già chiuso nel recovery */ }
   }
 }
 
@@ -193,7 +201,7 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
 
   if (compressionType) {
     if (precompressedPath) {
-      contentLen            = BigInt(statSync(precompressedPath).size)
+      contentLen            = BigInt(safeStatSync(precompressedPath).size)
       contentSource         = precompressedPath
       meta.compressed_hash  = precompressedHash
       meta.bytes_compressed = Number(contentLen)
@@ -211,7 +219,7 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
       }
     }
   } else {
-    contentLen    = BigInt(statSync(sourcePath).size)
+    contentLen    = BigInt(safeStatSync(sourcePath).size)
     contentSource = sourcePath
   }
 
@@ -244,7 +252,7 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
         yield SEPARATOR
         yield metaBuf
       },
-      createWriteStream(tmpPath),
+      safeCreateWriteStream(tmpPath),
       ...(signal ? [{ signal }] : [])
     )
     // Verifica complementare: se il file è stato TRONCATO durante la lettura
@@ -259,11 +267,11 @@ export async function writeVornFromSource(destPath, meta, sourcePath, compressio
     // subito dopo il rename "riuscito" può lasciare il file zero-byte o
     // troncato su disco — backup "completato" che alla riapertura non si legge.
     // Allineato al pattern già usato da writeVornManifest.
-    const fdFsync = openSync(tmpPath, 'r+')
-    try { fsyncSync(fdFsync) } finally { closeSync(fdFsync) }
-    renameSync(tmpPath, destPath)
+    const fdFsync = safeOpenSync(tmpPath, 'r+')
+    try { safeFsyncSync(fdFsync) } finally { safeCloseSync(fdFsync) }
+    safeRenameSync(tmpPath, destPath)
   } catch (e) {
-    if (existsSync(tmpPath)) unlinkSync(tmpPath)
+    if (safeExistsSync(tmpPath)) safeUnlinkSync(tmpPath)
     throw e
   } finally {
     if (ownedCtmp) cleanupTemp(ownedCtmp)
@@ -280,18 +288,18 @@ export function writeVornManifest(destPath, meta) {
   header.writeBigUInt64BE(0n, 4)
   const metaBuf = Buffer.from(JSON.stringify(meta), 'utf8')
   try {
-    const fd = openSync(tmpPath, 'w')
+    const fd = safeOpenSync(tmpPath, 'w')
     try {
-      writeSync(fd, header)
-      writeSync(fd, SEPARATOR)
-      writeSync(fd, metaBuf)
-      fsyncSync(fd)
+      safeWriteSync(fd, header)
+      safeWriteSync(fd, SEPARATOR)
+      safeWriteSync(fd, metaBuf)
+      safeFsyncSync(fd)
     } finally {
-      closeSync(fd)
+      safeCloseSync(fd)
     }
-    renameSync(tmpPath, destPath)
+    safeRenameSync(tmpPath, destPath)
   } catch (e) {
-    try { unlinkSync(tmpPath) } catch { /* non-critico */ }
+    try { safeUnlinkSync(tmpPath) } catch { /* non-critico */ }
     throw e
   }
 }
@@ -301,7 +309,7 @@ export function writeVornManifest(destPath, meta) {
 export function contentStream(filePath) {
   const { meta, contentLen } = readVornMeta(filePath)
   if (contentLen === 0n) return Readable.from([])
-  const raw = createReadStream(filePath, {
+  const raw = safeCreateReadStream(filePath, {
     start: HEADER_SIZE,
     end: HEADER_SIZE + Number(contentLen) - 1
   })

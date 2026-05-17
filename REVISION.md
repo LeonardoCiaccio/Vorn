@@ -256,6 +256,9 @@ Do not propose any of the following patterns as "bugs" — they are the current 
 - **Surgical notification sanitize** (R4-6): `_sanitizeForNotification` in `taskHandlers.js` strips control chars + `<>&` only at the notification layer. `validateSessionName` stays as-is for backward compatibility with existing sessions. Do NOT re-propose "Pango markup injection".
 - **`_runCache` invalidated on backup-done / delete-run / close-store** (R2-2): do NOT re-propose "stale run data".
 - **Error dedup on resume** (R3-3): `path|error|phase` key prevents unbounded accumulation. Do NOT re-propose "errors[] grows on every resume".
+- **`_cleanupResidualTemps` strict pattern** (R7-1): matches ONLY `<storeKey>.vorn.tmp`, `<storeKey>.vornc.tmp`, and `<vornFile>.repair.<pid>.<ts>`. Generic `*.tmp` matching is forbidden (user-owned files in shared folders). `.mtmp` is still preserved (see WAL rule R4-1). Do NOT re-propose "open-store deletes user temp files" or "open-store should cleanup .ctmp" (`.ctmp` is in `os.tmpdir()`, never in storeDir).
+- **Integrity ↔ delete tasks mutex** (R7-2): `integrity` is exclusive with `prune` and `clear` (both delete `.vorn`/`.vornc`). Coexists with backup/restore/extract (no deletion). Without this gate, integrity reports false `ENOENT`/`ERR_CHUNK_ORPHAN` on files legitimately deleted by prune. Do NOT re-propose "integrity false positives during cleanup".
+- **safeFs everywhere in store I/O paths** (R7-3): `format.js` and `store.js` use `safeFs` for ALL file ops (sync + promise). `safeFs.js` exposes the full surface: `safeOpenSync`, `safeReadSync`, `safeWriteSync`, `safeFsyncSync`, `safeCloseSync`, `safeStatSync`, `safeReaddirSync`, `safeExistsSync`, `safeUnlinkSync`, `safeRenameSync`, `safeReadFileSync`, `safeMkdirSync`, `safeTruncateSync`, plus promise versions `safeAccess`, `safeWriteFile`, `safeTruncate`, `safeOpen`, `safeUnlink`. Do NOT re-propose "raw fs in long-path-sensitive code paths" without first checking that the file isn't `format.js`/`store.js` (which are migrated). `pruneWorker.js` and `integrityWorker.js` may still have raw `openSync`/`readdirSync` — those are fertile-area work for future rounds.
 
 ## Deliberately skipped — do not re-flag
 
@@ -272,6 +275,7 @@ The following items are **explicit decisions not to fix**. Re-proposing them as 
 - **R5-1 propagation in `_writeChunkTemp` / `extractByHash`**: pipeline AbortSignal NOT propagated in `store.js _writeChunkTemp` (4 MB chunks, negligible cancel-lag) nor in `extractByHash` (called from main process IPC, not from a worker, no isCancelled available). Do NOT re-propose as a coverage gap.
 - **R5-5 — `safeFs.toLongPath` on relative paths**: **WONTFIX**. `resolve()` on a relative path changes semantics (CWD-dependent). Callers always pass absolute paths (validated upstream by `_validateSession`, `assertHash`, etc.). Do NOT re-propose without a concrete caller passing relative paths.
 - **R5-6 — Atomics consistency**: **NOT-A-BUG**. All workers already use `Atomics.load(cancelFlag, 0)` (verified in `pruneWorker`, `integrityWorker`, `backupWorker`, `restoreWorker`). The reviewer themselves admitted "current code is mostly okay". Do NOT re-propose without a specific point with non-atomic access.
+- **R7-4 — `deleteStoreEntry` inline mini-prune for chunked manifests**: **WONTFIX**. User-initiated destructive action + prune already recovers orphan chunks. The reviewer's own proposed fix admits it cannot rewrite `references` of chunks still alive (would require async). Coherent with the design: any `deleteStoreEntry` may break historical run restores; chunked is not special.
 - **R5-2 race between `_assertNoMutatingTask` and `createTask`**: **NOT-A-RACE**. JS main-process is a single-threaded event-loop, the `start-backup` handler executes both sync calls in the same tick → atomic by construction. The defensive fix was applied anyway, but it is NOT closing a real race condition. Do NOT re-propose as HIGH.
 - **`_logWin executeJavaScript` with log content** (Round 4 by-design): content passed via `JSON.stringify`, DOM insertion via `.textContent`. No XSS. `</script>` sequences are harmless (executeJavaScript does not go through the HTML parser).
 - **`v-html` only on bundled `$t(...)`** (Round 4 by-design): the locale JSON files are in `src/renderer/locales/*.json`, bundled at build time, not user-controlled. No XSS.
@@ -348,11 +352,11 @@ The reviewer does not test the code (cannot). So every "Suggested fix" is a **hy
 
 ---
 
-## Areas worth investigating (Round 6+)
+## Areas worth investigating (Round 8+)
 
-The next reviewer can invest effort productively in these areas NOT yet touched (items closed in R5-1/3/4 have been removed):
+The next reviewer can invest effort productively in these areas NOT yet touched (items closed in R7 removed; `safeFs` deep dive partially covered by R7-3):
 
-1. **`safeFs.js` deep dive**: handles paths from user / store, broad attack surface. `toLongPath`, `safeReadSync`, edge cases on multiple symlinks/junctions / indirect loops.
+1. **`safeFs` propagation to workers**: R7-3 migrated `format.js` and `store.js`. `pruneWorker.js` and `integrityWorker.js` still have raw `openSync`/`readdirSync` on storeDir paths. Same long-path failure mode applies there on deep stores.
 2. **Notification icon path**: does `getAppIcon()` have a cache? Is it called on every notification?
 3. **Cancel atomicity of `storeChunked`**: cancel mid-flight → manifest not written BUT some `.vornc` files with `references` pointing to a hashVorn that doesn't exist as `.vorn`. Are they correctly collected by the prune as orphans?
 4. **Permission edge cases**: run file made read-only mid-backup → does `saveRun` throw? Is it caught? Is the run state lost?
@@ -475,9 +479,18 @@ Following R6 fixes, added a `chunking` progress state distinct from `storing`:
 - `SessionsView.vue` and `SessionDetailView.vue` render the chunking label in violet (matching the CHUNKS badge color).
 - "Slow store" detection treats `chunking` as a write phase: the slow-store warning triggers in both `storing` and `chunking`.
 
+## Round 7 — Follow-up review (post Round 6, 4 findings of which 1 declined)
+
+High-quality review: no false positives, all snippets pastable, no severity inflation (declared "no HIGH" upfront). All MED findings concrete and verified.
+
+- [x] **R7-1** [MED] `_cleanupResidualTemps` matched any `*.tmp` in storeDir → silent deletion of non-Vorn files (`~$doc.tmp`, `download.tmp` of interrupted browser downloads, etc.) when the user picks a shared folder as store. Fixed: tightened pattern to `/\.vornc?\.tmp$/` for write temps; dropped the `.ctmp` match (those live in `os.tmpdir()`, never in storeDir).
+- [x] **R7-2** [MED] `integrity` ↔ `prune`/`clear` concurrency: integrity is read-only but the task mutex did not exclude it from deletion tasks. Result: integrity emitted false `ENOENT`/`ERR_CHUNK_ORPHAN` on files prune correctly deleted, polluting the integrity report. Fixed: added `_DELETING_TASK_TYPES = {prune, clear}` + `_assertNoDeletingTask()` called from `start-integrity`, and `_assertNoIntegrityTask()` called from `start-prune`/`start-clear-store`. Backup/restore/extract still run in parallel with integrity (none of them delete `.vorn`/`.vornc`).
+- [x] **R7-3** [MED] Long-path Windows incoherence in `format.js` + `store.js`: `safeCreateReadStream` (source) was used but `createWriteStream`/`openSync`/`renameSync`/`unlinkSync` on storeDir paths were raw → writes failed with `ENOENT` on deep storeDir (OneDrive enterprise + 75-char storeKey > 260). Asymmetric bug: read OK, write KO. Fixed: extended `safeFs.js` with `safeWriteSync`/`safeFsyncSync`/`safeUnlinkSync`/`safeRenameSync`/`safeReadFileSync`/`safeMkdirSync`/`safeTruncateSync`, plus promise wrappers `safeAccess`/`safeWriteFile`/`safeTruncate`/`safeOpen`/`safeUnlink`. Mechanical migration of `format.js` (all 12 raw fs ops) and `store.js` (5 sync + 4 promise ops). `_writeChunkTemp` also migrated for long-source paths.
+- [ ] **R7-4** [LOW] `deleteStoreEntry` on chunked manifest leaves orphan chunks until prune — **WONTFIX**. User-initiated action + prune already collects them. The reviewer's own proposed fix admits it cannot rewrite `references` of chunks still alive (stays sync). Coherent with the rest of the system: any delete on a `.vorn` may break historical run restores; chunked is not a special case.
+
 ---
 
-## Operational notes for the Round 6 reviewer
+## Operational notes for the Round 7 reviewer
 
 - **Current branch**: `feature/vornc-chunking`. Master is the state before the chunking refactor.
 - **Threat model**: hostile store (someone else's USB, manipulated `.vorn`), USB removable at runtime, attacker controls file content / file names / `meta.records`. Same baseline as previous rounds.

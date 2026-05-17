@@ -1,5 +1,12 @@
-import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, createReadStream, createWriteStream } from 'fs'
-import { access, writeFile, truncate, open, unlink } from 'fs/promises'
+// R7-3: tutti gli accessi fs nello storeDir passano per safeFs → applica il prefix
+// \\?\ su Win quando il path supera ~260 char. Lo storeDir può vivere in cartelle
+// profonde (OneDrive aziendale, anidamento utente), e gli storeKey aggiungono
+// ~75 char in più — limite di 260 facilmente raggiunto.
+import {
+  safeCreateReadStream, safeCreateWriteStream,
+  safeExistsSync, safeMkdirSync, safeReaddirSync, safeStatSync, safeUnlinkSync,
+  safeAccess, safeWriteFile, safeTruncate, safeOpen, safeUnlink,
+} from './safeFs.js'
 import { join, basename } from 'path'
 import { tmpdir } from 'os'
 import { pipeline } from 'stream/promises'
@@ -27,11 +34,11 @@ async function _updateMeta(filePath, meta, contentLen) {
   // In caso di recovery futuro su un file la cui meta tail è stata corrotta da
   // un crash diverso, readVornMeta verifica che il contentLen del file corrisponda
   // a quello salvato nel WAL — altrimenti il WAL è orfano e va rifiutato.
-  await writeFile(tmpPath, JSON.stringify({ meta, contentLen: Number(contentLen), checksum: _walChecksum(metaJson) }))
+  await safeWriteFile(tmpPath, JSON.stringify({ meta, contentLen: Number(contentLen), checksum: _walChecksum(metaJson) }))
 
-  await truncate(filePath, VORN_HEADER_SIZE + Number(contentLen) + VORN_SEPARATOR_LEN)
+  await safeTruncate(filePath, VORN_HEADER_SIZE + Number(contentLen) + VORN_SEPARATOR_LEN)
 
-  const fh = await open(filePath, 'a')
+  const fh = await safeOpen(filePath, 'a')
   try {
     await fh.write(metaBuf)
     await fh.sync() // flush asincrono: cede l'event loop durante l'attesa disco
@@ -39,7 +46,7 @@ async function _updateMeta(filePath, meta, contentLen) {
     await fh.close()
   }
 
-  try { await unlink(tmpPath) } catch { /* non-critico */ }
+  try { await safeUnlink(tmpPath) } catch { /* non-critico */ }
 }
 
 export function toStoreKey(hash, compressionType) {
@@ -55,7 +62,7 @@ function vorncPath(storeDir, storeKey) {
 }
 
 export function ensureStore(storeDir) {
-  if (!existsSync(storeDir)) mkdirSync(storeDir, { recursive: true })
+  if (!safeExistsSync(storeDir)) safeMkdirSync(storeDir, { recursive: true })
 }
 
 // ── Listing con cache in-memory ──────────────────────────────────────────────
@@ -74,7 +81,7 @@ function _getCachedMeta(storeDir, filename) {
   if (_metaCache?.dir !== storeDir) _metaCache = { dir: storeDir, entries: new Map() }
   if (_metaCache.entries.has(filename)) return _metaCache.entries.get(filename)
   const p = join(storeDir, filename)
-  const st = statSync(p)
+  const st = safeStatSync(p)
   let records = [], compressedType = null, content_hash = null, strategy = null
   try {
     const meta    = readVornMeta(p).meta
@@ -96,23 +103,23 @@ function _getCachedMeta(storeDir, filename) {
 }
 
 export function countStoreFiles(storeDir) {
-  if (!existsSync(storeDir)) return 0
-  return readdirSync(storeDir).filter(f => f.endsWith('.vorn') || f.endsWith('.vornc')).length
+  if (!safeExistsSync(storeDir)) return 0
+  return safeReaddirSync(storeDir).filter(f => f.endsWith('.vorn') || f.endsWith('.vornc')).length
 }
 
 export function clearStore(storeDir) {
-  if (!existsSync(storeDir)) return 0
-  const files = readdirSync(storeDir).filter(f => f.endsWith('.vorn') || f.endsWith('.vornc'))
-  for (const f of files) unlinkSync(join(storeDir, f))
+  if (!safeExistsSync(storeDir)) return 0
+  const files = safeReaddirSync(storeDir).filter(f => f.endsWith('.vorn') || f.endsWith('.vornc'))
+  for (const f of files) safeUnlinkSync(join(storeDir, f))
   _listCache = null
   return files.length
 }
 
 export function listStoreFiles(storeDir, offset = 0, limit = 20, matchHashes = null) {
-  if (!existsSync(storeDir)) return { files: [], total: 0 }
+  if (!safeExistsSync(storeDir)) return { files: [], total: 0 }
 
   if (!_listCache || _listCache.dir !== storeDir || offset === 0) {
-    const allFiles = readdirSync(storeDir)
+    const allFiles = safeReaddirSync(storeDir)
       .filter(f => f.endsWith('.vorn'))
       .sort()
     _listCache = { dir: storeDir, files: allFiles }
@@ -131,9 +138,12 @@ export function listStoreFiles(storeDir, offset = 0, limit = 20, matchHashes = n
 // ── Helpers per il chunking ───────────────────────────────────────────────────
 
 async function _writeChunkTemp(sourcePath, destPath, offset, length) {
+  // R7-3: sourcePath è un file utente (può essere > 260 char su Win), destPath
+  // è in os.tmpdir() (sempre corto). Senza safeCreateReadStream qui, leggere
+  // chunk da file utente in path lungo falliva con ENOENT.
   await pipeline(
-    createReadStream(sourcePath, { start: offset, end: offset + length - 1 }),
-    createWriteStream(destPath)
+    safeCreateReadStream(sourcePath, { start: offset, end: offset + length - 1 }),
+    safeCreateWriteStream(destPath)
   )
 }
 
@@ -143,13 +153,13 @@ async function _writeChunkTemp(sourcePath, destPath, offset, length) {
 function _findExistingVorncKey(storeDir, chunkHash, compressionType) {
   if (compressionType) {
     const k = toStoreKey(chunkHash, compressionType)
-    if (existsSync(vorncPath(storeDir, k))) return k
+    if (safeExistsSync(vorncPath(storeDir, k))) return k
   }
-  if (existsSync(vorncPath(storeDir, chunkHash))) return chunkHash
+  if (safeExistsSync(vorncPath(storeDir, chunkHash))) return chunkHash
   for (const ct of KNOWN_COMPRESSION_TYPES) {
     if (ct === compressionType) continue
     const k = toStoreKey(chunkHash, ct)
-    if (existsSync(vorncPath(storeDir, k))) return k
+    if (safeExistsSync(vorncPath(storeDir, k))) return k
   }
   return null
 }
@@ -161,7 +171,7 @@ async function _writeNewVornc(storeDir, chunkHash, chunkBytes, sourcePath, compr
   const key = toStoreKey(chunkHash, compressionType)
   const p   = vorncPath(storeDir, key)
   return withFileLock(p, async () => {
-    if (existsSync(p)) {
+    if (safeExistsSync(p)) {
       const { meta, contentLen } = readVornMeta(p)
       if (!meta.references) meta.references = []
       if (!meta.references.includes(manifestHash)) {
@@ -190,7 +200,7 @@ async function _storeVornc(storeDir, chunkHash, chunkBytes, sourcePath, compress
   if (existingKey !== null) {
     const pExist = vorncPath(storeDir, existingKey)
     const reused = await withFileLock(pExist, async () => {
-      if (!existsSync(pExist)) return null // scomparso tra check e lock → fallback a creazione
+      if (!safeExistsSync(pExist)) return null // scomparso tra check e lock → fallback a creazione
       const { meta, contentLen } = readVornMeta(pExist)
       if (!meta.references) meta.references = []
       if (!meta.references.includes(manifestHash)) {
@@ -222,7 +232,7 @@ async function _repairMissingChunk(storeDir, manifestHash, meta, ci, sourcePath,
     // non si applica al repair (manifest.chunks[ci] punta a quella chiave precisa).
     await _writeNewVornc(storeDir, expectedHash, thisChunkSize, chunkTmp, compressionType, manifestHash)
   } finally {
-    try { unlinkSync(chunkTmp) } catch { /* non-critico */ }
+    try { safeUnlinkSync(chunkTmp) } catch { /* non-critico */ }
   }
 }
 
@@ -241,14 +251,14 @@ async function storeChunked(opts) {
   const manifestP = vornPath(storeDir, hashVorn)
 
   return withFileLock(manifestP, async () => {
-    const exists = await access(manifestP).then(() => true).catch(() => false)
+    const exists = await safeAccess(manifestP).then(() => true).catch(() => false)
 
     if (exists) {
       const { meta, contentLen } = readVornMeta(manifestP)
       const metaComprType = meta.compressedType ?? null
       const chunks = meta.chunks ?? []
       for (let ci = 0; ci < chunks.length; ci++) {
-        if (!existsSync(vorncPath(storeDir, chunks[ci]))) {
+        if (!safeExistsSync(vorncPath(storeDir, chunks[ci]))) {
           await _repairMissingChunk(storeDir, hashVorn, meta, ci, sourcePath, metaComprType)
         }
       }
@@ -271,7 +281,7 @@ async function storeChunked(opts) {
         chunkKeys.push(key)
         if (isNew) chunksNew++; else chunksDedup++
       } finally {
-        try { unlinkSync(chunkTmp) } catch { /* non-critico */ }
+        try { safeUnlinkSync(chunkTmp) } catch { /* non-critico */ }
       }
       offset += thisChunkSize
     }
@@ -310,15 +320,15 @@ export function findExistingVornKey(storeDir, hashVorn, compressionType) {
   return _findExistingVornKey(storeDir, hashVorn, compressionType)
 }
 function _findExistingVornKey(storeDir, hashVorn, compressionType) {
-  if (existsSync(vornPath(storeDir, hashVorn))) return hashVorn
+  if (safeExistsSync(vornPath(storeDir, hashVorn))) return hashVorn
   if (compressionType) {
     const k = toStoreKey(hashVorn, compressionType)
-    if (existsSync(vornPath(storeDir, k))) return k
+    if (safeExistsSync(vornPath(storeDir, k))) return k
   }
   for (const ct of KNOWN_COMPRESSION_TYPES) {
     if (ct === compressionType) continue
     const k = toStoreKey(hashVorn, ct)
-    if (existsSync(vornPath(storeDir, k))) return k
+    if (safeExistsSync(vornPath(storeDir, k))) return k
   }
   return null
 }
@@ -357,7 +367,7 @@ export async function storeBlob(opts) {
     const p = vornPath(storeDir, existingKey)
     return withFileLock(p, async () => {
       // Ricontrolla dentro il lock (potrebbe essere stato eliminato nel frattempo)
-      if (!await access(p).then(() => true).catch(() => false)) {
+      if (!await safeAccess(p).then(() => true).catch(() => false)) {
         // Scomparso: rilascia e ricrea dalla strategia corrente
         return _createNew(opts)
       }
@@ -368,14 +378,14 @@ export async function storeBlob(opts) {
         const chunks = meta.chunks ?? []
         const metaComprType = meta.compressedType ?? null
         for (let ci = 0; ci < chunks.length; ci++) {
-          if (!existsSync(vorncPath(storeDir, chunks[ci]))) {
+          if (!safeExistsSync(vorncPath(storeDir, chunks[ci]))) {
             await _repairMissingChunk(storeDir, hashVorn, meta, ci, sourcePath, metaComprType)
           }
         }
       } else {
         // ── Verifica integrità blob: dimensione file deve coprire header + content ──
         const expectedMinSize = VORN_HEADER_SIZE + Number(contentLen) + VORN_SEPARATOR_LEN
-        const actualSize = statSync(p).size
+        const actualSize = safeStatSync(p).size
         if (actualSize < expectedMinSize) {
           // Blob corrotto: incorpora il record nella meta e riscrivi tutto in una sola passata.
           // Non usare _upsertRecord dopo: writeVornFromSource cambia la dimensione compressa
@@ -416,7 +426,7 @@ async function _createNew(opts) {
 
   return withFileLock(p, async () => {
     // Double-check: potrebbe essere stato creato da un altro worker nel frattempo
-    if (await access(p).then(() => true).catch(() => false)) {
+    if (await safeAccess(p).then(() => true).catch(() => false)) {
       const { meta, contentLen } = readVornMeta(p)
       await _upsertRecord(p, contentLen, meta, sessionId, sessionName, relPath)
       return { outcome: 'dedup', storeKey: key }
@@ -436,8 +446,8 @@ async function _createNew(opts) {
 
 export function deleteStoreEntry(storeDir, hashVorn) {
   const p = vornPath(storeDir, hashVorn)
-  if (!existsSync(p)) throw new Error('ERR_ENTRY_NOT_FOUND')
-  unlinkSync(p)
+  if (!safeExistsSync(p)) throw new Error('ERR_ENTRY_NOT_FOUND')
+  safeUnlinkSync(p)
   if (_listCache) _listCache.files = _listCache.files.filter(f => f !== hashVorn + '.vorn')
   _metaCache?.entries.delete(hashVorn + '.vorn')
 }
@@ -447,7 +457,7 @@ export function deleteStoreEntry(storeDir, hashVorn) {
 export function getEntry(storeDir, hashVorn) {
   _assertSafeKey(hashVorn)
   const p = vornPath(storeDir, hashVorn)
-  if (!existsSync(p)) return null
+  if (!safeExistsSync(p)) return null
   return readVornMeta(p).meta
 }
 

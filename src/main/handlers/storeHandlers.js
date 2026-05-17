@@ -65,16 +65,23 @@ function _cleanupResidualTemps(storeDir) {
       // qui, prima della prima readVornMeta, = data loss permanente per ogni
       // _upsertRecord interrotto da un crash/USB-unplug.
       //
-      // Cleanup eseguito qui solo per: file tmp di scrittura non finalizzati
-      // (.tmp, .ctmp) e file di recovery atomica orfani (.repair.<pid>.<ts>)
-      // lasciati indietro se la recovery in readVornMeta è fallita a metà.
-      const isWritTmp     = f.endsWith('.ctmp') || f.endsWith('.tmp')
-      const isRepairTmp   = /\.repair\.\d+\.\d+$/.test(f)
-      if (isWritTmp || isRepairTmp) {
-        try { unlinkSync(join(storeDir, f)) } catch { }
+      // Cleanup eseguito qui solo per:
+      //   <storeKey>.vorn.tmp / <storeKey>.vornc.tmp  → temp di writeVornFromSource
+      //   <vornFile>.repair.<pid>.<ts>                → recovery atomica readVornMeta
+      //
+      // PATTERN STRETTO: la versione precedente usava `f.endsWith('.tmp')` raw,
+      // che cancellava QUALUNQUE *.tmp nello storeDir (es. `~$doc.tmp` di Office,
+      // `download.tmp` di Firefox/Chrome interrotti, file utente di terze parti).
+      // Lo store può vivere in cartelle condivise con altri file — silent data
+      // loss su file non-Vorn era un bug. `.ctmp` rimosso dal match: writeVornFromSource
+      // crea i .ctmp in os.tmpdir(), MAI in storeDir → match era cosmetico.
+      const isVornWriteTmp = /\.vornc?\.tmp$/.test(f)
+      const isRepairTmp    = /\.repair\.\d+\.\d+$/.test(f)
+      if (isVornWriteTmp || isRepairTmp) {
+        try { unlinkSync(join(storeDir, f)) } catch { /* non-critico */ }
       }
     }
-  } catch { }
+  } catch { /* dir scomparsa */ }
 }
 
 export function registerStoreHandlers(mainWindow) {

@@ -111,6 +111,23 @@ export function assertNoMutatingTask() {
 }
 const _assertNoMutatingTask = assertNoMutatingTask
 
+// Task che CANCELLANO file dallo store. Incompatibili con `integrity` (read-only)
+// perché un prune che unlinka un orfano mentre integrity ha già fatto il
+// readdirSync iniziale → integrity catcha ENOENT sul file appena cancellato e
+// lo riporta come errore (falso positivo), oppure su Win NTFS l'openSync di
+// integrity blocca l'unlink di prune con EBUSY (prune incrementa `failed` per
+// file legittimamente orfani). Restano fuori dal gate vs integrity: backup,
+// restore, extract-store — nessuno di questi cancella `.vorn`/`.vornc`.
+const _DELETING_TASK_TYPES = new Set(['prune', 'clear'])
+function _assertNoDeletingTask() {
+  if (listTasks().some(t => t.status === 'running' && _DELETING_TASK_TYPES.has(t.type)))
+    throw new Error('ERR_OPERATION_IN_PROGRESS')
+}
+function _assertNoIntegrityTask() {
+  if (listTasks().some(t => t.status === 'running' && t.type === 'integrity'))
+    throw new Error('ERR_OPERATION_IN_PROGRESS')
+}
+
 export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:task-cancel', (_, taskId) => cancelTask(taskId))
   ipcMain.handle('vorn:task-list',   ()           => listTasks())
@@ -180,6 +197,11 @@ export function registerTaskHandlers(mainWindow) {
     if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     if (listTasks().some(t => t.type === 'integrity' && t.status === 'running'))
       throw new Error('ERR_INTEGRITY_RUNNING')
+    // Integrity legge i file dello store: incompatibile con prune/clear che li cancellano.
+    // Senza questo gate, integrity emette falsi ENOENT / ERR_CHUNK_ORPHAN su file
+    // legittimamente eliminati → report fasullo, l'utente prende decisioni distruttive
+    // su info sbagliate. Vedi anche _DELETING_TASK_TYPES.
+    _assertNoDeletingTask()
     const task = createTask('integrity', null)
     logger.info(`Task integrity started [${task.id}]`)
     spawnWorker('integrityWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, _onDone(task, mainWindow))
@@ -189,6 +211,7 @@ export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:start-clear-store', () => {
     if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     _assertNoMutatingTask()
+    _assertNoIntegrityTask() // R7-2: clear cancella file, integrity li sta leggendo
     const task = createTask('clear', null)
     logger.info(`Task clear-store started [${task.id}]`)
     spawnWorker('clearWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, (result, error) => {
@@ -221,6 +244,7 @@ export function registerTaskHandlers(mainWindow) {
   ipcMain.handle('vorn:start-prune', () => {
     if (!ctx.activeStore) throw new Error('ERR_NO_STORE')
     _assertNoMutatingTask()
+    _assertNoIntegrityTask() // R7-2: prune cancella orfani, integrity li sta leggendo
     const task = createTask('prune', null)
     logger.info(`Task prune started [${task.id}]`)
     spawnWorker('pruneWorker.js', { storeDir: ctx.activeStore }, task.id, mainWindow, _onDone(task, mainWindow))
