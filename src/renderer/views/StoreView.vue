@@ -251,6 +251,12 @@
                     {{ entry.content_hash ?? entry.hash_vorn }}
                   </span>
                   <span
+                    v-if="entry.strategy === 'chunks'"
+                    class="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400"
+                  >
+                    CHUNKS
+                  </span>
+                  <span
                     v-if="entry.compressedType"
                     class="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
                   >
@@ -344,6 +350,13 @@
               <p class="text-sm font-mono text-gray-300">{{ formatBytes(selectedEntry.bytes_file) }}</p>
             </div>
 
+            <!-- Strategia -->
+            <div class="space-y-1">
+              <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.detail.strategy') }}</p>
+              <p v-if="selectedEntry.strategy === 'chunks'" class="text-sm font-mono text-violet-400">chunks</p>
+              <p v-else class="text-sm font-mono text-gray-500">blob</p>
+            </div>
+
             <!-- Compressione -->
             <div class="space-y-1">
               <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{{ $t('store.detail.compression') }}</p>
@@ -390,8 +403,9 @@
                     v-for="(path, pi) in record.paths"
                     :key="pi"
                     class="font-mono text-[10px] text-gray-500 break-all leading-snug"
+                    :class="pi > 0 ? 'mt-1.5' : ''"
                   >
-                    {{ path }}
+                    {{ _fullPath(record.session, path) }}
                   </li>
                 </ul>
               </div>
@@ -512,10 +526,16 @@
             <XMarkIcon class="w-5 h-5" />
           </button>
         </div>
-        <div class="px-6 py-4 border-b border-gray-800 grid grid-cols-3 gap-4 shrink-0">
+        <div class="px-6 py-4 border-b border-gray-800 grid grid-cols-4 gap-4 shrink-0">
           <div class="text-center">
-            <p class="text-2xl font-bold text-white">{{ integrityState.report.total }}</p>
-            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.integrityReport.checked') }}</p>
+            <p class="text-2xl font-bold text-indigo-400">{{ integrityState.report.vorn_total ?? integrityState.report.total }}</p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.integrityReport.vorn') }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-2xl font-bold" :class="(integrityState.report.vornc_total ?? 0) ? 'text-violet-400' : 'text-gray-600'">
+              {{ integrityState.report.vornc_total ?? 0 }}
+            </p>
+            <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{{ $t('store.integrityReport.chunks') }}</p>
           </div>
           <div class="text-center">
             <p class="text-2xl font-bold text-emerald-400">{{ integrityState.report.ok }}</p>
@@ -596,7 +616,13 @@
           <input type="radio" v-model="extractMode" value="original" class="mt-1 accent-indigo-500" :disabled="!extractOriginalInfo" />
           <div class="min-w-0">
             <p class="text-sm font-semibold" :class="extractOriginalInfo ? 'text-white' : 'text-gray-600'">{{ $t('store.restoreModal.originalPath') }}</p>
-            <p v-if="extractOriginalInfo" class="text-[10px] text-gray-500 break-all mt-1 font-mono leading-relaxed">{{ extractOriginalInfo.displayPath }}</p>
+            <div v-if="extractOriginalInfo" class="mt-1 space-y-1">
+              <p
+                v-for="(item, idx) in extractOriginalInfo"
+                :key="idx"
+                class="text-[10px] text-gray-500 break-all font-mono leading-relaxed"
+              >{{ item.displayPath }}</p>
+            </div>
             <p v-else class="text-[10px] text-amber-500/80 mt-1">{{ $t('store.restoreModal.notAvailable') }}</p>
           </div>
         </label>
@@ -895,22 +921,69 @@ let   _extractTimer     = null
 const extractOriginalInfo = computed(() => {
   if (!restoreRecord.value || !selectedEntry.value) return null
   const session = state.sessions.find(s => s.name === restoreRecord.value.session)
-  if (!session?.sources?.length) return null
-  const relPath = restoreRecord.value.paths[0] ?? ''
-  const parts   = relPath.replace(/\\/g, '/').split('/').filter(Boolean)
-  const filename = parts.at(-1) ?? selectedEntry.value.hash_vorn
-  const relDir   = parts.slice(0, -1)
-  const sep      = session.sources[0].includes('\\') ? '\\' : '/'
-  const destDir  = relDir.length
-    ? session.sources[0] + sep + relDir.join(sep)
-    : session.sources[0]
-  return { destDir, filename, displayPath: session.sources[0] + sep + relPath.replace(/\//g, sep) }
+
+  const items = (restoreRecord.value.paths ?? []).map(relPath => {
+    // Nuovo formato: path assoluta
+    if (/^[A-Za-z]:\//.test(relPath) || relPath.startsWith('/')) {
+      const winSep     = /^[A-Za-z]:\//.test(relPath) ? '\\' : '/'
+      const normalized = relPath.replace(/\//g, winSep)
+      const parts      = normalized.split(winSep)
+      const filename   = parts.at(-1) ?? selectedEntry.value.hash_vorn
+      const destDir    = parts.slice(0, -1).join(winSep) || winSep
+      return { destDir, filename, displayPath: normalized }
+    }
+
+    // Vecchio formato relativo (backward compat)
+    if (!session?.sources?.length) return null
+    const parts    = relPath.replace(/\\/g, '/').split('/').filter(Boolean)
+    const filename = parts.at(-1) ?? selectedEntry.value.hash_vorn
+    const relDir   = parts.slice(0, -1)
+    const src      = session.sources[0].replace(/[\\/]+$/, '')
+    const sep      = src.includes('\\') ? '\\' : '/'
+    const srcBase  = src.split(/[\\/]/).at(-1) ?? ''
+    const isFileSrc = srcBase.lastIndexOf('.') > 0
+    const hasSlash  = relPath.includes('/') || relPath.includes('\\')
+    const srcSegs   = src.split(/[\\/]/)
+    const root = isFileSrc
+      ? (hasSlash ? srcSegs.slice(0, -2) : srcSegs.slice(0, -1)).join(sep) || sep
+      : src
+    const destDir     = relDir.length ? root + sep + relDir.join(sep) : root
+    const displayPath = root + sep + relPath.replace(/\//g, sep)
+    return { destDir, filename, displayPath }
+  }).filter(Boolean)
+
+  return items.length ? items : null
 })
+
+function _fullPath(sessionName, relPath) {
+  // Nuovo formato: path assoluta — restituisci direttamente con sep nativo
+  if (/^[A-Za-z]:\//.test(relPath) || relPath.startsWith('/')) {
+    const winSep = /^[A-Za-z]:\//.test(relPath) ? '\\' : '/'
+    return relPath.replace(/\//g, winSep)
+  }
+  // Vecchio formato relativo: costruisci da source (backward compat)
+  const session = state.sessions.find(s => s.name === sessionName)
+  if (!session?.sources?.length) return relPath
+  const src     = session.sources[0].replace(/[\\/]+$/, '')
+  const sep     = src.includes('\\') ? '\\' : '/'
+  const segs    = src.split(/[\\/]/)
+  const srcBase = segs.at(-1) ?? ''
+  const dotIdx  = srcBase.lastIndexOf('.')
+  if (dotIdx > 0) {
+    const hasSlash = relPath.includes('/') || relPath.includes('\\')
+    const root = hasSlash
+      ? segs.slice(0, -2).join(sep) || sep
+      : segs.slice(0, -1).join(sep) || sep
+    return root + sep + relPath.replace(/\//g, sep)
+  }
+  return src + sep + relPath.replace(/\//g, sep)
+}
 
 function openExtractModal(record) {
   restoreRecord.value     = record
-  const hasOriginal       = !!state.sessions.find(s => s.name === record.session)?.sources?.length
-  extractMode.value       = hasOriginal ? 'original' : 'custom'
+  const hasAbsolute       = record.paths?.some(p => /^[A-Za-z]:\//.test(p) || p.startsWith('/'))
+  const hasSession        = !!state.sessions.find(s => s.name === record.session)?.sources?.length
+  extractMode.value       = (hasAbsolute || hasSession) ? 'original' : 'custom'
   extractCustomPath.value = ''
 }
 
@@ -922,11 +995,28 @@ async function pickExtractDest() {
 async function confirmExtract() {
   if (!selectedEntry.value || !restoreRecord.value) return
   const hashVorn = selectedEntry.value.hash_vorn
+
+  if (extractMode.value === 'original') {
+    const items = extractOriginalInfo.value
+    if (!items?.length) return
+    restoreRecord.value = null
+    try {
+      for (const item of items) {
+        await window.vorn.extractHash(hashVorn, item.destDir, item.filename)
+      }
+      const label = items.length > 1
+        ? t('store.restoreModal.filesRestored', { n: items.length })
+        : t('store.restoreModal.fileRestored', { name: items[0].filename })
+      _showExtractResult(true, label)
+    } catch (e) {
+      _showExtractResult(false, e?.message ?? t('store.restoreModal.restoreFailed'))
+    }
+    return
+  }
+
   const relPath  = restoreRecord.value.paths[0] ?? hashVorn
   const filename = relPath.replace(/\\/g, '/').split('/').at(-1) ?? hashVorn
-  const destDir  = extractMode.value === 'original'
-    ? extractOriginalInfo.value?.destDir
-    : extractCustomPath.value
+  const destDir  = extractCustomPath.value
   if (!destDir) return
   restoreRecord.value = null
   try {

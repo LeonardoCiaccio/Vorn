@@ -1,6 +1,6 @@
 import { ipcMain, app, dialog, shell, BrowserWindow, net } from 'electron'
 import { normalize, resolve, join } from 'path'
-import { readdirSync }              from 'fs'
+import { safeReaddirSync }          from '../vorn/safeFs.js'
 import { homedir }                  from 'os'
 import { getEntry, listStoreFiles, countStoreFiles, deleteStoreEntry, getCachedFileList } from '../vorn/store.js'
 import { listTasks }                from '../vorn/taskManager.js'
@@ -25,7 +25,7 @@ let _logWin = null
 
 function _hashSetForQuery(storeDir, query) {
   const q = query.toLowerCase()
-  const source = getCachedFileList(storeDir) ?? readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+  const source = getCachedFileList(storeDir) ?? safeReaddirSync(storeDir).filter(f => f.endsWith('.vorn'))
   return new Set(
     source
       .filter(f => f.toLowerCase().includes(q))
@@ -149,9 +149,13 @@ export function registerSystemHandlers(mainWindow) {
   })
 
   ipcMain.handle('vorn:open-external', (_, { url }) => {
-    const allowed = ['https://github.com/LeonardoCiaccio/Vorn']
-    if (typeof url !== 'string' || !allowed.some(base => url.startsWith(base))) return
-    shell.openExternal(url)
+    if (typeof url !== 'string') return
+    let parsed
+    try { parsed = new URL(url) } catch { return }
+    if (parsed.protocol !== 'https:') return
+    if (parsed.host !== 'github.com') return
+    if (parsed.pathname !== '/LeonardoCiaccio/Vorn' && !parsed.pathname.startsWith('/LeonardoCiaccio/Vorn/')) return
+    shell.openExternal(parsed.href)
   })
 
   ipcMain.handle('vorn:get-app-info', () => ({
@@ -171,9 +175,10 @@ export function registerSystemHandlers(mainWindow) {
 
   ipcMain.handle('vorn:list-dir', (_, { dirPath }) => {
     if (!dirPath || typeof dirPath !== 'string') return []
+    if (dirPath.includes('\x00')) return [] // null byte injection guard
     const safePath = normalize(resolve(dirPath))
     try {
-      return readdirSync(safePath, { withFileTypes: true })
+      return safeReaddirSync(safePath, { withFileTypes: true })
         .filter(e => { try { return e.isDirectory() || e.isFile() } catch { return false } })
         .map(e => ({ name: e.name, path: join(safePath, e.name), type: e.isDirectory() ? 'dir' : 'file' }))
         .sort((a, b) => {

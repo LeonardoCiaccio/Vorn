@@ -11,11 +11,16 @@ import { registerTaskHandlers }    from './handlers/taskHandlers.js'
 import { registerSystemHandlers }  from './handlers/systemHandlers.js'
 import { logger }                  from './vorn/logger.js'
 
+// Pulisce in `%TEMP%` i residui di precedenti sessioni Vorn:
+// - `vorn_<key>.ctmp`     → file precompressi (writeVornFromSource)
+// - `vorn_c_<hash>_*.tmp` → chunk pre-staged (storeChunked / _repairMissingChunk)
+// Il match è ancorato a `vorn_` per non toccare temp di altre app.
 function _cleanupVornTemps() {
   try {
     const tmp = tmpdir()
     for (const f of readdirSync(tmp)) {
-      if (f.startsWith('vorn_') && f.endsWith('.ctmp')) {
+      if (!f.startsWith('vorn_')) continue
+      if (f.endsWith('.ctmp') || (f.startsWith('vorn_c_') && f.endsWith('.tmp'))) {
         try { unlinkSync(join(tmp, f)) } catch { }
       }
     }
@@ -40,7 +45,7 @@ export function registerIpcHandlers(mainWindow) {
     for (const { worker, cancelFlag } of ctx.activeWorkers.values()) {
       Atomics.store(cancelFlag, 0, 1)
       promises.push(new Promise(resolve => {
-        const timeout = setTimeout(() => { worker.terminate(); resolve() }, 5000)
+        const timeout = setTimeout(() => { worker.terminate().catch(() => {}); resolve() }, 5000)
         worker.once('exit', () => { clearTimeout(timeout); resolve() })
       }))
     }

@@ -112,6 +112,33 @@
               <p class="text-[11px] text-gray-600">{{ $t('compression.help') }}</p>
             </div>
 
+            <!-- Strategia -->
+            <div>
+              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{{ $t('strategy.label') }}</label>
+              <p class="text-[11px] text-gray-600 mb-2">{{ $t('strategy.help') }}</p>
+              <div class="flex gap-2">
+                <button
+                  v-for="opt in [{ value: null, label: $t('strategy.standard') }, { value: 'chunks', label: $t('strategy.chunks') }]"
+                  :key="String(opt.value)"
+                  @click="form.strategy = opt.value"
+                  :class="[
+                    'flex-1 px-3 py-2 rounded-md text-xs font-medium border transition-colors',
+                    form.strategy === opt.value
+                      ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
+                      : 'bg-gray-800/40 border-gray-700/50 text-gray-500 hover:text-gray-300 hover:border-gray-600'
+                  ]"
+                >
+                  {{ opt.label }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Nota dedup -->
+            <div class="flex items-start gap-2 px-3 py-2.5 rounded-md bg-indigo-500/8 border border-indigo-500/15">
+              <InformationCircleIcon class="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+              <p class="text-[11px] text-indigo-300/80 leading-relaxed">{{ $t('newSession.dedupNote') }}</p>
+            </div>
+
             <!-- Spacer -->
             <div class="flex-1" />
 
@@ -144,7 +171,7 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderPlusIcon, XMarkIcon, PlusIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+import { FolderPlusIcon, XMarkIcon, PlusIcon, ArrowPathIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
 import { createSession, state } from '../stores/vorn.js'
 import SessionSourceTree from './SessionSourceTree.vue'
 import Toggle from './Toggle.vue'
@@ -164,6 +191,7 @@ const form = reactive({
   excludePaths:       [],
   patterns:           [...state.defaultExcludePatterns],
   compressionEnabled: true,
+  strategy:           'chunks',
 })
 const saving     = ref(false)
 const error      = ref('')
@@ -191,6 +219,7 @@ async function submit() {
       sources:         [...form.sources],
       excludes:        { paths: [...form.excludePaths], patterns: [...form.patterns] },
       compressionType: form.compressionEnabled ? 'gzip' : null,
+      strategy:        form.strategy,
       ts:              new Date().toISOString(),
     })
     emit('created')

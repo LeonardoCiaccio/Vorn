@@ -1,6 +1,8 @@
 import { workerData, parentPort } from 'worker_threads'
-import { readdirSync, openSync, closeSync } from 'fs'
 import { join } from 'path'
+import {
+  safeReaddirSync, safeOpenSync, safeCloseSync, safeExistsSync,
+} from './safeFs.js'
 import { readVornMeta, contentStream } from './format.js'
 import { hashFromFd, hashFromStream } from './hash.js'
 
@@ -9,9 +11,14 @@ const HEADER_SIZE = 12
 const { storeDir, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
-let files = []
+let files = [], vorn_total = 0, vornc_total = 0
 try {
-  files = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+  const allFiles = safeReaddirSync(storeDir)
+  const vorn  = allFiles.filter(f => f.endsWith('.vorn'))
+  const vornc = allFiles.filter(f => f.endsWith('.vornc'))
+  vorn_total  = vorn.length
+  vornc_total = vornc.length
+  files = [...vorn, ...vornc]
 } catch { /* poller nel main process gestirà la disconnessione */ }
 
 const total  = files.length
@@ -23,13 +30,43 @@ let ok = 0
     if (Atomics.load(cancelFlag, 0)) break
 
     const filename     = files[i]
-    const storeKey     = filename.slice(0, -5)          // rimuove .vorn
+    const isChunk      = filename.endsWith('.vornc')
+    const storeKey     = isChunk ? filename.slice(0, -6) : filename.slice(0, -5)
     const expectedHash = storeKey.split('_')[0]         // solo i 64 hex, ignora suffisso _gzip ecc.
     const filePath     = join(storeDir, filename)
     const issues       = []
 
     try {
       const { meta, contentLen } = readVornMeta(filePath)
+
+      // Chunk .vornc: verifica che sia referenziato da almeno un manifest chunked valido.
+      // Non basta che il .vorn esista: deve essere strategy='chunks' e includere questa chiave.
+      if (isChunk) {
+        const refs = meta?.references ?? []
+        const hasValidParent = refs.some(r => {
+          const parentPath = join(storeDir, r + '.vorn')
+          if (!safeExistsSync(parentPath)) return false
+          try {
+            const parentMeta = readVornMeta(parentPath).meta
+            return parentMeta?.strategy === 'chunks' && (parentMeta.chunks ?? []).includes(storeKey)
+          } catch { return false }
+        })
+        if (!hasValidParent) {
+          issues.push({ code: 'ERR_CHUNK_ORPHAN', params: { chunkKey: storeKey } })
+        }
+      }
+
+      // Manifest .vorn: non ha contenuto, verifica solo che i chunk esistano.
+      if (meta?.strategy === 'chunks') {
+        for (const chunkKey of meta.chunks ?? []) {
+          if (!safeExistsSync(join(storeDir, chunkKey + '.vornc')))
+            issues.push({ code: 'ERR_CHUNK_MISSING', params: { chunkKey } })
+        }
+        if (issues.length === 0) ok++
+        else errors.push({ hashVorn: storeKey, issues })
+        continue
+      }
+
       const isCompressed = !!(meta?.compressedType)
 
       // Check dimensione: per i file non compressi confronta contentLen con meta.bytes.
@@ -46,30 +83,31 @@ let ok = 0
       }
 
       // Check hash.
-      // Fast path: se meta.compressed_hash è disponibile, hash i byte compressi direttamente
-      // (nessuna decompressione). Disponibile per file scritti dopo l'introduzione del campo.
-      // Fallback: decomprime e hasha il contenuto originale (file scritti in precedenza).
       let computedHash, refHash
       if (isCompressed && meta?.compressed_hash) {
-        const fd = openSync(filePath, 'r')
+        const fd = safeOpenSync(filePath, 'r')
         try {
-          computedHash = hashFromFd(fd, HEADER_SIZE, contentLen)
+          computedHash = hashFromFd(fd, HEADER_SIZE, contentLen, () => Atomics.load(cancelFlag, 0) !== 0)
         } finally {
-          closeSync(fd)
+          safeCloseSync(fd)
         }
         refHash = meta.compressed_hash
       } else if (isCompressed) {
         computedHash = await hashFromStream(contentStream(filePath))
         refHash = meta?.hash_vorn ?? expectedHash
       } else {
-        const fd = openSync(filePath, 'r')
+        const fd = safeOpenSync(filePath, 'r')
         try {
-          computedHash = hashFromFd(fd, HEADER_SIZE, contentLen)
+          computedHash = hashFromFd(fd, HEADER_SIZE, contentLen, () => Atomics.load(cancelFlag, 0) !== 0)
         } finally {
-          closeSync(fd)
+          safeCloseSync(fd)
         }
         refHash = meta?.hash_vorn ?? expectedHash
       }
+
+      // hashFromFd ritorna null se cancelled mid-loop su file molto grande.
+      // Esci dal main loop, evitando di propagare un false positive ERR_HASH_CORRUPT.
+      if (computedHash === null) break
 
       if (computedHash !== refHash) {
         issues.push({ code: 'ERR_HASH_CORRUPT', params: { expected: refHash.slice(0, 12), computed: computedHash.slice(0, 12) } })
@@ -88,5 +126,5 @@ let ok = 0
     })
   }
 
-  parentPort.postMessage({ type: 'done', result: { total, ok, errors } })
+  parentPort.postMessage({ type: 'done', result: { total, vorn_total, vornc_total, ok, errors } })
 })()

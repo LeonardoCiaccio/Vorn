@@ -173,10 +173,18 @@
                       <FolderIcon v-if="!activeTask(session.name)" class="w-4 h-4 text-gray-500 group-hover:text-indigo-400 transition-colors" />
                       <ArrowPathIcon v-else class="w-4 h-4 text-indigo-400 animate-spin" />
                     </div>
-                    <span
-                      v-if="session.compressionType"
-                      class="text-[9px] font-bold uppercase tracking-wide text-emerald-400 leading-none"
-                    >{{ session.compressionType }}</span>
+                    <!-- Stesso pattern del header / sidebar in SessionDetailView:
+                         iniziali se entrambi attivi, nome esteso se uno solo. -->
+                    <div class="flex items-center gap-0.5">
+                      <template v-if="session.compressionType && session.strategy === 'chunks'">
+                        <span class="text-[9px] font-bold uppercase text-emerald-400 leading-none">{{ session.compressionType[0] }}</span>
+                        <span class="text-[9px] font-bold uppercase text-violet-400 leading-none">C</span>
+                      </template>
+                      <template v-else>
+                        <span v-if="session.compressionType" class="text-[8px] font-bold uppercase tracking-wide text-emerald-400 leading-none">{{ session.compressionType }}</span>
+                        <span v-if="session.strategy === 'chunks'" class="text-[8px] font-bold uppercase tracking-wide text-violet-400 leading-none">chunks</span>
+                      </template>
+                    </div>
                   </div>
                   <div>
                     <p class="font-semibold text-gray-100">{{ session.name }}</p>
@@ -309,7 +317,10 @@
                     </span>
                     <div v-if="activeTask(session.name).progress?.file" class="ml-auto flex items-center gap-1.5 min-w-0">
                       <span class="text-gray-600 font-mono truncate max-w-72"><span v-if="isStoreSlow(session.name)" class="text-red-400 font-semibold not-mono">{{ $t('common.storeLento') }}</span>{{ (isStoreSlow(session.name) ? ' ' : '') + activeTask(session.name).progress.file.split(/[\\/]/).at(-1) }}</span>
-                      <span v-if="activeTask(session.name).progress?.storing" class="text-indigo-400 font-mono shrink-0">
+                      <span v-if="activeTask(session.name).progress?.chunking" class="text-violet-400 font-mono shrink-0">
+                        {{ $t('common.chunking') }}
+                      </span>
+                      <span v-else-if="activeTask(session.name).progress?.storing" class="text-indigo-400 font-mono shrink-0">
                         {{ $t('common.storing') }}
                       </span>
                       <span v-else-if="activeTask(session.name).progress?.compressing" class="text-emerald-400 font-mono shrink-0">
@@ -318,8 +329,8 @@
                       <span v-else-if="activeTask(session.name).progress?.bytes_compressing_total > 0" class="text-emerald-500 font-mono shrink-0">
                         {{ $t('common.compressing') }} {{ formatBytes(activeTask(session.name).progress.bytes_compressing ?? 0) }}/{{ formatBytes(activeTask(session.name).progress.bytes_compressing_total) }}
                       </span>
-                      <span v-else-if="activeTask(session.name).progress?.bytes_hashing_total > 0" class="text-gray-500 font-mono shrink-0">
-                        {{ formatBytes(activeTask(session.name).progress.bytes_hashing ?? 0) }}/{{ formatBytes(activeTask(session.name).progress.bytes_hashing_total) }}
+                      <span v-else-if="activeTask(session.name).progress?.bytes_hashing_total > 0" class="text-sky-400 font-mono shrink-0">
+                        {{ $t('common.hashing') }} {{ formatBytes(activeTask(session.name).progress.bytes_hashing ?? 0) }}/{{ formatBytes(activeTask(session.name).progress.bytes_hashing_total) }}
                       </span>
                     </div>
                   </div>
@@ -405,7 +416,9 @@ const _activeStates = computed(() => {
   const out = {}
   for (const s of state.sessions ?? []) {
     const p = getActiveTask(s.name)?.progress
-    out[s.name] = { file: p?.file ?? null, storing: p?.storing ?? false }
+    // `storing` come trigger del "store lento": vale per blob plain (storing)
+     // e anche per chunked (chunking) — entrambi sono fasi di scrittura sullo store.
+    out[s.name] = { file: p?.file ?? null, storing: (p?.storing || p?.chunking) ?? false }
   }
   return out
 })

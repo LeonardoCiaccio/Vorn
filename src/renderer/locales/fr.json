@@ -59,7 +59,9 @@
     "ERR_WORKER_CRASHED": "Le processus de sauvegarde s'est arrêté inopinément",
     "ERR_SIZE_MISMATCH": "Taille non correspondante : en-tête={header} o, métadonnées={meta} o",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Taille compressée non correspondante : en-tête={header} o, métadonnées={meta} o",
-    "ERR_HASH_CORRUPT": "Hash corrompu : attendu {expected}…, calculé {computed}…"
+    "ERR_HASH_CORRUPT": "Hash corrompu : attendu {expected}…, calculé {computed}…",
+    "ERR_CHUNK_MISSING": "Fragment manquant : {chunkKey}",
+    "ERR_CHUNK_ORPHAN": "Fragment orphelin (aucun manifeste parent) : {chunkKey}"
   },
 
   "nav": {
@@ -79,8 +81,10 @@
     "operationWait": "Opération en cours — veuillez patienter",
     "cannotUndo": "Cette opération ne peut pas être annulée.",
     "storeLento": "Store lent",
-    "storing": "Archivage…",
-    "compressing": "Compression…",
+    "storing": "Archivage",
+    "compressing": "Compression",
+    "hashing": "Hachage",
+    "chunking": "Découpage",
     "errStoreTimeout": "Délai d'attente dépassé — possible blocage antivirus"
   },
 
@@ -175,6 +179,7 @@
       "modified": "Modifié le",
       "sessions": "Sessions ({n})",
       "noSessions": "Aucune session",
+      "strategy": "Stratégie",
       "compression": "Compression",
       "compressionNone": "aucune",
       "copyHash": "Copier le hachage",
@@ -206,7 +211,8 @@
     },
     "integrityReport": {
       "title": "Rapport d'intégrité",
-      "checked": "Total",
+      "vorn": "VORN",
+      "chunks": "Fragments",
       "ok": "OK",
       "corrupt": "Corrompus",
       "allOk": "Tous les fichiers vérifiés sont intacts",
@@ -245,6 +251,7 @@
       "placeholder": "C:\\Chemin\\Destination",
       "confirm": "Confirmer la restauration",
       "fileRestored": "Fichier restauré : {name}",
+      "filesRestored": "{n} fichiers restaurés",
       "restoreFailed": "Erreur lors de la restauration"
     }
   },
@@ -332,6 +339,7 @@
     "timeline": "Chronologie",
     "id": "ID",
     "runs": "Exécutions",
+    "config": "Config",
     "sources": "Sources",
     "excludedPaths": "Chemins exclus",
     "excludePatterns": "Modèles d'exclusion",
@@ -383,6 +391,7 @@
     "patternsHelp": "Appliqué au nom de fichier/dossier. Utilisez * comme joker.",
     "patternPlaceholder": "ex: *.bak ou .cache",
     "resetPatterns": "Réinitialiser tous les modèles",
+    "dedupNote": "Les fichiers déjà présents et intacts dans le dépôt ne sont pas retraités : la compression et le découpage s'appliquent uniquement aux nouveaux fichiers.",
     "create": "Créer la session",
     "sourcesCount": "{count} source sélectionnée | {count} sources sélectionnées",
     "excludedCount": "· {count} exclus",

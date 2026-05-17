@@ -1,5 +1,7 @@
-export const HASH_RE = /^[0-9a-f]{64}(?:_(gzip))?$/
+import { STORE_KEY_RE } from '../vorn/constants.js'
+
+export const HASH_RE = STORE_KEY_RE
 
 export function assertHash(h) {
-  if (!h || !HASH_RE.test(h)) throw new Error('ERR_INVALID_HASH')
+  if (!h || !STORE_KEY_RE.test(h)) throw new Error('ERR_INVALID_HASH')
 }

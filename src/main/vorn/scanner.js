@@ -1,25 +1,44 @@
 import { join } from 'path'
 import { safeReaddirSync } from './safeFs.js'
 
-export function walk(dir, excludePaths = [], excludePatterns = [], _results = []) {
+// Normalizza il path per il confronto delle esclusioni: su Win32 NTFS è
+// case-insensitive e l'utente può salvare `C:\Data` in settings mentre il
+// walker scopre `c:\data`. Senza normalize la `startsWith` fallisce e i file
+// "esclusi" vengono backuppati comunque. Anche separator mixed (`/` vs `\`)
+// va normalizzato (`safeJoin` produce sempre `\` su Win ma settings legacy
+// può contenere `/`).
+const _isWin32 = process.platform === 'win32'
+function _normForCompare(p) {
+  if (typeof p !== 'string') return ''
+  const slashed = _isWin32 ? p.replace(/\//g, '\\') : p
+  return _isWin32 ? slashed.toLowerCase() : slashed
+}
+
+export function walk(dir, excludePaths = [], excludePatterns = [], _results = [], isCancelled = null) {
+  const normExcludes = excludePaths.map(_normForCompare)
   const queue = [dir]
   while (queue.length) {
+    if (isCancelled?.()) return _results
     const current = queue.pop()
     try {
       for (const entry of safeReaddirSync(current, { withFileTypes: true })) {
-        const full = join(current, entry.name)
-        if (excludePaths.some(p => full === p || full.startsWith(p + '\\') || full.startsWith(p + '/'))) continue
+        const full     = join(current, entry.name)
+        const fullNorm = _normForCompare(full)
+        if (normExcludes.some(p => fullNorm === p || fullNorm.startsWith(p + (_isWin32 ? '\\' : '/')))) continue
         const relFromRoot = full.slice(dir.length + 1).replace(/\\/g, '/')
         if (excludePatterns.some(pat => matchPattern(relFromRoot, pat) || matchPattern(entry.name, pat))) continue
         
-        if (entry.isDirectory()) {
+        // CONTROLLARE PRIMA il symlink: su Windows una junction (NTFS reparse
+        // point) viene riportata da Dirent come isDirectory()===true E
+        // isSymbolicLink()===true. Se controlliamo isDirectory() per primo
+        // ricorriamo dentro `C:\Users\<user>\AppData\Local\Application Data`
+        // (junction storica) e si crea un loop di crescita esponenziale.
+        if (entry.isSymbolicLink()) {
+          continue
+        } else if (entry.isDirectory()) {
           queue.push(full)
         } else if (entry.isFile()) {
           _results.push(full)
-        } else if (entry.isSymbolicLink()) {
-          // I link simbolici vengono ignorati per ora per evitare loop o backup inconsistenti.
-          // In futuro si potrebbe implementare il salvataggio del target del link.
-          continue
         }
       }
     } catch (_) { /* skip unreadable dirs */ }

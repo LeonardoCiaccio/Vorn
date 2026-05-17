@@ -1,7 +1,6 @@
 import { createGzip, createGunzip } from 'zlib'
-import { createWriteStream, existsSync, statSync, unlinkSync } from 'fs'
 import { pipeline } from 'stream/promises'
-import { safeCreateReadStream } from './safeFs.js'
+import { safeCreateReadStream, safeCreateWriteStream, safeStatSync, safeExistsSync, safeUnlinkSync } from './safeFs.js'
 
 function _compressor(type) {
   if (type === 'gzip') return createGzip()
@@ -20,33 +19,35 @@ export function decompressStream(inputStream, type) {
 // Comprime sourcePath in tmpPath, ritorna la size compressa.
 // Il chiamante è responsabile di eliminare tmpPath se non serve più.
 export async function compressToTemp(sourcePath, tmpPath, type, onProgress = null, isCancelled = null) {
-  const total = statSync(sourcePath).size
+  const total = safeStatSync(sourcePath).size
   let bytesIn = 0
   const ac = new AbortController()
-  const cancelPoll = setInterval(() => { if (isCancelled?.()) ac.abort() }, 100)
   try {
     await pipeline(
       safeCreateReadStream(sourcePath),
       async function* (source) {
         for await (const chunk of source) {
+          // Check di cancel inline su ogni chunk: granularità tipica = qualche ms
+          // su file grandi, ben sotto il vecchio poll a 100ms e senza setInterval
+          // (su decine di migliaia di file piccoli era overhead non trascurabile).
+          if (isCancelled?.()) { ac.abort(); return }
           bytesIn += chunk.length
           onProgress?.(bytesIn, total)
           yield chunk
         }
       },
       _compressor(type),
-      createWriteStream(tmpPath),
+      safeCreateWriteStream(tmpPath),
       { signal: ac.signal }
     )
-    return statSync(tmpPath).size
+    return safeStatSync(tmpPath).size
   } catch (e) {
     if (e.name === 'AbortError' || isCancelled?.()) return null
     throw e
-  } finally {
-    clearInterval(cancelPoll)
   }
 }
 
 export function cleanupTemp(tmpPath) {
-  try { if (existsSync(tmpPath)) unlinkSync(tmpPath) } catch { /* non-critico */ }
+  if (!tmpPath) return
+  try { if (safeExistsSync(tmpPath)) safeUnlinkSync(tmpPath) } catch { /* non-critico */ }
 }

@@ -1,8 +1,10 @@
 import { workerData, parentPort } from 'worker_threads'
-import { existsSync, readdirSync, readFileSync } from 'fs'
-import { unlink, stat } from 'fs/promises'
 import { join } from 'path'
+import {
+  safeExistsSync, safeReaddirSync, safeReadFileSync, safeStatSync, safeUnlink,
+} from './safeFs.js'
 import { PRUNE_BATCH } from './constants.js'
+import { readVornMeta } from './format.js'
 
 const { storeDir, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
@@ -14,8 +16,8 @@ async function run() {
   let orphans = null
   {
     const sessionsRoot = join(storeDir, 'vorn', 'sessions')
-    const sessionDirs  = existsSync(sessionsRoot)
-      ? readdirSync(sessionsRoot, { withFileTypes: true }).filter(e => e.isDirectory())
+    const sessionDirs  = safeExistsSync(sessionsRoot)
+      ? safeReaddirSync(sessionsRoot, { withFileTypes: true }).filter(e => e.isDirectory())
       : []
 
     const totalSessions = sessionDirs.length
@@ -30,19 +32,22 @@ async function run() {
       parentPort.postMessage({ type: 'progress', progress: { phase: 'scanning', scanned: si + 1, totalSessions } })
 
       const runsPath = join(sessionsRoot, sessionDirs[si].name, 'runs')
-      if (!existsSync(runsPath)) continue
+      if (!safeExistsSync(runsPath)) continue
 
-      for (const runFile of readdirSync(runsPath)) {
+      for (const runFile of safeReaddirSync(runsPath)) {
         if (!runFile.endsWith('.json')) continue
         if (Atomics.load(cancelFlag, 0) !== 0) {
           parentPort.postMessage({ type: 'done', result: { status: 'cancelled', deleted: 0, failed: 0, orphanCount: 0 } })
           return
         }
         try {
-          const run = JSON.parse(readFileSync(join(runsPath, runFile), 'utf8'))
-          for (const fileInfo of Object.values(run.files ?? {})) {
-            if (typeof fileInfo === 'string') referenced.add(fileInfo)
-            else if (fileInfo?.hash_vorn) referenced.add(fileInfo.hash_vorn)
+          const run = JSON.parse(safeReadFileSync(join(runsPath, runFile), 'utf8'))
+          // `run.files` è una mappa `relPath → storeKey` (string). I storeKey
+          // includono il suffisso di compressione (es. `<hash>_gzip`); così
+          // come sono finiscono in `referenced` e fanno match diretto con i
+          // filename `.vorn` dello store (no split).
+          for (const storeKey of Object.values(run.files ?? {})) {
+            if (typeof storeKey === 'string') referenced.add(storeKey)
           }
         } catch { /* run corrotto, ignorato */ }
       }
@@ -55,8 +60,26 @@ async function run() {
 
     parentPort.postMessage({ type: 'progress', progress: { phase: 'computing', scanned: totalSessions, totalSessions } })
 
-    const allStoreFiles = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
-    orphans = allStoreFiles.map(f => f.slice(0, -5)).filter(h => !referenced.has(h))
+    // Raccoglie i .vornc referenziati leggendo i manifest
+    const referencedChunks = new Set()
+    for (const storeKey of referenced) {
+      try {
+        const { meta } = readVornMeta(join(storeDir, storeKey + '.vorn'))
+        if (meta?.strategy === 'chunks' && Array.isArray(meta.chunks)) {
+          for (const chunkKey of meta.chunks) referencedChunks.add(chunkKey)
+        }
+      } catch { /* non-manifest o corrotto, ignorato */ }
+    }
+
+    const allFiles       = safeReaddirSync(storeDir)
+    const allStoreFiles  = allFiles.filter(f => f.endsWith('.vorn'))
+    const allChunkFiles  = allFiles.filter(f => f.endsWith('.vornc'))
+    const orphanVorn     = allStoreFiles.map(f => f.slice(0, -5)).filter(h => !referenced.has(h))
+    const orphanChunks   = allChunkFiles.map(f => f.slice(0, -6)).filter(h => !referencedChunks.has(h))
+    orphans = [
+      ...orphanVorn.map(h => ({ key: h, ext: '.vorn' })),
+      ...orphanChunks.map(h => ({ key: h, ext: '.vornc' })),
+    ]
   }
 
   if (Atomics.load(cancelFlag, 0) !== 0) {
@@ -93,14 +116,15 @@ async function run() {
   async function deleteWorker() {
     let i
     while (Atomics.load(cancelFlag, 0) === 0 && !disconnected && (i = localIdx++) < toDelete.length) {
+      const { key, ext } = toDelete[i]
       try {
-        await unlink(join(storeDir, toDelete[i] + '.vorn'))
+        await safeUnlink(join(storeDir, key + ext))
         deleted++
       } catch (e) {
         if (e.code === 'ENOENT') {
           deleted++
         } else {
-          try { await stat(storeDir) } catch { disconnected = true }
+          try { safeStatSync(storeDir) } catch { disconnected = true }
           failed++
         }
       }

@@ -5,6 +5,7 @@ import { storeBlob }                                         from './vorn/store.
 import { releaseLock }                                       from './vorn/lockFile.js'
 import { setTaskCancelFn, updateTaskProgress }               from './vorn/taskManager.js'
 import { logger }                                            from './vorn/logger.js'
+import { dbGetFile, dbUpsertFileMany, dbPruneOrphans }       from './vorn/db.js'
 
 export const ctx = {
   activeWorkers: new Map(), // taskId → { worker, cancelFlag }
@@ -41,7 +42,7 @@ export function triggerDisconnect(mainWindow) {
   for (const { worker, cancelFlag } of ctx.activeWorkers.values()) {
     Atomics.store(cancelFlag, 0, 1)
     worker.postMessage({ type: 'store-disconnected' }) // cancella subito le store-request pending
-    setTimeout(() => worker.terminate(), 5000)
+    setTimeout(() => { worker.terminate().catch(() => { /* già morto */ }) }, 5000)
   }
   ctx.activeWorkers.clear()
   releaseLock(ctx.activeStore)
@@ -75,17 +76,46 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
   worker.on('message', (msg) => {
     const { type } = msg
     if (type === 'store-request') {
-      const { id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash } = msg
+      const { id, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, strategy } = msg
       if (!ctx.activeStore) {
         worker.postMessage({ type: 'store-result', id, error: 'ERR_STORE_DISCONNECTED' })
         return
       }
       const ac = new AbortController()
       _storeAc = ac
-      storeBlob(ctx.activeStore, hashVorn, bytes, filePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, ac.signal)
+      storeBlob({
+        storeDir:       ctx.activeStore,
+        hashVorn,
+        bytes,
+        sourcePath:     filePath,
+        sessionId,
+        sessionName,
+        relPath,
+        compressionType,
+        compTmpPath,
+        compressedHash,
+        signal:         ac.signal,
+        strategy,
+      })
         .then(outcome => worker.postMessage({ type: 'store-result', id, outcome }))
         .catch(err    => worker.postMessage({ type: 'store-result', id, error: err.message, code: err.code }))
         .finally(() => { if (_storeAc === ac) _storeAc = null })
+    } else if (type === 'db-request') {
+      // Tutte le op DB transitano qui: una sola connessione better-sqlite3 viva,
+      // serializzata sull'event-loop del main. Elimina il "known concern" su
+      // workers che aprivano ciascuno la propria connessione (rischio SQLITE_BUSY
+      // e upsert persi al force-terminate).
+      const { id, op, args } = msg
+      try {
+        let result
+        if      (op === 'get')          result = dbGetFile(args.path)
+        else if (op === 'upsertMany')   result = (dbUpsertFileMany(args.records), null)
+        else if (op === 'pruneOrphans') result = dbPruneOrphans()
+        else                            throw new Error('ERR_UNKNOWN_DB_OP')
+        worker.postMessage({ type: 'db-result', id, result })
+      } catch (err) {
+        worker.postMessage({ type: 'db-result', id, error: err.message, code: err.code })
+      }
     } else if (type === 'progress') {
       _lastProgress = msg.progress
       updateTaskProgress(taskId, msg.progress)
@@ -161,7 +191,7 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
           deleted:      _lastProgress?.deleted      ?? 0,
           failed:       _lastProgress?.failed       ?? 0,
         }, null)
-        entry.worker.terminate()
+        entry.worker.terminate().catch(() => { /* già morto */ })
       }
     }, 8000)
   })

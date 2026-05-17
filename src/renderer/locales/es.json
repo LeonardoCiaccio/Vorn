@@ -59,7 +59,9 @@
     "ERR_WORKER_CRASHED": "El proceso de copia de seguridad se detuvo inesperadamente",
     "ERR_SIZE_MISMATCH": "Tamaño no coincidente: encabezado={header} B, metadatos={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Tamaño comprimido no coincidente: encabezado={header} B, metadatos={meta} B",
-    "ERR_HASH_CORRUPT": "Hash corrupto: esperado {expected}…, calculado {computed}…"
+    "ERR_HASH_CORRUPT": "Hash corrupto: esperado {expected}…, calculado {computed}…",
+    "ERR_CHUNK_MISSING": "Fragmento faltante: {chunkKey}",
+    "ERR_CHUNK_ORPHAN": "Fragmento huérfano (sin manifiesto padre): {chunkKey}"
   },
 
   "nav": {
@@ -79,8 +81,10 @@
     "operationWait": "Operación en curso — por favor espere",
     "cannotUndo": "Esta operación no se puede deshacer.",
     "storeLento": "Store lento",
-    "storing": "Archivando…",
-    "compressing": "Comprimiendo…",
+    "storing": "Archivando",
+    "compressing": "Comprimiendo",
+    "hashing": "Hashing",
+    "chunking": "Fragmentando",
     "errStoreTimeout": "Tiempo de espera agotado — posible bloqueo antivirus"
   },
 
@@ -175,6 +179,7 @@
       "modified": "Modificado el",
       "sessions": "Sesiones ({n})",
       "noSessions": "Sin sesiones",
+      "strategy": "Estrategia",
       "compression": "Compresión",
       "compressionNone": "ninguna",
       "copyHash": "Copiar hash",
@@ -206,7 +211,8 @@
     },
     "integrityReport": {
       "title": "Informe de integridad",
-      "checked": "Total",
+      "vorn": "VORN",
+      "chunks": "Fragmentos",
       "ok": "OK",
       "corrupt": "Corruptos",
       "allOk": "Todos los archivos verificados están intactos",
@@ -245,6 +251,7 @@
       "placeholder": "C:\\Ruta\\Destino",
       "confirm": "Confirmar restauración",
       "fileRestored": "Archivo restaurado: {name}",
+      "filesRestored": "{n} archivos restaurados",
       "restoreFailed": "Error durante la restauración"
     }
   },
@@ -332,6 +339,7 @@
     "timeline": "Línea de tiempo",
     "id": "ID",
     "runs": "Ejecuciones",
+    "config": "Config",
     "sources": "Orígenes",
     "excludedPaths": "Rutas excluidas",
     "excludePatterns": "Patrones de exclusión",
@@ -383,6 +391,7 @@
     "patternsHelp": "Aplicado al nombre del archivo/carpeta. Use * como comodín.",
     "patternPlaceholder": "ej. *.bak o .cache",
     "resetPatterns": "Restablecer todos los patrones",
+    "dedupNote": "Los archivos ya presentes e intactos en el almacén no se reprocesarán: la compresión y el fragmentación solo se aplican a los archivos nuevos.",
     "create": "Crear sesión",
     "sourcesCount": "{count} origen seleccionado | {count} orígenes seleccionados",
     "excludedCount": "· {count} excluidos",

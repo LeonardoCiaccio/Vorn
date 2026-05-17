@@ -5,6 +5,7 @@
       class="flex items-center gap-1.5 py-1.5 pr-3 transition-colors select-none"
       :class="isFiltered ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-800/40 cursor-default'"
       :style="{ paddingLeft: (depth * 16 + 12) + 'px' }"
+      :title="node.path"
     >
       <!-- Expand toggle (solo per cartelle) -->
       <button

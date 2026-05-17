@@ -1,6 +1,9 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, renameSync, unlinkSync, rmSync } from 'fs'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
+import {
+  safeExistsSync, safeMkdirSync, safeReaddirSync, safeReadFileSync,
+  safeWriteFileSync, safeRenameSync, safeUnlinkSync, safeRmSync,
+} from './safeFs.js'
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -31,8 +34,8 @@ export function validateRunTs(ts) {
 
 export function listSessions(storeDir) {
   const dir = sessionsDir(storeDir)
-  if (!existsSync(dir)) return []
-  return readdirSync(dir, { withFileTypes: true })
+  if (!safeExistsSync(dir)) return []
+  return safeReaddirSync(dir, { withFileTypes: true })
     .filter(e => e.isDirectory())
     .map(e => {
       const s = getSession(storeDir, e.name)
@@ -44,21 +47,21 @@ export function listSessions(storeDir) {
 
 export function getSession(storeDir, name) {
   const mp = sessionManifestPath(storeDir, name)
-  if (!existsSync(mp)) return null
-  try { return JSON.parse(readFileSync(mp, 'utf8')) } catch { return null }
+  if (!safeExistsSync(mp)) return null
+  try { return JSON.parse(safeReadFileSync(mp, 'utf8')) } catch { return null }
 }
 
 export function saveSession(storeDir, session) {
   const dest = sessionManifestPath(storeDir, session.name)
   const tmp  = dest + '.tmp'
-  writeFileSync(tmp, JSON.stringify(session, null, 2), 'utf8')
-  renameSync(tmp, dest)
+  safeWriteFileSync(tmp, JSON.stringify(session, null, 2), 'utf8')
+  safeRenameSync(tmp, dest)
 }
 
 export function createSession(storeDir, session) {
   const withId = { id: randomUUID(), ...session, runs_meta: [] }
   const dir = sessionDir(storeDir, withId.name)
-  mkdirSync(join(dir, 'runs'), { recursive: true })
+  safeMkdirSync(join(dir, 'runs'), { recursive: true })
   saveSession(storeDir, withId)
   return withId
 }
@@ -71,7 +74,7 @@ export function updateSession(storeDir, name, patch) {
 
 export function deleteSession(storeDir, name) {
   const dir = sessionDir(storeDir, name)
-  if (existsSync(dir)) rmSync(dir, { recursive: true, force: true })
+  if (safeExistsSync(dir)) safeRmSync(dir, { recursive: true, force: true })
 }
 
 // ── Runs ──────────────────────────────────────────────────────────────────────
@@ -85,8 +88,8 @@ export function listRuns(storeDir, sessionName) {
   // è stale (es. crash tra writeFile e saveSession) — forziamo un rebuild.
   if (session.runs_meta?.length) {
     const dir = runsDir(storeDir, sessionName)
-    if (!existsSync(dir)) return session.runs_meta
-    const fileCount  = readdirSync(dir).filter(f => f.endsWith('.json')).length
+    if (!safeExistsSync(dir)) return session.runs_meta
+    const fileCount  = safeReaddirSync(dir).filter(f => f.endsWith('.json')).length
     const knownTotal = Math.max(session.runs_total ?? 0, session.runs_meta.length)
     if (fileCount <= knownTotal) return session.runs_meta
     // più file su disco che nel cache → rebuild sotto
@@ -94,13 +97,13 @@ export function listRuns(storeDir, sessionName) {
 
   // Altrimenti ricostruiamo la cache dai file (compatibilità o cache mancante)
   const dir = runsDir(storeDir, sessionName)
-  if (!existsSync(dir)) return []
-  const runs = readdirSync(dir)
+  if (!safeExistsSync(dir)) return []
+  const runs = safeReaddirSync(dir)
     .filter(f => f.endsWith('.json'))
     .sort().reverse()
     .map(f => {
       try {
-        const run = JSON.parse(readFileSync(join(dir, f), 'utf8'))
+        const run = JSON.parse(safeReadFileSync(join(dir, f), 'utf8'))
         return _summarizeRun(run)
       } catch { return null }
     })
@@ -115,34 +118,37 @@ export function listRuns(storeDir, sessionName) {
 }
 
 function _summarizeRun(run) {
-  return {
-    ts:          run.ts,
-    status:      run.status ?? 'done',
-    files_total: run.files_total ?? Object.keys(run.files ?? {}).length,
-    files_new:   run.files_new   ?? null,
-    files_dedup: run.files_dedup ?? null,
-    bytes_total: run.bytes_total ?? null,
-    bytes_new:   run.bytes_new   ?? null,
+  const s = {
+    ts:           run.ts,
+    status:       run.status ?? 'done',
+    files_total:  run.files_total ?? Object.keys(run.files ?? {}).length,
+    files_new:    run.files_new   ?? null,
+    files_dedup:  run.files_dedup ?? null,
+    bytes_total:  run.bytes_total ?? null,
+    bytes_new:    run.bytes_new   ?? null,
     duration_sec: run.duration_sec ?? null,
     errors_count: run.errors?.length ?? null,
   }
+  if (run.chunks_new  != null) s.chunks_new  = run.chunks_new
+  if (run.chunks_dedup != null) s.chunks_dedup = run.chunks_dedup
+  return s
 }
 
 export function loadRun(storeDir, sessionName, ts) {
   const p = runPath(storeDir, sessionName, ts)
-  if (!existsSync(p)) throw new Error('ERR_RUN_NOT_FOUND')
-  return JSON.parse(readFileSync(p, 'utf8'))
+  if (!safeExistsSync(p)) throw new Error('ERR_RUN_NOT_FOUND')
+  return JSON.parse(safeReadFileSync(p, 'utf8'))
 }
 
 export function saveRun(storeDir, sessionName, run) {
   const dir  = runsDir(storeDir, sessionName)
-  mkdirSync(dir, { recursive: true })
+  safeMkdirSync(dir, { recursive: true })
   
   // Scrittura atomica del file run (che può essere enorme)
   const dest = runPath(storeDir, sessionName, run.ts)
   const tmp  = dest + '.tmp'
-  writeFileSync(tmp, JSON.stringify(run, null, 2), 'utf8')
-  renameSync(tmp, dest)
+  safeWriteFileSync(tmp, JSON.stringify(run, null, 2), 'utf8')
+  safeRenameSync(tmp, dest)
 
   // Nota: se l'app crasha tra qui e l'aggiornamento del manifest, la run esiste su disco
   // ma runs_meta non la rispecchia. Al riavvio listRuns() la ricostruisce dai file se
@@ -166,7 +172,7 @@ export function saveRun(storeDir, sessionName, run) {
 
 export function deleteRun(storeDir, sessionName, ts) {
   const p = runPath(storeDir, sessionName, ts)
-  if (existsSync(p)) unlinkSync(p)
+  if (safeExistsSync(p)) safeUnlinkSync(p)
 
   const session = getSession(storeDir, sessionName)
   if (session?.runs_meta) {

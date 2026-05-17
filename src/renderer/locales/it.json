@@ -59,7 +59,9 @@
     "ERR_WORKER_CRASHED": "Il processo di backup si è interrotto inaspettatamente",
     "ERR_SIZE_MISMATCH": "Dimensione non corrispondente: header={header} B, metadati={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Dimensione compressa non corrispondente: header={header} B, metadati={meta} B",
-    "ERR_HASH_CORRUPT": "Hash corrotto: atteso {expected}…, calcolato {computed}…"
+    "ERR_HASH_CORRUPT": "Hash corrotto: atteso {expected}…, calcolato {computed}…",
+    "ERR_CHUNK_MISSING": "Chunk mancante: {chunkKey}",
+    "ERR_CHUNK_ORPHAN": "Chunk orfano (nessun manifest padre): {chunkKey}"
   },
 
   "nav": {
@@ -79,8 +81,10 @@
     "operationWait": "Operazione in corso — attendere il completamento",
     "cannotUndo": "Questa operazione non può essere annullata.",
     "storeLento": "Store lento",
-    "storing": "Archiviazione…",
-    "compressing": "Compressione…",
+    "storing": "Archiviazione",
+    "compressing": "Compressione",
+    "hashing": "Hashing",
+    "chunking": "Chunking",
     "errStoreTimeout": "Timeout store — possibile blocco antivirus"
   },
 
@@ -175,6 +179,7 @@
       "modified": "Modificato il",
       "sessions": "Sessioni ({n})",
       "noSessions": "Nessuna sessione",
+      "strategy": "Strategia",
       "compression": "Compressione",
       "compressionNone": "nessuna",
       "copyHash": "Copia hash",
@@ -206,7 +211,8 @@
     },
     "integrityReport": {
       "title": "Report Integrità",
-      "checked": "Totali",
+      "vorn": "VORN",
+      "chunks": "Chunk",
       "ok": "Integri",
       "corrupt": "Corrotti",
       "allOk": "Tutti i file verificati sono integri",
@@ -245,6 +251,7 @@
       "placeholder": "C:\\Percorso\\Destinazione",
       "confirm": "Conferma Ripristino",
       "fileRestored": "File ripristinato: {name}",
+      "filesRestored": "{n} file ripristinati",
       "restoreFailed": "Errore durante il ripristino"
     }
   },
@@ -332,6 +339,7 @@
     "timeline": "Timeline",
     "id": "ID",
     "runs": "Run",
+    "config": "Config",
     "sources": "Sorgenti",
     "excludedPaths": "Percorsi esclusi",
     "excludePatterns": "Pattern esclusioni",
@@ -361,6 +369,8 @@
     "progress": {
       "new": "+{n} nuovi",
       "dedup": "{n} dedup",
+      "chunks_new": "+{n} chunk nuovi",
+      "chunks_dedup": "{n} chunk dedup",
       "errors": "{n} errori",
       "written": "{n} scritti",
       "restored": "{n} ripristinati"
@@ -373,6 +383,13 @@
     "help": "Applicata ai nuovi file. I file già presenti nello store non vengono ricompressi."
   },
 
+  "strategy": {
+    "label": "Strategia",
+    "standard": "Standard",
+    "chunks": "Chunking (file > 10 MB)",
+    "help": "Con il chunking i file grandi vengono spezzati in blocchi da 4 MB. Solo i blocchi modificati vengono ri-caricati."
+  },
+
   "newSession": {
     "title": "Nuova sessione",
     "foldersLabel": "Cartelle da includere",
@@ -383,6 +400,7 @@
     "patternsHelp": "Applicati su nome file/cartella. Usa * come wildcard.",
     "patternPlaceholder": "es. *.bak oppure .cache",
     "resetPatterns": "Azzera tutti i pattern",
+    "dedupNote": "I file già presenti e integri nello store non vengono riprocessati: compressione e chunking si applicano solo ai file nuovi.",
     "create": "Crea sessione",
     "sourcesCount": "{count} sorgente selezionate | {count} sorgenti selezionate",
     "excludedCount": "· {count} esclusi",
@@ -422,6 +440,7 @@
     "selective": "Ripristino selettivo:",
     "files": "{n} file",
     "originalPath": "Percorso Originale",
+    "originalLocations": "I file verranno ripristinati nei percorsi originali.",
     "customDest": "Destinazione Personalizzata",
     "customPlaceholder": "C:\\Percorso\\Destinazione",
     "note": "Nota: La struttura delle sottocartelle verrà ricreata qui.",

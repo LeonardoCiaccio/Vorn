@@ -59,7 +59,9 @@
     "ERR_WORKER_CRASHED": "Der Sicherungsprozess wurde unerwartet beendet",
     "ERR_SIZE_MISMATCH": "Größenabweichung: Header={header} B, Metadaten={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Komprimierte Größenabweichung: Header={header} B, Metadaten={meta} B",
-    "ERR_HASH_CORRUPT": "Hash beschädigt: erwartet {expected}…, berechnet {computed}…"
+    "ERR_HASH_CORRUPT": "Hash beschädigt: erwartet {expected}…, berechnet {computed}…",
+    "ERR_CHUNK_MISSING": "Fehlender Block: {chunkKey}",
+    "ERR_CHUNK_ORPHAN": "Verwaister Block (kein übergeordnetes Manifest): {chunkKey}"
   },
 
   "nav": {
@@ -79,8 +81,10 @@
     "operationWait": "Vorgang läuft — bitte warten",
     "cannotUndo": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
     "storeLento": "Langsamer Store",
-    "storing": "Archivierung…",
-    "compressing": "Komprimierung…",
+    "storing": "Archivierung",
+    "compressing": "Komprimierung",
+    "hashing": "Hashing",
+    "chunking": "Chunking",
     "errStoreTimeout": "Store-Timeout — mögliche Antivirensperrung"
   },
 
@@ -175,6 +179,7 @@
       "modified": "Geändert am",
       "sessions": "Sitzungen ({n})",
       "noSessions": "Keine Sitzungen",
+      "strategy": "Strategie",
       "compression": "Komprimierung",
       "compressionNone": "keine",
       "copyHash": "Hash kopieren",
@@ -206,7 +211,8 @@
     },
     "integrityReport": {
       "title": "Integritätsbericht",
-      "checked": "Gesamt",
+      "vorn": "VORN",
+      "chunks": "Chunks",
       "ok": "OK",
       "corrupt": "Beschädigt",
       "allOk": "Alle geprüften Dateien sind intakt",
@@ -245,6 +251,7 @@
       "placeholder": "C:\\Pfad\\Ziel",
       "confirm": "Wiederherstellung bestätigen",
       "fileRestored": "Datei wiederhergestellt: {name}",
+      "filesRestored": "{n} Dateien wiederhergestellt",
       "restoreFailed": "Fehler bei der Wiederherstellung"
     }
   },
@@ -332,6 +339,7 @@
     "timeline": "Zeitachse",
     "id": "ID",
     "runs": "Läufe",
+    "config": "Config",
     "sources": "Quellen",
     "excludedPaths": "Ausgeschlossene Pfade",
     "excludePatterns": "Ausschlussmuster",
@@ -383,6 +391,7 @@
     "patternsHelp": "Auf Datei-/Ordnernamen angewendet. Verwenden Sie * als Platzhalter.",
     "patternPlaceholder": "z. B. *.bak oder .cache",
     "resetPatterns": "Alle Muster zurücksetzen",
+    "dedupNote": "Bereits vorhandene und intakte Dateien im Speicher werden nicht erneut verarbeitet: Komprimierung und Chunking gelten nur für neue Dateien.",
     "create": "Sitzung erstellen",
     "sourcesCount": "{count} Quelle ausgewählt | {count} Quellen ausgewählt",
     "excludedCount": "· {count} ausgeschlossen",

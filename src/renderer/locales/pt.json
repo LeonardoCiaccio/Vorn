@@ -59,7 +59,9 @@
     "ERR_WORKER_CRASHED": "O processo de cópia de segurança terminou inesperadamente",
     "ERR_SIZE_MISMATCH": "Tamanho não correspondente: cabeçalho={header} B, metadados={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Tamanho comprimido não correspondente: cabeçalho={header} B, metadados={meta} B",
-    "ERR_HASH_CORRUPT": "Hash corrompido: esperado {expected}…, calculado {computed}…"
+    "ERR_HASH_CORRUPT": "Hash corrompido: esperado {expected}…, calculado {computed}…",
+    "ERR_CHUNK_MISSING": "Fragmento ausente: {chunkKey}",
+    "ERR_CHUNK_ORPHAN": "Fragmento órfão (sem manifesto pai): {chunkKey}"
   },
 
   "nav": {
@@ -79,8 +81,10 @@
     "operationWait": "Operação em curso — por favor aguarde",
     "cannotUndo": "Esta operação não pode ser desfeita.",
     "storeLento": "Store lento",
-    "storing": "Arquivando…",
-    "compressing": "Comprimindo…",
+    "storing": "Arquivando",
+    "compressing": "Comprimindo",
+    "hashing": "Hash",
+    "chunking": "Fragmentando",
     "errStoreTimeout": "Tempo limite excedido — possível bloqueio do antivírus"
   },
 
@@ -175,6 +179,7 @@
       "modified": "Modificado em",
       "sessions": "Sessões ({n})",
       "noSessions": "Sem sessões",
+      "strategy": "Estratégia",
       "compression": "Compressão",
       "compressionNone": "nenhuma",
       "copyHash": "Copiar hash",
@@ -206,7 +211,8 @@
     },
     "integrityReport": {
       "title": "Relatório de Integridade",
-      "checked": "Total",
+      "vorn": "VORN",
+      "chunks": "Fragmentos",
       "ok": "OK",
       "corrupt": "Corrompidos",
       "allOk": "Todos os arquivos verificados estão intactos",
@@ -245,6 +251,7 @@
       "placeholder": "C:\\Caminho\\Destino",
       "confirm": "Confirmar restauração",
       "fileRestored": "Arquivo restaurado: {name}",
+      "filesRestored": "{n} arquivos restaurados",
       "restoreFailed": "Erro durante a restauração"
     }
   },
@@ -332,6 +339,7 @@
     "timeline": "Linha do tempo",
     "id": "ID",
     "runs": "Execuções",
+    "config": "Config",
     "sources": "Origens",
     "excludedPaths": "Caminhos excluídos",
     "excludePatterns": "Padrões de exclusão",
@@ -383,6 +391,7 @@
     "patternsHelp": "Aplicado ao nome do arquivo/pasta. Use * como curinga.",
     "patternPlaceholder": "ex: *.bak ou .cache",
     "resetPatterns": "Redefinir todos os padrões",
+    "dedupNote": "Os arquivos já presentes e intactos no repositório não são reprocessados: compressão e fragmentação aplicam-se apenas a arquivos novos.",
     "create": "Criar sessão",
     "sourcesCount": "{count} origem selecionada | {count} origens selecionadas",
     "excludedCount": "· {count} excluídos",

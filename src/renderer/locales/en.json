@@ -59,7 +59,9 @@
     "ERR_WORKER_CRASHED": "The backup process stopped unexpectedly",
     "ERR_SIZE_MISMATCH": "Size mismatch: header={header} B, metadata={meta} B",
     "ERR_COMPRESSED_SIZE_MISMATCH": "Compressed size mismatch: header={header} B, metadata={meta} B",
-    "ERR_HASH_CORRUPT": "Corrupted hash: expected {expected}…, computed {computed}…"
+    "ERR_HASH_CORRUPT": "Corrupted hash: expected {expected}…, computed {computed}…",
+    "ERR_CHUNK_MISSING": "Missing chunk: {chunkKey}",
+    "ERR_CHUNK_ORPHAN": "Orphan chunk (no parent manifest): {chunkKey}"
   },
 
   "nav": {
@@ -79,8 +81,10 @@
     "operationWait": "Operation in progress — please wait",
     "cannotUndo": "This operation cannot be undone.",
     "storeLento": "Slow store",
-    "storing": "Storing…",
-    "compressing": "Compressing…",
+    "storing": "Storing",
+    "compressing": "Compressing",
+    "hashing": "Hashing",
+    "chunking": "Chunking",
     "errStoreTimeout": "Store timeout — possible antivirus interference"
   },
 
@@ -175,6 +179,7 @@
       "modified": "Modified on",
       "sessions": "Sessions ({n})",
       "noSessions": "No sessions",
+      "strategy": "Strategy",
       "compression": "Compression",
       "compressionNone": "none",
       "copyHash": "Copy hash",
@@ -206,7 +211,8 @@
     },
     "integrityReport": {
       "title": "Integrity Report",
-      "checked": "Total",
+      "vorn": "VORN",
+      "chunks": "Chunks",
       "ok": "OK",
       "corrupt": "Corrupted",
       "allOk": "All checked files are intact",
@@ -245,6 +251,7 @@
       "placeholder": "C:\\Path\\Destination",
       "confirm": "Confirm Restore",
       "fileRestored": "File restored: {name}",
+      "filesRestored": "{n} files restored",
       "restoreFailed": "Error during restore"
     }
   },
@@ -332,6 +339,7 @@
     "timeline": "Timeline",
     "id": "ID",
     "runs": "Runs",
+    "config": "Config",
     "sources": "Sources",
     "excludedPaths": "Excluded paths",
     "excludePatterns": "Exclusion patterns",
@@ -361,6 +369,8 @@
     "progress": {
       "new": "+{n} new",
       "dedup": "{n} dedup",
+      "chunks_new": "+{n} new chunks",
+      "chunks_dedup": "{n} dedup chunks",
       "errors": "{n} errors",
       "written": "{n} written",
       "restored": "{n} restored"
@@ -373,6 +383,13 @@
     "help": "Applied to new files. Files already in the store are not re-compressed."
   },
 
+  "strategy": {
+    "label": "Strategy",
+    "standard": "Standard",
+    "chunks": "Chunking (files > 10 MB)",
+    "help": "With chunking, large files are split into 4 MB blocks. Only modified blocks are re-uploaded."
+  },
+
   "newSession": {
     "title": "New session",
     "foldersLabel": "Folders to include",
@@ -383,6 +400,7 @@
     "patternsHelp": "Applied to file/folder name. Use * as wildcard.",
     "patternPlaceholder": "e.g. *.bak or .cache",
     "resetPatterns": "Reset all patterns",
+    "dedupNote": "Files already present and intact in the store are not reprocessed: compression and chunking apply only to new files.",
     "create": "Create session",
     "sourcesCount": "{count} source selected | {count} sources selected",
     "excludedCount": "· {count} excluded",
@@ -422,6 +440,7 @@
     "selective": "Selective restore:",
     "files": "{n} files",
     "originalPath": "Original Path",
+    "originalLocations": "Files will be restored to their original locations.",
     "customDest": "Custom Destination",
     "customPlaceholder": "C:\\Path\\Destination",
     "note": "Note: The subfolder structure will be recreated here.",
