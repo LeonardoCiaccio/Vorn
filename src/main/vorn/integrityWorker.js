@@ -1,6 +1,8 @@
 import { workerData, parentPort } from 'worker_threads'
-import { readdirSync, openSync, closeSync, existsSync } from 'fs'
 import { join } from 'path'
+import {
+  safeReaddirSync, safeOpenSync, safeCloseSync, safeExistsSync,
+} from './safeFs.js'
 import { readVornMeta, contentStream } from './format.js'
 import { hashFromFd, hashFromStream } from './hash.js'
 
@@ -11,8 +13,9 @@ const cancelFlag = new Int32Array(cancelBuffer)
 
 let files = [], vorn_total = 0, vornc_total = 0
 try {
-  const vorn  = readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
-  const vornc = readdirSync(storeDir).filter(f => f.endsWith('.vornc'))
+  const allFiles = safeReaddirSync(storeDir)
+  const vorn  = allFiles.filter(f => f.endsWith('.vorn'))
+  const vornc = allFiles.filter(f => f.endsWith('.vornc'))
   vorn_total  = vorn.length
   vornc_total = vornc.length
   files = [...vorn, ...vornc]
@@ -42,7 +45,7 @@ let ok = 0
         const refs = meta?.references ?? []
         const hasValidParent = refs.some(r => {
           const parentPath = join(storeDir, r + '.vorn')
-          if (!existsSync(parentPath)) return false
+          if (!safeExistsSync(parentPath)) return false
           try {
             const parentMeta = readVornMeta(parentPath).meta
             return parentMeta?.strategy === 'chunks' && (parentMeta.chunks ?? []).includes(storeKey)
@@ -56,7 +59,7 @@ let ok = 0
       // Manifest .vorn: non ha contenuto, verifica solo che i chunk esistano.
       if (meta?.strategy === 'chunks') {
         for (const chunkKey of meta.chunks ?? []) {
-          if (!existsSync(join(storeDir, chunkKey + '.vornc')))
+          if (!safeExistsSync(join(storeDir, chunkKey + '.vornc')))
             issues.push({ code: 'ERR_CHUNK_MISSING', params: { chunkKey } })
         }
         if (issues.length === 0) ok++
@@ -82,22 +85,22 @@ let ok = 0
       // Check hash.
       let computedHash, refHash
       if (isCompressed && meta?.compressed_hash) {
-        const fd = openSync(filePath, 'r')
+        const fd = safeOpenSync(filePath, 'r')
         try {
           computedHash = hashFromFd(fd, HEADER_SIZE, contentLen, () => Atomics.load(cancelFlag, 0) !== 0)
         } finally {
-          closeSync(fd)
+          safeCloseSync(fd)
         }
         refHash = meta.compressed_hash
       } else if (isCompressed) {
         computedHash = await hashFromStream(contentStream(filePath))
         refHash = meta?.hash_vorn ?? expectedHash
       } else {
-        const fd = openSync(filePath, 'r')
+        const fd = safeOpenSync(filePath, 'r')
         try {
           computedHash = hashFromFd(fd, HEADER_SIZE, contentLen, () => Atomics.load(cancelFlag, 0) !== 0)
         } finally {
-          closeSync(fd)
+          safeCloseSync(fd)
         }
         refHash = meta?.hash_vorn ?? expectedHash
       }

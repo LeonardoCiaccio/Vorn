@@ -243,7 +243,8 @@ Do not propose any of the following patterns as "bugs" — they are the current 
 
 - **`vornHash` detects mid-hash truncate** (R4-5): `n === 0` → `ERR_SOURCE_TRUNCATED_DURING_HASH`. The caller `backup.js` handles it as a per-file error (`continue`), distinct from `null` (cancel, `break`). Do NOT re-propose "infinite loop on live file".
 - **`readVornMeta` distinguishes truncation from bad separator** (R2-5): partial `readSync` → `ERR_FILE_TRUNCATED`; full read but bytes ≠ SEPARATOR → `ERR_SEPARATOR_NOT_FOUND`. Do NOT re-propose "fragile separator check".
-- **`safeFs.toLongPath` normalizes forward-slash + handles UNC** (R1 #12): drive-letter, UNC, mixed slash → correct `\\?\` prefix. Do NOT re-propose "long path failure on Windows".
+- **`safeFs.toLongPath` aggiunge `\\?\` solo per path > 259 chars** (R1 #12, corretto R8-5): drive-letter, UNC, mixed slash → normalizzato. Il prefisso è aggiunto **solo se `n.length > 259`** — il prefissaggio incondizionale causava ENOENT su path corti come `D:\` (root di drive USB) in Electron, perché `access()` e alcuni syscall non supportano `\\?\` su path radice. Do NOT re-propose "aggiungere `\\?\` a tutti i path" (causò regressione `ERR_FOLDER_NOT_FOUND` confermata in produzione). Do NOT re-propose "long path failure on Windows".
+- **`safeExistsSync` usa `statSync`, non `existsSync`** (R8-4): `fs.existsSync` in Electron's `original-fs` chiama `access()` internamente, che NON supporta path `\\?\` anche quando `original-fs.statSync` funziona correttamente. `safeExistsSync` è ora `try { _fs.statSync(toLongPath(p)); return true } catch { return false }`. Do NOT re-propose "usare existsSync per check di esistenza" in safeFs.
 - **Scanner blocks junction before isDirectory** (R1 #20): NTFS junction on `AppData/Local/Application Data` no longer causes recursive loops.
 - **Lock detection on NAS/SMB** (R2-6): `checkLock` rejects if `lock.machine !== hostname()`. PID check is only valid intra-machine. Do NOT re-propose "stale lock theft on network share".
 
@@ -258,7 +259,7 @@ Do not propose any of the following patterns as "bugs" — they are the current 
 - **Error dedup on resume** (R3-3): `path|error|phase` key prevents unbounded accumulation. Do NOT re-propose "errors[] grows on every resume".
 - **`_cleanupResidualTemps` strict pattern** (R7-1): matches ONLY `<storeKey>.vorn.tmp`, `<storeKey>.vornc.tmp`, and `<vornFile>.repair.<pid>.<ts>`. Generic `*.tmp` matching is forbidden (user-owned files in shared folders). `.mtmp` is still preserved (see WAL rule R4-1). Do NOT re-propose "open-store deletes user temp files" or "open-store should cleanup .ctmp" (`.ctmp` is in `os.tmpdir()`, never in storeDir).
 - **Integrity ↔ delete tasks mutex** (R7-2): `integrity` is exclusive with `prune` and `clear` (both delete `.vorn`/`.vornc`). Coexists with backup/restore/extract (no deletion). Without this gate, integrity reports false `ENOENT`/`ERR_CHUNK_ORPHAN` on files legitimately deleted by prune. Do NOT re-propose "integrity false positives during cleanup".
-- **safeFs everywhere in store I/O paths** (R7-3): `format.js` and `store.js` use `safeFs` for ALL file ops (sync + promise). `safeFs.js` exposes the full surface: `safeOpenSync`, `safeReadSync`, `safeWriteSync`, `safeFsyncSync`, `safeCloseSync`, `safeStatSync`, `safeReaddirSync`, `safeExistsSync`, `safeUnlinkSync`, `safeRenameSync`, `safeReadFileSync`, `safeMkdirSync`, `safeTruncateSync`, plus promise versions `safeAccess`, `safeWriteFile`, `safeTruncate`, `safeOpen`, `safeUnlink`. Do NOT re-propose "raw fs in long-path-sensitive code paths" without first checking that the file isn't `format.js`/`store.js` (which are migrated). `pruneWorker.js` and `integrityWorker.js` may still have raw `openSync`/`readdirSync` — those are fertile-area work for future rounds.
+- **safeFs su tutti i file I/O paths** (R7-3 + R8-1): la migrazione è ora **completa** su tutti i file che operano su storeDir/source paths/destDir. File migrati in R8: `sessions.js`, `lockFile.js`, `pruneWorker.js`, `integrityWorker.js`, `clearWorker.js`, `storeHandlers.js`, `restore.js`, `systemHandlers.js`, `compress.js`, `taskHandlers.js`, `hash.js`. `safeFs.js` espone la superficie completa: `safeOpenSync`, `safeReadSync`, `safeWriteSync`, `safeFsyncSync`, `safeCloseSync`, `safeStatSync`, `safeReaddirSync`, `safeExistsSync`, `safeUnlinkSync`, `safeRenameSync`, `safeReadFileSync`, `safeWriteFileSync`, `safeMkdirSync`, `safeTruncateSync`, `safeRmSync`, `safeAccessSync`, `safeCreateReadStream`, `safeCreateWriteStream`, più le promise versions `safeAccess`, `safeWriteFile`, `safeTruncate`, `safeOpen`, `safeUnlink`. Do NOT re-propose "raw fs in long-path-sensitive code paths" — tutti i file del progetto sono stati verificati. Eccezioni intenzionali: `ipc.js` (solo `os.tmpdir()`), `db.js`/`logger.js`/`settings.js` (solo `~/.vorn/`, < 260 char), `icon.js` (risorse app).
 
 ## Deliberately skipped — do not re-flag
 
@@ -352,20 +353,49 @@ The reviewer does not test the code (cannot). So every "Suggested fix" is a **hy
 
 ---
 
-## Areas worth investigating (Round 8+)
+## Areas worth investigating (Round 9+)
 
-The next reviewer can invest effort productively in these areas NOT yet touched (items closed in R7 removed; `safeFs` deep dive partially covered by R7-3):
+The next reviewer can invest effort productively in these areas NOT yet touched (items closed in R7–R8 removed; safeFs migration is now complete):
 
-1. **`safeFs` propagation to workers**: R7-3 migrated `format.js` and `store.js`. `pruneWorker.js` and `integrityWorker.js` still have raw `openSync`/`readdirSync` on storeDir paths. Same long-path failure mode applies there on deep stores.
-2. **Notification icon path**: does `getAppIcon()` have a cache? Is it called on every notification?
-3. **Cancel atomicity of `storeChunked`**: cancel mid-flight → manifest not written BUT some `.vornc` files with `references` pointing to a hashVorn that doesn't exist as `.vorn`. Are they correctly collected by the prune as orphans?
-4. **Permission edge cases**: run file made read-only mid-backup → does `saveRun` throw? Is it caught? Is the run state lost?
-5. **Renderer XSS via metadata**: `meta.records[].paths` and `meta.records[].session` end up in the UI. Only `v-text` or are there `v-html`? Specific audit of every template rendering data from `.vorn`.
-6. **Selective worker error recovery**: if `_storeBlob` rejects inside `storeBlob`, the worker continues with the next file. On certain errors (ENOSPC on the destination `.vorn`, not only on the `.vornc`) would we want to abort the whole run instead?
-7. **Format upgrade path**: today there is no version byte (R4-8 deferred). When added, how will legacy `.vorn` files be propagated? Automatic migration on store open, or read-old-write-new on-touch?
-8. **Memory pressure on `readVorn`**: the cap `READ_VORN_MAX_BYTES = 128MB` is hardcoded. On low-RAM workstations it may still saturate if concurrent. Is an `os.freemem` check worthwhile?
-9. **`KNOWN_COMPRESSION_TYPES` extension**: today only `['gzip']`. When zstd is added, full audit of points that assume `'gzip'` as the only value — are they all caught by the derived `STORE_KEY_RE` or are there hardcoded checks?
-10. **Pipeline AbortSignal extension**: today `_cancellable(isCancelled)` lives only in `restore.js`. The same logic may be needed in other long pipelines (e.g., `extractStoreWorker` if it exists). Audit residual pipelines.
+1. **`safeFs` propagation to workers — HIGH priority, 3 files affected**: R7-3 migrated `format.js` and `store.js`. The following workers still import raw `fs` / `fs/promises` for storeDir paths — same long-path failure mode as R7-3 but in a different surface:
+
+   - **`integrityWorker.js`** (lines 2–3: `readdirSync, openSync, closeSync, existsSync` from `fs`):
+     - `readdirSync(storeDir)` × 2 at module level (lines 14–15) — top-level, no safeFs
+     - `openSync(filePath, 'r')` at lines 85 and 98 — critical: integrity cannot hash files in a deep storeDir
+     - `closeSync(fd)` at lines 89 and 102
+     - `existsSync(parentPath)` at line 45, `existsSync(join(...))` at line 58 — chunk orphan check fails silently
+
+   - **`pruneWorker.js`** (lines 2–3: `existsSync, readdirSync, readFileSync` from `fs`; lines 3–4: `unlink, stat` from `fs/promises`):
+     - `readdirSync(sessionsRoot)` line 19, `readdirSync(runsPath)` line 36 — session scan broken on deep paths
+     - `readFileSync(join(runsPath, runFile), 'utf8')` line 43 — run file unreadable → orphan scan marks ALL store keys as orphans
+     - `readdirSync(storeDir)` line 73 — store scan broken; orphan list empty → prune does nothing
+     - `unlink(join(storeDir, key + ext))` line 120 — raw `fs/promises.unlink`, not `safeUnlink`
+     - `stat(storeDir)` line 126 — raw `fs/promises.stat`, not safeFs
+
+   - **`clearWorker.js`** (line 2: `readdirSync` from `fs`; line 4: `unlink, stat` from `fs/promises`):
+     - `readdirSync(storeDir)` line 10 — **unguarded at module level** (no try/catch): if storeDir is unreachable at spawn time, the worker thread crashes without a clean `{ type: 'error' }` message
+     - `unlink(join(storeDir, files[i]))` line 35 — raw `fs/promises.unlink`, not `safeUnlink`
+     - `stat(storeDir)` line 41 — raw
+
+1. **Notification icon path**: does `getAppIcon()` have a cache? Is it called on every notification? Look at `src/main/vorn/icon.js` — if it calls `nativeImage.createFromPath` on every `Notification`, and the icon lives in `extraResources`, a hot backup with frequent notifications leaks open handles.
+
+2. **Cancel atomicity of `storeChunked`**: cancel mid-flight → manifest not written BUT some `.vornc` files with `references` pointing to a `hash_vorn` that doesn't exist as `.vorn`. Are they correctly collected by prune as orphans? Trace the cancel path in `backup.js` `_storeVornc` + the orphan detection in `pruneWorker.js` to confirm they are eventually cleaned up.
+
+3. **Permission edge cases**: run file made read-only mid-backup → does `saveRun` throw? Is it caught? Is the run state lost?
+
+4. **Renderer XSS via metadata**: `meta.records[].paths` and `meta.records[].session` end up in the UI. Only `v-text` or are there `v-html`? Specific audit of every template rendering data from `.vorn`.
+
+5. **Selective worker error recovery**: if `_storeBlob` rejects inside `storeBlob`, the worker continues with the next file. On certain errors (`ENOSPC` on the destination `.vorn`, not only on the `.vornc`) would we want to abort the whole run instead?
+
+6. **Format upgrade path**: today there is no version byte (R4-8 deferred). When added, how will legacy `.vorn` files be propagated? Automatic migration on store open, or read-old-write-new on-touch?
+
+7. **Memory pressure on `readVorn`**: the cap `READ_VORN_MAX_BYTES = 128MB` is hardcoded. On low-RAM workstations it may still saturate if concurrent. Is an `os.freemem` check worthwhile?
+
+8. **`KNOWN_COMPRESSION_TYPES` extension**: today only `['gzip']`. When zstd is added, full audit of points that assume `'gzip'` as the only value — are they all caught by the derived `STORE_KEY_RE` or are there hardcoded checks?
+
+9. **Pipeline AbortSignal extension**: today `_cancellable(isCancelled)` lives only in `restore.js`. The same logic may be needed in other long pipelines (e.g., `extractStoreWorker`). Audit residual pipelines.
+
+10. **`safeAccessSync` incompatibility with `\\?\` in Electron**: `accessSync` (used by `safeAccessSync`) has the same limitation as the old `existsSync`: it uses the `access()` syscall which does not support extended-length paths in Electron's `original-fs`. In `taskHandlers.js`, `safeAccessSync(resolvedDest, constants.W_OK)` is called on the restore/extract destination dir. If `resolvedDest` is > 259 chars, `toLongPath` adds `\\?\` and the check always throws → `ERR_DEST_NOT_WRITABLE` false positive. Short-term fix: same pattern as `safeExistsSync` — use `statSync` + access mode check. Long-term: verify whether Electron's `original-fs.accessSync` actually supports `\\?\` before deciding.
 
 ---
 
@@ -490,10 +520,22 @@ High-quality review: no false positives, all snippets pastable, no severity infl
 
 ---
 
-## Operational notes for the Round 7 reviewer
+## Round 8 — safeFs migration completa + fix toLongPath (post Round 7)
 
-- **Current branch**: `feature/vornc-chunking`. Master is the state before the chunking refactor.
-- **Threat model**: hostile store (someone else's USB, manipulated `.vorn`), USB removable at runtime, attacker controls file content / file names / `meta.records`. Same baseline as previous rounds.
-- **Finding style**: cite exact files and lines. Clearly distinguish "speculative" from "concrete vector". Suggest fixes with snippets.
-- **Severity calibration**: HIGH = demonstrable data loss / privilege escalation / corruption. MED = functional bug, broken UX, resource leak. LOW = code quality, unlikely edge case, recommendation.
-- **Avoid duplicates**: every item marked `[x]` in this file HAS BEEN FIXED. Every item in the "Deliberately skipped" section was DELIBERATELY not fixed. Re-proposing one of these requires a new concrete vector.
+Migrazione sistematica di tutti i file rimanenti e fix di due bug critici in `safeFs.js` stessa. No false positives. Tutti i fix testati in produzione (chiavetta USB root `D:\`).
+
+- [x] **R8-1** [MED] safeFs propagation a tutti i worker e handler: `pruneWorker.js`, `integrityWorker.js`, `clearWorker.js`, `storeHandlers.js`, `restore.js`, `systemHandlers.js`, `compress.js`, `taskHandlers.js`, `hash.js`, `sessions.js`, `lockFile.js` — tutti i raw `fs` import su storeDir/user paths sostituiti con wrapper safeFs. `safeFs.js` esteso con `safeWriteFileSync`, `safeRmSync`, `safeAccessSync`.
+- [x] **R8-2** [LOW] `integrityWorker.js` double `readdirSync(storeDir)` (linee 14–15): due chiamate separate per `.vorn` e `.vornc` → inconsistenza TOCTOU su `vorn_total`/`vornc_total`. Sostituito con una singola `safeReaddirSync` + doppio filter.
+- [x] **R8-3** [MED] `clearWorker.js` top-level `readdirSync(storeDir)` non protetto (linea 10): se il drive è irraggiungibile al momento dello spawn, il worker thread crasha senza emettere `{ type: 'error' }`, lasciando la UI in stato "task running" permanente. Aggiunto try/catch con fallback a `files = []`.
+- [x] **R8-4** [HIGH] `safeExistsSync` in Electron usa `access()` internamente (via `existsSync`), che NON supporta `\\?\` extended-length paths — ritornava sempre `false` per QUALSIASI path in `original-fs`, causando `ERR_FOLDER_NOT_FOUND` su ogni tentativo di apertura store. Corretto: `safeExistsSync` ora usa `try { statSync(toLongPath(p)) }`. `statSync` funziona correttamente con `\\?\` in `original-fs`. Confermato in produzione.
+- [x] **R8-5** [HIGH] `toLongPath` aggiungeva `\\?\` a TUTTI i path Windows, incluse radici di drive (`D:\`) e path corti. Windows non supporta `\\?\X:\` (root di drive) con `statSync`/`existsSync`/`access()` → ENOENT anche se il path esiste. Fix: il prefisso viene aggiunto solo se `n.length > 259`. Path corti (< 260 char) — comprese tutte le radici di drive e la maggior parte degli store su USB — vengono restituiti normalizzati senza prefisso. Confermato in produzione: USB root `D:\` come storeDir ora apre correttamente.
+
+## Operational notes per il reviewer Round 9+
+
+- **Current branch**: `feature/vornc-chunking`. Master è lo stato pre-chunking refactor.
+- **Threat model**: store ostile (USB altrui, `.vorn` manipolato), USB rimuovibile a runtime, attacker controlla file content / file names / `meta.records`. Stessa baseline dei round precedenti.
+- **Finding style**: cita file e linee esatte. Distingui chiaramente "speculativo" da "vettore concreto". Suggerisci fix con snippet.
+- **Severity calibration**: HIGH = data loss dimostrabile / privilege escalation / corruzione. MED = bug funzionale, UX rotta, resource leak. LOW = code quality, edge case improbabile, raccomandazione.
+- **Avoid duplicates**: ogni item `[x]` in questo file È STATO FIXATO. Ogni item in "Deliberately skipped" è una decisione deliberata. Re-proporre richiede un nuovo vettore concreto.
+- **safeFs is now complete**: tutti i file che operano su storeDir/source/destDir usano `safeFs`. Le eccezioni intenzionali sono documentate nella sezione "safeFs everywhere". Non re-proporre la migrazione safeFs.
+- **toLongPath invariant**: il prefisso `\\?\` viene aggiunto SOLO per path > 259 chars. NON re-proporre "aggiungere `\\?\` a tutti i path" — causa ENOENT su path corti in Electron (confermato in produzione, R8-5).

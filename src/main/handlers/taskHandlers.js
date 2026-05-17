@@ -1,7 +1,8 @@
 import { ipcMain, Notification, app }                                      from 'electron'
 import { logger }                                                          from '../vorn/logger.js'
 import { isAbsolute, resolve, dirname }                                     from 'path'
-import { accessSync, mkdirSync, statSync, constants }                      from 'fs'
+import { constants }                                                        from 'fs'
+import { safeAccessSync, safeMkdirSync, safeStatSync }                     from '../vorn/safeFs.js'
 import { createTask, cancelTask, listTasks, finishTask, failTask }         from '../vorn/taskManager.js'
 import { extractByHash }                                                   from '../vorn/restore.js'
 import { invalidateListCache }                                             from '../vorn/store.js'
@@ -168,12 +169,12 @@ export function registerTaskHandlers(mainWindow) {
       if (typeof destDir !== 'string') throw new Error('ERR_INVALID_DEST_DIR')
       resolvedDest = resolve(destDir)
       if (!isAbsolute(resolvedDest)) throw new Error('ERR_DEST_NOT_ABSOLUTE')
-      try { mkdirSync(resolvedDest, { recursive: true }) } catch (e) {
+      try { safeMkdirSync(resolvedDest, { recursive: true }) } catch (e) {
         if (e.code === 'EEXIST') {
-          try { if (!statSync(resolvedDest).isDirectory()) resolvedDest = dirname(resolvedDest) } catch { /* ignore */ }
+          try { if (!safeStatSync(resolvedDest).isDirectory()) resolvedDest = dirname(resolvedDest) } catch { /* ignore */ }
         }
       }
-      try { accessSync(resolvedDest, constants.W_OK) }
+      try { safeAccessSync(resolvedDest, constants.W_OK) }
       catch { throw new Error('ERR_DEST_NOT_WRITABLE') }
     }
     if (selectedFiles !== null) {

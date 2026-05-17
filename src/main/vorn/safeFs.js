@@ -2,8 +2,8 @@ import { createRequire } from 'module'
 import {
   createReadStream, createWriteStream,
   openSync, readSync, writeSync, fsyncSync, closeSync,
-  statSync, readdirSync, existsSync,
-  unlinkSync, renameSync, readFileSync, mkdirSync, truncateSync,
+  statSync, readdirSync, existsSync, accessSync,
+  unlinkSync, renameSync, readFileSync, writeFileSync, mkdirSync, truncateSync, rmSync,
 } from 'fs'
 
 // Electron patches the `fs` module to intercept .asar file access, treating
@@ -12,8 +12,8 @@ import {
 let _fs = {
   createReadStream, createWriteStream,
   openSync, readSync, writeSync, fsyncSync, closeSync,
-  statSync, readdirSync, existsSync,
-  unlinkSync, renameSync, readFileSync, mkdirSync, truncateSync,
+  statSync, readdirSync, existsSync, accessSync,
+  unlinkSync, renameSync, readFileSync, writeFileSync, mkdirSync, truncateSync, rmSync,
 }
 try {
   const origFs = createRequire(import.meta.url)('original-fs')
@@ -27,9 +27,13 @@ function toLongPath(p) {
   if (process.platform !== 'win32' || typeof p !== 'string') return p
   if (p.startsWith('\\\\?\\')) return p
   const n = p.replace(/\//g, '\\')
-  if (/^\\\\[^\\?][^\\]*\\/.test(n)) return '\\\\?\\UNC\\' + n.slice(2) // UNC: \\server\share\... → \\?\UNC\server\share\...
+  // Il prefisso \\?\ serve solo per path > MAX_PATH (259 char). Aggiungerlo
+  // incondizionatamente causa ENOENT per path corti come radici di drive
+  // (\\?\D:\) e UNC root — Windows non supporta \\?\ su queste forme.
+  if (n.length <= 259) return n
+  if (/^\\\\[^\\?][^\\]*\\/.test(n)) return '\\\\?\\UNC\\' + n.slice(2)
   if (/^[A-Za-z]:\\/.test(n))         return '\\\\?\\' + n
-  return p
+  return n
 }
 
 export const safeCreateReadStream  = (path, opts) => _fs.createReadStream(toLongPath(path), opts)
@@ -41,12 +45,17 @@ export const safeFsyncSync         = (...a) => _fs.fsyncSync(...a)
 export const safeCloseSync         = (...a) => _fs.closeSync(...a)
 export const safeStatSync          = (path, ...a) => _fs.statSync(toLongPath(path), ...a)
 export const safeReaddirSync       = (path, opts) => _fs.readdirSync(toLongPath(path), opts)
-export const safeExistsSync        = (path)       => _fs.existsSync(toLongPath(path))
+// existsSync internamente usa access() che non supporta il prefisso \\?\ in Electron.
+// statSync invece funziona correttamente con original-fs + prefisso \\?\.
+export const safeExistsSync        = (path)       => { try { _fs.statSync(toLongPath(path)); return true } catch { return false } }
 export const safeUnlinkSync        = (path)       => _fs.unlinkSync(toLongPath(path))
 export const safeRenameSync        = (a, b)       => _fs.renameSync(toLongPath(a), toLongPath(b))
 export const safeReadFileSync      = (path, opts) => _fs.readFileSync(toLongPath(path), opts)
+export const safeWriteFileSync     = (path, data, opts) => _fs.writeFileSync(toLongPath(path), data, opts)
 export const safeMkdirSync         = (path, opts) => _fs.mkdirSync(toLongPath(path), opts)
 export const safeTruncateSync      = (path, len)  => _fs.truncateSync(toLongPath(path), len)
+export const safeRmSync            = (path, opts) => _fs.rmSync(toLongPath(path), opts)
+export const safeAccessSync        = (path, mode) => _fs.accessSync(toLongPath(path), mode)
 
 // ── Promise API (fs/promises) ───────────────────────────────────────────────
 // `original-fs` di Electron NON espone le promise API, quindi usiamo le

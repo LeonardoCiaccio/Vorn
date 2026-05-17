@@ -1,5 +1,5 @@
 import { ipcMain }                                    from 'electron'
-import { existsSync, readdirSync, unlinkSync }        from 'fs'
+import { safeExistsSync, safeReaddirSync, safeUnlinkSync } from '../vorn/safeFs.js'
 import { parse, join }                                from 'path'
 import { execFileSync }                               from 'child_process'
 import { platform }                                   from 'os'
@@ -57,7 +57,7 @@ async function _cleanCrashedRuns(storeDir) {
 
 function _cleanupResidualTemps(storeDir) {
   try {
-    for (const f of readdirSync(storeDir)) {
+    for (const f of safeReaddirSync(storeDir)) {
       // ⚠️ NB: `.mtmp` NON va toccato qui. È il WAL di `_updateMeta` e serve a
       // `readVornMeta` per recuperare i records DOPO un crash mid-update. Il
       // cleanup degli orfani avviene già dentro `readVornMeta` quando la meta
@@ -78,7 +78,7 @@ function _cleanupResidualTemps(storeDir) {
       const isVornWriteTmp = /\.vornc?\.tmp$/.test(f)
       const isRepairTmp    = /\.repair\.\d+\.\d+$/.test(f)
       if (isVornWriteTmp || isRepairTmp) {
-        try { unlinkSync(join(storeDir, f)) } catch { /* non-critico */ }
+        try { safeUnlinkSync(join(storeDir, f)) } catch { /* non-critico */ }
       }
     }
   } catch { /* dir scomparsa */ }
@@ -86,7 +86,7 @@ function _cleanupResidualTemps(storeDir) {
 
 export function registerStoreHandlers(mainWindow) {
   ipcMain.handle('vorn:open-store', async (_, { storeDir }) => {
-    if (!existsSync(storeDir)) throw new Error('ERR_FOLDER_NOT_FOUND')
+    if (!safeExistsSync(storeDir)) throw new Error('ERR_FOLDER_NOT_FOUND')
     const fs = _getFilesystem(storeDir)
     if (fs && FAT32_FS_NAMES.has(fs.toLowerCase())) throw new Error('ERR_FILESYSTEM_FAT32')
     const lockErr = checkLock(storeDir)

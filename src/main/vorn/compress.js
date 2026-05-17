@@ -1,7 +1,6 @@
 import { createGzip, createGunzip } from 'zlib'
-import { createWriteStream, existsSync, statSync, unlinkSync } from 'fs'
 import { pipeline } from 'stream/promises'
-import { safeCreateReadStream } from './safeFs.js'
+import { safeCreateReadStream, safeCreateWriteStream, safeStatSync, safeExistsSync, safeUnlinkSync } from './safeFs.js'
 
 function _compressor(type) {
   if (type === 'gzip') return createGzip()
@@ -20,7 +19,7 @@ export function decompressStream(inputStream, type) {
 // Comprime sourcePath in tmpPath, ritorna la size compressa.
 // Il chiamante è responsabile di eliminare tmpPath se non serve più.
 export async function compressToTemp(sourcePath, tmpPath, type, onProgress = null, isCancelled = null) {
-  const total = statSync(sourcePath).size
+  const total = safeStatSync(sourcePath).size
   let bytesIn = 0
   const ac = new AbortController()
   try {
@@ -38,10 +37,10 @@ export async function compressToTemp(sourcePath, tmpPath, type, onProgress = nul
         }
       },
       _compressor(type),
-      createWriteStream(tmpPath),
+      safeCreateWriteStream(tmpPath),
       { signal: ac.signal }
     )
-    return statSync(tmpPath).size
+    return safeStatSync(tmpPath).size
   } catch (e) {
     if (e.name === 'AbortError' || isCancelled?.()) return null
     throw e
@@ -50,5 +49,5 @@ export async function compressToTemp(sourcePath, tmpPath, type, onProgress = nul
 
 export function cleanupTemp(tmpPath) {
   if (!tmpPath) return
-  try { if (existsSync(tmpPath)) unlinkSync(tmpPath) } catch { /* non-critico */ }
+  try { if (safeExistsSync(tmpPath)) safeUnlinkSync(tmpPath) } catch { /* non-critico */ }
 }

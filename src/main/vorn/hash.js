@@ -1,4 +1,3 @@
-import { readSync } from 'fs'
 import { blake3 } from '@noble/hashes/blake3.js'
 import { HASH_CHUNK_BYTES } from './constants.js'
 import { safeOpenSync, safeReadSync, safeCloseSync, safeStatSync } from './safeFs.js'
@@ -54,7 +53,7 @@ export function hashFromFd(fd, contentOffset, contentLen, isCancelled = null) {
   let offset   = 0
   while (offset < size) {
     if (isCancelled?.()) return null
-    const n = readSync(fd, buf, 0, Math.min(CHUNK, size - offset), contentOffset + offset)
+    const n = safeReadSync(fd, buf, 0, Math.min(CHUNK, size - offset), contentOffset + offset)
     if (n === 0) throw new Error('ERR_SOURCE_TRUNCATED_DURING_HASH')
     h.update(buf.subarray(0, n))
     offset += n

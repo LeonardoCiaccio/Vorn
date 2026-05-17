@@ -1,12 +1,10 @@
-import { mkdirSync, existsSync } from 'fs'
-import { readdir } from 'fs/promises'
 import { join, basename, dirname, resolve, sep } from 'path'
 import { pipeline } from 'stream/promises'
 import { extractContent } from './store.js'
 import { readVornMeta } from './format.js'
 import { loadRun } from './sessions.js'
 import { EXTRACT_MAX_BYTES } from './constants.js'
-import { safeCreateWriteStream } from './safeFs.js'
+import { safeCreateWriteStream, safeExistsSync, safeMkdirSync, safeReaddirSync } from './safeFs.js'
 
 // Restituisce il path assoluto solo se è contenuto dentro baseDir, altrimenti null
 function _safeJoin(baseDir, relPath) {
@@ -103,7 +101,7 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
 
     const [relPath, storeKey] = fileEntries[i]
     try {
-      if (!existsSync(join(storeDir, storeKey + '.vorn'))) {
+      if (!safeExistsSync(join(storeDir, storeKey + '.vorn'))) {
         errors.push({ path: relPath, storeKey, error: 'not_found' })
         onProgress?.({ current: i + 1, total, restored, errors: errors.length, file: relPath })
         continue
@@ -150,7 +148,7 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
         }
       }
 
-      mkdirSync(dirname(outPath), { recursive: true })
+      safeMkdirSync(dirname(outPath), { recursive: true })
       await pipeline(extractContent(storeDir, storeKey), _cancellable(isCancelled), safeCreateWriteStream(outPath))
       restored++
     } catch (e) {
@@ -166,7 +164,7 @@ export async function restore(storeDir, sessionName, runTs, destDir, opts = {}) 
 
 export async function extractFromStore(storeDir, destDir, sessionFilter, { onProgress, isCancelled } = {}) {
   destDir = resolve(destDir)
-  const allFiles = (await readdir(storeDir)).filter(f => f.endsWith('.vorn'))
+  const allFiles = safeReaddirSync(storeDir).filter(f => f.endsWith('.vorn'))
   const total      = allFiles.length
   const sessionNames = new Set()
   const noRecords  = []
@@ -222,7 +220,7 @@ export async function extractFromStore(storeDir, destDir, sessionFilter, { onPro
             : relPath
           const outPath    = _safeJoin(base, stripped)
           if (!outPath) { errors.push({ hash: hashOnly, session: rec.session, path: relPath, error: 'path_traversal' }); continue }
-          mkdirSync(dirname(outPath), { recursive: true })
+          safeMkdirSync(dirname(outPath), { recursive: true })
           await pipeline(extractContent(storeDir, storeKey), _cancellable(isCancelled), safeCreateWriteStream(outPath))
           extracted++
         } catch (e) {
@@ -253,7 +251,7 @@ export async function extractByHash(storeDir, storeKey, destDir, filename) {
     throw new Error('ERR_FILE_TOO_LARGE_EXTRACT')
   }
   const outPath = join(destDir, basename(filename || storeKey))
-  mkdirSync(destDir, { recursive: true })
+  safeMkdirSync(destDir, { recursive: true })
   await pipeline(extractContent(storeDir, storeKey), safeCreateWriteStream(outPath))
   return { path: outPath }
 }

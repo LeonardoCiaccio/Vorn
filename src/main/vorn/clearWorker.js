@@ -1,13 +1,13 @@
 import { workerData, parentPort } from 'worker_threads'
-import { readdirSync } from 'fs'
-import { unlink, stat } from 'fs/promises'
 import { join } from 'path'
+import { safeReaddirSync, safeStatSync, safeUnlink } from './safeFs.js'
 import { CLEAR_BATCH } from './constants.js'
 
 const { storeDir, cancelBuffer } = workerData
 const cancelFlag = new Int32Array(cancelBuffer)
 
-const files = readdirSync(storeDir).filter(f => f.endsWith('.vorn') || f.endsWith('.vornc'))
+let files = []
+try { files = safeReaddirSync(storeDir).filter(f => f.endsWith('.vorn') || f.endsWith('.vornc')) } catch { /* poller nel main process gestirà la disconnessione */ }
 const total = files.length
 
 async function run() {
@@ -32,13 +32,13 @@ async function run() {
       if (i >= total) break
 
       try {
-        await unlink(join(storeDir, files[i]))
+        await safeUnlink(join(storeDir, files[i]))
         deleted++
       } catch (e) {
         if (e.code === 'ENOENT') {
           deleted++
         } else {
-          try { await stat(storeDir) } catch {
+          try { safeStatSync(storeDir) } catch {
             disconnected = true
             parentPort.postMessage({ type: 'store-disconnected' })
             break

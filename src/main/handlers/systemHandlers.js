@@ -1,6 +1,6 @@
 import { ipcMain, app, dialog, shell, BrowserWindow, net } from 'electron'
 import { normalize, resolve, join } from 'path'
-import { readdirSync }              from 'fs'
+import { safeReaddirSync }          from '../vorn/safeFs.js'
 import { homedir }                  from 'os'
 import { getEntry, listStoreFiles, countStoreFiles, deleteStoreEntry, getCachedFileList } from '../vorn/store.js'
 import { listTasks }                from '../vorn/taskManager.js'
@@ -25,7 +25,7 @@ let _logWin = null
 
 function _hashSetForQuery(storeDir, query) {
   const q = query.toLowerCase()
-  const source = getCachedFileList(storeDir) ?? readdirSync(storeDir).filter(f => f.endsWith('.vorn'))
+  const source = getCachedFileList(storeDir) ?? safeReaddirSync(storeDir).filter(f => f.endsWith('.vorn'))
   return new Set(
     source
       .filter(f => f.toLowerCase().includes(q))
@@ -178,7 +178,7 @@ export function registerSystemHandlers(mainWindow) {
     if (dirPath.includes('\x00')) return [] // null byte injection guard
     const safePath = normalize(resolve(dirPath))
     try {
-      return readdirSync(safePath, { withFileTypes: true })
+      return safeReaddirSync(safePath, { withFileTypes: true })
         .filter(e => { try { return e.isDirectory() || e.isFile() } catch { return false } })
         .map(e => ({ name: e.name, path: join(safePath, e.name), type: e.isDirectory() ? 'dir' : 'file' }))
         .sort((a, b) => {
