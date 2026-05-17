@@ -227,12 +227,12 @@ export function registerTaskHandlers(mainWindow) {
     if (!destDir || typeof destDir !== 'string') throw new Error('ERR_INVALID_DEST_DIR')
     let resolvedDest = resolve(destDir)
     if (!isAbsolute(resolvedDest)) throw new Error('ERR_DEST_NOT_ABSOLUTE')
-    try { mkdirSync(resolvedDest, { recursive: true }) } catch (e) {
+    try { safeMkdirSync(resolvedDest, { recursive: true }) } catch (e) {
       if (e.code === 'EEXIST') {
-        try { if (!statSync(resolvedDest).isDirectory()) resolvedDest = dirname(resolvedDest) } catch { /* ignore */ }
+        try { if (!safeStatSync(resolvedDest).isDirectory()) resolvedDest = dirname(resolvedDest) } catch { /* ignore */ }
       }
     }
-    try { accessSync(resolvedDest, constants.W_OK) }
+    try { safeAccessSync(resolvedDest, constants.W_OK) }
     catch { throw new Error('ERR_DEST_NOT_WRITABLE') }
     if (sessionFilter !== null && typeof sessionFilter !== 'string') throw new Error('ERR_INVALID_SESSION_FILTER')
     _assertNoMutatingTask()

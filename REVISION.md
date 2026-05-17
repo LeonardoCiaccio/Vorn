@@ -245,6 +245,8 @@ Do not propose any of the following patterns as "bugs" — they are the current 
 - **`readVornMeta` distinguishes truncation from bad separator** (R2-5): partial `readSync` → `ERR_FILE_TRUNCATED`; full read but bytes ≠ SEPARATOR → `ERR_SEPARATOR_NOT_FOUND`. Do NOT re-propose "fragile separator check".
 - **`safeFs.toLongPath` aggiunge `\\?\` solo per path > 259 chars** (R1 #12, corretto R8-5): drive-letter, UNC, mixed slash → normalizzato. Il prefisso è aggiunto **solo se `n.length > 259`** — il prefissaggio incondizionale causava ENOENT su path corti come `D:\` (root di drive USB) in Electron, perché `access()` e alcuni syscall non supportano `\\?\` su path radice. Do NOT re-propose "aggiungere `\\?\` a tutti i path" (causò regressione `ERR_FOLDER_NOT_FOUND` confermata in produzione). Do NOT re-propose "long path failure on Windows".
 - **`safeExistsSync` usa `statSync`, non `existsSync`** (R8-4): `fs.existsSync` in Electron's `original-fs` chiama `access()` internamente, che NON supporta path `\\?\` anche quando `original-fs.statSync` funziona correttamente. `safeExistsSync` è ora `try { _fs.statSync(toLongPath(p)); return true } catch { return false }`. Do NOT re-propose "usare existsSync per check di esistenza" in safeFs.
+- **`safeAccessSync` usa `statSync` + probe-write** (R9-2): stessa limitazione di `existsSync` per `accessSync` (entrambi usano `access()` libuv). Per F_OK usa `statSync(toLongPath(p))`; per W_OK su directory fa una probe-write atomica (`openSync 'w'` su file temp `.vorn_probe_<pid>_<ts>` + closeSync + unlinkSync). Unico check affidabile su Win + path lunghi. Do NOT re-propose "usare accessSync raw".
+- **`safeAccess` (promise) NON usare come exists check** (R9-3): `fs/promises.access` ha la stessa syscall di `accessSync`, stesso failure mode su `\\?\`. Marcato come ⚠️ in safeFs.js. Per esistenza usa SEMPRE `safeExistsSync`. `safeAccess` resta esportato solo per compatibilità.
 - **Scanner blocks junction before isDirectory** (R1 #20): NTFS junction on `AppData/Local/Application Data` no longer causes recursive loops.
 - **Lock detection on NAS/SMB** (R2-6): `checkLock` rejects if `lock.machine !== hostname()`. PID check is only valid intra-machine. Do NOT re-propose "stale lock theft on network share".
 
@@ -353,9 +355,9 @@ The reviewer does not test the code (cannot). So every "Suggested fix" is a **hy
 
 ---
 
-## Areas worth investigating (Round 9+)
+## Areas worth investigating (Round 10+)
 
-The next reviewer can invest effort productively in these areas NOT yet touched (items closed in R7–R8 removed; safeFs migration is now complete):
+The next reviewer can invest effort productively in these areas NOT yet touched (items closed in R7–R9 removed; safeFs migration + access/exists semantics complete):
 
 1. **`safeFs` propagation to workers — HIGH priority, 3 files affected**: R7-3 migrated `format.js` and `store.js`. The following workers still import raw `fs` / `fs/promises` for storeDir paths — same long-path failure mode as R7-3 but in a different surface:
 
@@ -395,7 +397,7 @@ The next reviewer can invest effort productively in these areas NOT yet touched 
 
 9. **Pipeline AbortSignal extension**: today `_cancellable(isCancelled)` lives only in `restore.js`. The same logic may be needed in other long pipelines (e.g., `extractStoreWorker`). Audit residual pipelines.
 
-10. **`safeAccessSync` incompatibility with `\\?\` in Electron**: `accessSync` (used by `safeAccessSync`) has the same limitation as the old `existsSync`: it uses the `access()` syscall which does not support extended-length paths in Electron's `original-fs`. In `taskHandlers.js`, `safeAccessSync(resolvedDest, constants.W_OK)` is called on the restore/extract destination dir. If `resolvedDest` is > 259 chars, `toLongPath` adds `\\?\` and the check always throws → `ERR_DEST_NOT_WRITABLE` false positive. Short-term fix: same pattern as `safeExistsSync` — use `statSync` + access mode check. Long-term: verify whether Electron's `original-fs.accessSync` actually supports `\\?\` before deciding.
+10. **`better-sqlite3` native binding + `\\?\` paths**: oggi `_path = ~/.vorn/vorn.db` è corto. Su account aziendali estremi (homedir 100+ char con OneDrive redirect) si potrebbe avvicinare al limite. `better-sqlite3` riceve `_path` raw — non passare mai `toLongPath(_path)` al constructor senza prima testare (semantica binding nativi non uniforme). Speculativo: probabilmente non si manifesterà mai in pratica.
 
 ---
 
@@ -519,6 +521,20 @@ High-quality review: no false positives, all snippets pastable, no severity infl
 - [ ] **R7-4** [LOW] `deleteStoreEntry` on chunked manifest leaves orphan chunks until prune — **WONTFIX**. User-initiated action + prune already collects them. The reviewer's own proposed fix admits it cannot rewrite `references` of chunks still alive (stays sync). Coherent with the rest of the system: any delete on a `.vorn` may break historical run restores; chunked is not a special case.
 
 ---
+
+## Round 9 — Gap audit post R8 (post Round 8, 9 findings)
+
+Review eccellente: snippets pastable, severity calibrate, separazione speculativo/concreto chiara. Tutti i fix applicati tranne R9-7 (race teorico non innescabile).
+
+- [x] **R9-1** [HIGH] `vorn:start-extract-store` ReferenceError su `mkdirSync`/`statSync`/`accessSync` non importati. Feature completamente rotta in produzione: bug di migrazione R8-1 (il blocco `start-extract-store` non era coperto dai `replace_all`). Allineato al pattern di `start-restore` con `safeMkdirSync`/`safeStatSync`/`safeAccessSync`.
+- [x] **R9-2** [HIGH] `safeAccessSync` aveva la stessa limitazione di `existsSync` pre-R8-4: `accessSync` in `original-fs` chiama `access()` che non supporta `\\?\`. Risultato: `ERR_DEST_NOT_WRITABLE` falso positivo su restore/extract con destDir > 259 char. Rifattorizzato `safeAccessSync` per usare `statSync` (F_OK) + probe-write atomica (W_OK su directory) — unico check affidabile su Win con path lunghi.
+- [x] **R9-3** [HIGH speculativo→preventivo] `safeAccess` (promise) usato come "exists check" in `storeBlob`/`_createNew`/`storeChunked`. Stesso failure mode probabile di `accessSync` su `\\?\`: false negative su long-path store → sovrascrittura silenziosa di `meta.records` storici. Sostituito con `safeExistsSync` (statSync-based) nei 3 punti. `safeAccess` lasciato esportato con warning ⚠️.
+- [x] **R9-4** [MED] `walk()` non cancellabile durante singolo source enorme: Stop ignorato per N secondi/minuti. Aggiunto parametro opzionale `isCancelled` con early-exit all'inizio del while. Caller `backup.js` aggiornato.
+- [x] **R9-5** [LOW, declassato da MED] `db.js` raw `mkdirSync` migrato a `safeMkdirSync`/`safeExistsSync`. Coerenza con il resto del progetto. Severità abbassata: `~/.vorn` in pratica non supera 259 char.
+- [x] **R9-6** [MED] `_dbRequest`/`storeFn` nel backupWorker non cancellabili (timeout 10 min). Fix proposto dal reviewer usava un setInterval per request (contraddice R1-21). Implementato invece un singolo `_cancelPoll` globale che monitora `cancelFlag` mentre ci sono request pendenti — minor overhead, stesso comportamento. `backup.js` gestisce ora `ERR_CANCELLED` esplicitamente nei 4 callsite (`_dbGetFile`, `_dbUpsertMany` ×2, `_storeBlob`).
+- [ ] **R9-7** [LOW teorico] `_storeVornc` race al fallback `_writeNewVornc` — **WONTFIX**: race teorico al 100%, non innescabile sotto il mutex globale `_assertNoMutatingTask`. Diventa reale solo se in futuro il mutex viene rilassato. Re-flagare quando/se accade.
+- [x] **R9-8** [LOW] `worker.terminate()` chiamato senza catch → possibile UnhandledPromiseRejection se worker già morto. Aggiunto `.catch(() => {})` no-op nei 3 callsite (workerManager.js ×2, ipc.js).
+- [x] **R9-9** [LOW] `clearStore` invalidava solo `_listCache`, non `_metaCache` — inconsistenza API. Sostituito con `invalidateListCache()` (che azzera entrambi).
 
 ## Round 8 — safeFs migration completa + fix toLongPath (post Round 7)
 

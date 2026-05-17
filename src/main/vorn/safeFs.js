@@ -1,8 +1,9 @@
 import { createRequire } from 'module'
+import { join } from 'path'
 import {
   createReadStream, createWriteStream,
   openSync, readSync, writeSync, fsyncSync, closeSync,
-  statSync, readdirSync, existsSync, accessSync,
+  statSync, readdirSync, existsSync, accessSync, constants as _fsConstants,
   unlinkSync, renameSync, readFileSync, writeFileSync, mkdirSync, truncateSync, rmSync,
 } from 'fs'
 
@@ -55,7 +56,21 @@ export const safeWriteFileSync     = (path, data, opts) => _fs.writeFileSync(toL
 export const safeMkdirSync         = (path, opts) => _fs.mkdirSync(toLongPath(path), opts)
 export const safeTruncateSync      = (path, len)  => _fs.truncateSync(toLongPath(path), len)
 export const safeRmSync            = (path, opts) => _fs.rmSync(toLongPath(path), opts)
-export const safeAccessSync        = (path, mode) => _fs.accessSync(toLongPath(path), mode)
+// accessSync ha la stessa limitazione di existsSync in Electron (vedi R8-4):
+// chiama internamente access() che non supporta path con prefisso \\?\.
+// Usiamo statSync per F_OK; per W_OK su directory facciamo una probe-write
+// atomica (unico check affidabile su Win con path > 259 char).
+export const safeAccessSync = (path, mode = _fsConstants.F_OK) => {
+  const st = _fs.statSync(toLongPath(path))   // throws ENOENT come accessSync(F_OK)
+  if (!(mode & _fsConstants.W_OK)) return
+  if (st.isDirectory()) {
+    const probe = join(path, `.vorn_probe_${process.pid}_${Date.now()}`)
+    const fd = _fs.openSync(toLongPath(probe), 'w')
+    try { _fs.closeSync(fd) } finally { try { _fs.unlinkSync(toLongPath(probe)) } catch { /* best effort */ } }
+  } else {
+    _fs.closeSync(_fs.openSync(toLongPath(path), 'r+'))
+  }
+}
 
 // ── Promise API (fs/promises) ───────────────────────────────────────────────
 // `original-fs` di Electron NON espone le promise API, quindi usiamo le
@@ -66,6 +81,9 @@ import {
   open as _openP, unlink as _unlinkP,
 } from 'fs/promises'
 
+// ⚠️ NON USARE come check di esistenza: fs/promises.access usa la syscall access()
+// con le stesse limitazioni di accessSync su \\?\ in Electron (vedi R8-4, R9-3).
+// Per esistenza usa safeExistsSync (statSync-based). Per W_OK usa safeAccessSync.
 export const safeAccess     = (path, mode)  => _accessP(toLongPath(path), mode)
 export const safeWriteFile  = (path, data, opts) => _writeFileP(toLongPath(path), data, opts)
 export const safeTruncate   = (path, len)   => _truncateP(toLongPath(path), len)

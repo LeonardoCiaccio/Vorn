@@ -45,7 +45,7 @@ export function registerIpcHandlers(mainWindow) {
     for (const { worker, cancelFlag } of ctx.activeWorkers.values()) {
       Atomics.store(cancelFlag, 0, 1)
       promises.push(new Promise(resolve => {
-        const timeout = setTimeout(() => { worker.terminate(); resolve() }, 5000)
+        const timeout = setTimeout(() => { worker.terminate().catch(() => {}); resolve() }, 5000)
         worker.once('exit', () => { clearTimeout(timeout); resolve() })
       }))
     }

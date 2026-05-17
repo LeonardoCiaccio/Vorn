@@ -37,7 +37,7 @@ export async function backup(storeDir, sessionName, opts = {}) {
         if (!excPaths.some(p => src === p) && !excPats.some(pat => matchPattern(basename(src), pat)))
           allFiles.push(src)
       } else {
-        walk(src, excPaths, excPats, allFiles)
+        walk(src, excPaths, excPats, allFiles, isCancelled)
       }
     } catch (e) { scanErrors.push({ path: src, error: e.code ?? e.message, phase: 'scan' }) }
   }
@@ -137,7 +137,9 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
     // Controllo DB: se mtime e size coincidono, conosciamo già l'hash
     let hashVorn
-    const dbRecord = await _dbGetFile(filePath)
+    let dbRecord = null
+    try { dbRecord = await _dbGetFile(filePath) }
+    catch (e) { if (e.message === 'ERR_CANCELLED') break /* altri errori → cache miss, prosegui */ }
     if (dbRecord && dbRecord.mtime === mtime && dbRecord.size === bytes) {
       // Hash già noto: salta l'hashing del file.
       // Non fare continue anche se il .vorn esiste: storeBlob deve aggiornare i record
@@ -219,6 +221,9 @@ export async function backup(storeDir, sessionName, opts = {}) {
       if (cn != null) { chunksNew += cn; chunksDedup += cd }
     } catch (e) {
       cleanupTemp(compTmpPath)
+      // ERR_CANCELLED arriva dal worker quando il cancel-flag scatta mentre
+      // siamo in attesa di store-result/db-result. Trattato come cancel utente.
+      if (e.message === 'ERR_CANCELLED') break
       if (e.code === 'ENOSPC') {
         run.status      = 'error'
         run.files_new   = filesNew
@@ -250,7 +255,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
 
     // Salvataggio intermedio periodico
     if (current - lastSaveCount >= SAVE_INTERVAL_FILES || Date.now() - lastSaveTime >= SAVE_INTERVAL_MS) {
-      await _dbUpsertMany(pendingUpserts)
+      try { await _dbUpsertMany(pendingUpserts) }
+      catch (e) { if (e.message === 'ERR_CANCELLED') break /* altri errori → upsert perduto, rehash al prossimo backup */ }
       pendingUpserts = []
       run.files_new    = filesNew
       run.files_dedup  = filesDedup
@@ -265,7 +271,8 @@ export async function backup(storeDir, sessionName, opts = {}) {
     }
   }
 
-  await _dbUpsertMany(pendingUpserts)
+  try { await _dbUpsertMany(pendingUpserts) }
+  catch (e) { if (e.message !== 'ERR_CANCELLED') throw e /* cancel in flight → upsert finale non critico */ }
 
   run.status       = isCancelled?.() ? 'paused' : 'done'
   run.duration_sec = prevDurationSec + Math.round((Date.now() - startTime) / 1000)
@@ -279,7 +286,10 @@ export async function backup(storeDir, sessionName, opts = {}) {
   run.errors       = errors
   saveRun(storeDir, sessionName, run)
 
-  if (run.status === 'done') await _dbPruneOrphans()
+  if (run.status === 'done') {
+    try { await _dbPruneOrphans() }
+    catch (e) { if (e.message !== 'ERR_CANCELLED') throw e /* prune fallita non critica per il run */ }
+  }
 
   return { status: run.status, ts: run.ts, files_total: total, filesNew, filesDedup, errors }
 }

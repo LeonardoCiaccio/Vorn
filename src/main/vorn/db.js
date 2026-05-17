@@ -1,6 +1,5 @@
 import Database from 'better-sqlite3'
-import { mkdirSync } from 'fs'
-import { safeExistsSync } from './safeFs.js'
+import { safeExistsSync, safeMkdirSync } from './safeFs.js'
 import { join } from 'path'
 import { homedir } from 'os'
 import { logger } from './logger.js'
@@ -12,7 +11,7 @@ let _db = null
 
 export function getDb() {
   if (_db) return _db
-  mkdirSync(_dir, { recursive: true })
+  if (!safeExistsSync(_dir)) safeMkdirSync(_dir, { recursive: true })
   _db = new Database(_path)
   _db.pragma('journal_mode = WAL')
   _db.pragma('busy_timeout = 5000')

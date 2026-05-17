@@ -10,6 +10,24 @@ const cancelFlag = new Int32Array(cancelBuffer)
 let _reqId = 0
 const _pending = new Map()
 
+// Poll del cancel-flag mentre ci sono request in volo verso il main process.
+// Senza questo, un cancel utente durante un _dbRequest/storeFn bloccato dovrebbe
+// attendere il timeout di 10 min. Singolo interval globale (non per request)
+// per minimizzare overhead e mantenere lo stesso pattern di store-disconnected.
+const _CANCEL_POLL_MS = 500
+let _cancelPoll = null
+function _ensureCancelPoll() {
+  if (_cancelPoll) return
+  _cancelPoll = setInterval(() => {
+    if (_pending.size === 0) { clearInterval(_cancelPoll); _cancelPoll = null; return }
+    if (Atomics.load(cancelFlag, 0) === 1) {
+      for (const p of _pending.values()) p.reject(new Error('ERR_CANCELLED'))
+      _pending.clear()
+      clearInterval(_cancelPoll); _cancelPoll = null
+    }
+  }, _CANCEL_POLL_MS)
+}
+
 parentPort.on('message', (msg) => {
   if (msg?.type === 'store-result' || msg?.type === 'db-result') {
     const p = _pending.get(msg.id)
@@ -40,6 +58,7 @@ function storeFn(opts) {
       resolve: (outcome) => { clearTimeout(timer); resolve(outcome) },
       reject:  (err)     => { clearTimeout(timer); reject(err) },
     })
+    _ensureCancelPoll()
     parentPort.postMessage({ type: 'store-request', id, hashVorn, bytes, filePath: sourcePath, sessionId, sessionName, relPath, compressionType, compTmpPath, compressedHash, strategy })
   })
 }
@@ -58,6 +77,7 @@ function _dbRequest(op, args) {
       resolve: (r) => { clearTimeout(timer); resolve(r) },
       reject:  (e) => { clearTimeout(timer); reject(e) },
     })
+    _ensureCancelPoll()
     parentPort.postMessage({ type: 'db-request', id, op, args })
   })
 }

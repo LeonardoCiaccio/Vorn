@@ -5,7 +5,7 @@
 import {
   safeCreateReadStream, safeCreateWriteStream,
   safeExistsSync, safeMkdirSync, safeReaddirSync, safeStatSync, safeUnlinkSync,
-  safeAccess, safeWriteFile, safeTruncate, safeOpen, safeUnlink,
+  safeWriteFile, safeTruncate, safeOpen, safeUnlink,
 } from './safeFs.js'
 import { join, basename } from 'path'
 import { tmpdir } from 'os'
@@ -111,7 +111,7 @@ export function clearStore(storeDir) {
   if (!safeExistsSync(storeDir)) return 0
   const files = safeReaddirSync(storeDir).filter(f => f.endsWith('.vorn') || f.endsWith('.vornc'))
   for (const f of files) safeUnlinkSync(join(storeDir, f))
-  _listCache = null
+  invalidateListCache()
   return files.length
 }
 
@@ -251,7 +251,7 @@ async function storeChunked(opts) {
   const manifestP = vornPath(storeDir, hashVorn)
 
   return withFileLock(manifestP, async () => {
-    const exists = await safeAccess(manifestP).then(() => true).catch(() => false)
+    const exists = safeExistsSync(manifestP)
 
     if (exists) {
       const { meta, contentLen } = readVornMeta(manifestP)
@@ -367,7 +367,7 @@ export async function storeBlob(opts) {
     const p = vornPath(storeDir, existingKey)
     return withFileLock(p, async () => {
       // Ricontrolla dentro il lock (potrebbe essere stato eliminato nel frattempo)
-      if (!await safeAccess(p).then(() => true).catch(() => false)) {
+      if (!safeExistsSync(p)) {
         // Scomparso: rilascia e ricrea dalla strategia corrente
         return _createNew(opts)
       }
@@ -426,7 +426,7 @@ async function _createNew(opts) {
 
   return withFileLock(p, async () => {
     // Double-check: potrebbe essere stato creato da un altro worker nel frattempo
-    if (await safeAccess(p).then(() => true).catch(() => false)) {
+    if (safeExistsSync(p)) {
       const { meta, contentLen } = readVornMeta(p)
       await _upsertRecord(p, contentLen, meta, sessionId, sessionName, relPath)
       return { outcome: 'dedup', storeKey: key }

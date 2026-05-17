@@ -42,7 +42,7 @@ export function triggerDisconnect(mainWindow) {
   for (const { worker, cancelFlag } of ctx.activeWorkers.values()) {
     Atomics.store(cancelFlag, 0, 1)
     worker.postMessage({ type: 'store-disconnected' }) // cancella subito le store-request pending
-    setTimeout(() => worker.terminate(), 5000)
+    setTimeout(() => { worker.terminate().catch(() => { /* già morto */ }) }, 5000)
   }
   ctx.activeWorkers.clear()
   releaseLock(ctx.activeStore)
@@ -191,7 +191,7 @@ export function spawnWorker(workerFile, workerData, taskId, mainWindow, onDone) 
           deleted:      _lastProgress?.deleted      ?? 0,
           failed:       _lastProgress?.failed       ?? 0,
         }, null)
-        entry.worker.terminate()
+        entry.worker.terminate().catch(() => { /* già morto */ })
       }
     }, 8000)
   })

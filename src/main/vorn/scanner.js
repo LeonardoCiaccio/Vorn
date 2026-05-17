@@ -14,10 +14,11 @@ function _normForCompare(p) {
   return _isWin32 ? slashed.toLowerCase() : slashed
 }
 
-export function walk(dir, excludePaths = [], excludePatterns = [], _results = []) {
+export function walk(dir, excludePaths = [], excludePatterns = [], _results = [], isCancelled = null) {
   const normExcludes = excludePaths.map(_normForCompare)
   const queue = [dir]
   while (queue.length) {
+    if (isCancelled?.()) return _results
     const current = queue.pop()
     try {
       for (const entry of safeReaddirSync(current, { withFileTypes: true })) {
