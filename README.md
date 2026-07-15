@@ -574,6 +574,8 @@ You are free to use, study, modify, and distribute Vorn — including running it
 
 Contributions are welcome. For major changes, please open an issue first so we can discuss the approach before you invest time in a pull request.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guidelines. Note that all contributions require signing the [Contributor License Agreement](CLA.md) — it's a one-time step handled automatically on your first pull request, and it guarantees your contribution will always remain available under the AGPL.
+
 ---
 
 <div align="center">
